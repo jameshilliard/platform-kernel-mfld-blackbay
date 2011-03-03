@@ -1,0 +1,111 @@
+#
+# Drm device configuration
+#
+# This driver provides support for the
+# Direct Rendering Infrastructure (DRI) in XFree86 4.1.0 and higher.
+#
+
+config DRM_INTEL_MID
+	tristate "Intel Moorestown/Medfield (load along with IMG driver)"
+	depends on DRM && PCI
+	select FB_CFB_COPYAREA
+        select FB_CFB_FILLRECT
+        select FB_CFB_IMAGEBLIT
+        select DRM_KMS_HELPER
+        select DRM_TTM
+	help
+	  xxxxxxxxxxxxxxxxxxxxxxxxxx
+
+choice 
+	prompt "Build IMG kernel service as "
+	depends on DRM_INTEL_MID
+	default DRM_MID_RELEASE
+
+config DRM_MID_RELEASE
+	bool "Release"
+	depends on DRM_INTEL_MID
+	help
+	  Build IMG kernel services as release
+
+config DRM_MID_DEBUG
+	bool "Debug"
+	depends on DRM_INTEL_MID
+	help
+	 Build IMG kernel services as debug	
+
+endchoice
+
+config DRM_MDFLD
+	tristate "Intel Medfield"
+        depends on DRM_INTEL_MID && PCI
+        select FB_CFB_COPYAREA
+        select FB_CFB_FILLRECT
+        select FB_CFB_IMAGEBLIT
+        select DRM_KMS_HELPER
+        help
+          Choose this option if you have a Medfield platform.
+          If M is selected the module will be called mid_gfx.
+
+config MDFLD_DSI_DSR
+	bool "Support DSI Fullscreen Display Self Refreshment "
+	depends on DRM_MDFLD && !MDFLD_DSI_DPU
+	default y
+	help
+	  Choose this option if you have a Type1 MIPI panel.
+
+config MDFLD_DSI_DPU
+	bool "Support DSI Display Partial Update"
+	depends on DRM_MDFLD
+	default n
+	help
+	  xxxxxx
+
+config MDFD_DUAL_MIPI
+        bool "SUPPORT_DUAL_MIPI_DISPLAYS"
+        depends on DRM_MDFLD
+        default n
+        help
+          xxxxxx
+
+config MDFD_HDMI
+        bool "SUPPORT_HDMI_DISPLAY"
+        depends on DRM_MDFLD
+        default n
+        help
+          xxxxxx
+
+config MDFD_GL3
+	bool "Enable GL3 Cache for GUNIT"
+	depends on DRM_MDFLD
+	default n
+	help
+	  xxxxxx
+
+config PVR_TRACE_CMD
+	depends on DRM_INTEL_MID
+	bool "Enable GPU command tracing"
+	default n
+	help
+	  This will enable a lightweight tracer of commands submitted
+	  to the GPU.
+
+	  Besides the command type the trace output will provide the
+	  timestamp, id and name of the submitting process and a
+	  a snapshots of the synchronization counters related to the
+	  given command.
+
+	  The trace can help for example in debugging dead-lock
+	  situations caused by circular lock dependencies.
+
+config PVR_TRACE_CMD_BUF_SHIFT
+	int "Command tracing buf size"
+	range 1 10
+	default 3
+	depends on PVR_TRACE_CMD
+	help
+	  Select the number of pages (as a power of 2) set aside for
+	  the command trace buffer.
+	  Examples:
+	  1  -> 4kB
+	  3  -> 32kB
+	  10 -> 4MB

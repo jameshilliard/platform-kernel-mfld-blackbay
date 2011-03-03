@@ -1,0 +1,128 @@
+/*
+ * Copyright (C) 2011 Nokia Corporation
+ * Copyright (C) 2011 Intel Corporation
+ * Author: Luc Verhaegen <libv@codethink.co.uk>
+ * Author: Imre Deak <imre.deak@intel.com>
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ */
+
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/debugfs.h>
+#include <linux/vmalloc.h>
+#include <linux/mutex.h>
+
+#include "img_types.h"
+#include "servicesext.h"
+#include "services.h"
+#include "sgxinfokm.h"
+#include "syscommon.h"
+#include "pvr_bridge_km.h"
+#include "sgxutils.h"
+#include "pvr_debugfs.h"
+#include "mmu.h"
+#include "bridged_support.h"
+#include "mm.h"
+#include "pvr_trace_cmd.h"
+
+static struct dentry *pvr_debugfs_dir;
+
+#ifdef CONFIG_PVR_TRACE_CMD
+
+static void *trcmd_str_buf;
+static u8 *trcmd_snapshot;
+static size_t trcmd_snapshot_size;
+static unsigned long trcmd_busy;
+
+static int pvr_dbg_trcmd_open(struct inode *inode, struct file *file)
+{
+	int r;
+
+	if (test_and_set_bit(0, &trcmd_busy))
+		return -EBUSY;
+
+	trcmd_str_buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	if (!trcmd_str_buf) {
+		clear_bit(0, &trcmd_busy);
+
+		return -ENOMEM;
+	}
+
+	r = pvr_trcmd_create_snapshot(&trcmd_snapshot, &trcmd_snapshot_size);
+	if (r < 0) {
+		kfree(trcmd_str_buf);
+		clear_bit(0, &trcmd_busy);
+
+		return r;
+	}
+
+	return 0;
+}
+
+static int pvr_dbg_trcmd_release(struct inode *inode, struct file *file)
+{
+	pvr_trcmd_destroy_snapshot(trcmd_snapshot);
+	kfree(trcmd_str_buf);
+	clear_bit(0, &trcmd_busy);
+
+	return 0;
+}
+
+static ssize_t pvr_dbg_trcmd_read(struct file *file, char __user *buffer,
+				  size_t count, loff_t *ppos)
+{
+	ssize_t ret;
+
+	ret = pvr_trcmd_print(trcmd_str_buf, max_t(size_t, PAGE_SIZE, count),
+			      trcmd_snapshot, trcmd_snapshot_size, ppos);
+	if (copy_to_user(buffer, trcmd_str_buf, ret))
+		return -EFAULT;
+
+	return ret;
+}
+
+static const struct file_operations pvr_dbg_trcmd_fops = {
+	.owner		= THIS_MODULE,
+	.open		= pvr_dbg_trcmd_open,
+	.release	= pvr_dbg_trcmd_release,
+	.read		= pvr_dbg_trcmd_read,
+};
+#endif
+
+int pvr_debugfs_init(void)
+{
+	pvr_debugfs_dir = debugfs_create_dir("pvr", NULL);
+	if (!pvr_debugfs_dir)
+		goto err;
+
+#ifdef CONFIG_PVR_TRACE_CMD
+	if (!debugfs_create_file("command_trace", S_IRUGO, pvr_debugfs_dir,
+				NULL, &pvr_dbg_trcmd_fops))
+		goto err;
+#endif
+	return 0;
+err:
+	debugfs_remove_recursive(pvr_debugfs_dir);
+	pr_err("pvr: debugfs init failed\n");
+
+	return -ENODEV;
+}
+
+void pvr_debugfs_cleanup(void)
+{
+	debugfs_remove_recursive(pvr_debugfs_dir);
+}
+
