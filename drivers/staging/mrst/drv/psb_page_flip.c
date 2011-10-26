@@ -106,13 +106,17 @@ write_scanout_regs(struct pending_flip *pending_flip, uint32_t offset)
 static void
 increase_read_ops_pending(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 {
-	psKernelMemInfo->psKernelSyncInfo->psSyncData->ui32ReadOpsPending++;
+	if (psKernelMemInfo)
+		psKernelMemInfo->psKernelSyncInfo
+			->psSyncData->ui32ReadOpsPending++;
 }
 
 static void
 increase_read_ops_completed(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 {
-	psKernelMemInfo->psKernelSyncInfo->psSyncData->ui32ReadOpsComplete++;
+	if (psKernelMemInfo)
+		psKernelMemInfo->psKernelSyncInfo
+			->psSyncData->ui32ReadOpsComplete++;
 }
 
 static PVRSRV_KERNEL_MEM_INFO *
@@ -199,7 +203,6 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 
 	crtc->fb = fb;
 
-	BUG_ON(!current_fb_mem_info);
 	new_pending_flip->old_mem_info = current_fb_mem_info;
 
 	increase_read_ops_pending(current_fb_mem_info);
