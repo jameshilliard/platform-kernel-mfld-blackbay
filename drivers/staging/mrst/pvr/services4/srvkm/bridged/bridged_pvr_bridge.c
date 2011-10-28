@@ -2840,8 +2840,8 @@ _SetDispatchTableEntry(IMG_UINT32 ui32Index,
 	g_BridgeDispatchTable[ui32Index].in_size = in_size;
 	g_BridgeDispatchTable[ui32Index].out_size = out_size;
 	g_BridgeDispatchTable[ui32Index].err_offset = err_offset;
-#if defined(DEBUG_BRIDGE_KM)
 	g_BridgeDispatchTable[ui32Index].pszIOCName = pszIOCName;
+#if defined(DEBUG_BRIDGE_KM)
 	g_BridgeDispatchTable[ui32Index].pszFunctionName = pszFunctionName;
 	g_BridgeDispatchTable[ui32Index].ui32CallCount = 0;
 	g_BridgeDispatchTable[ui32Index].ui32CopyFromUserTotalBytes = 0;
@@ -3825,9 +3825,9 @@ IMG_INT BridgedDispatchKM(PVRSRV_PER_PROCESS_DATA * psPerProc,
 
 	if (psBridgePackageKM->ui32InBufferSize != dte->in_size ||
 	    psBridgePackageKM->ui32OutBufferSize != dte->out_size) {
-		pr_debug("pvr: invalid param size for IOCTL#%d:\n"
+		pr_debug("pvr: invalid param size for %s (%d):\n"
 			"     kern/user in,out: %d/%d,%d/%d\n",
-			ui32BridgeID,
+			dte->pszIOCName, ui32BridgeID,
 			dte->in_size, psBridgePackageKM->ui32InBufferSize,
 			dte->out_size, psBridgePackageKM->ui32OutBufferSize);
 		goto return_fault;
@@ -3955,9 +3955,9 @@ return_fault:
 	ReleaseHandleBatch(psPerProc);
 
 	if (err < 0 || pvr_err)
-		pr_err("pvr: %.*s: ioctl#%d failed (err %d, pvr_err %d)\n",
+		pr_err("pvr: %.*s: ioctl %s (%d) failed (err %d, pvr_err %d)\n",
 			sizeof(psPerProc->name), psPerProc->name,
-			ui32BridgeID, err, pvr_err);
+			dte->pszIOCName, ui32BridgeID, err, pvr_err);
 
 	return err;
 }

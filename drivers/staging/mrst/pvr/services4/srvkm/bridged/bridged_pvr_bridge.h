@@ -161,8 +161,8 @@ typedef struct _PVRSRV_BRIDGE_DISPATCH_TABLE_ENTRY
 	size_t in_size;
 	size_t out_size;
 	off_t err_offset;
-#if defined(DEBUG_BRIDGE_KM)
 	const IMG_CHAR *pszIOCName;
+#if defined(DEBUG_BRIDGE_KM)
 	const IMG_CHAR *pszFunctionName;
 	IMG_UINT32 ui32CallCount;
 	IMG_UINT32 ui32CopyFromUserTotalBytes;
