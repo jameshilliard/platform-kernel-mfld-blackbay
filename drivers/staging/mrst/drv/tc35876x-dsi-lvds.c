@@ -510,7 +510,7 @@ static struct i2c_driver tc35876x_bridge_i2c_driver = {
 	.remove = __devexit_p(tc35876x_bridge_remove),
 };
 
-#if 1
+#if 0
 #define TC35876X_I2C_ADAPTER	2
 #define TC35876X_I2C_ADDR	0x0f
 
