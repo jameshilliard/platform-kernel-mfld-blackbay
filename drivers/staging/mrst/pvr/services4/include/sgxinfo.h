@@ -109,6 +109,8 @@ typedef struct _SGX_BRIDGE_INIT_INFO_
 	IMG_UINT32 ui32EDMTaskReg0;
 	IMG_UINT32 ui32EDMTaskReg1;
 
+	IMG_UINT32 ui32ClkGateCtl;
+	IMG_UINT32 ui32ClkGateCtl2;
 	IMG_UINT32 ui32ClkGateStatusReg;
 	IMG_UINT32 ui32ClkGateStatusMask;
 #if defined(SGX_FEATURE_MP)
