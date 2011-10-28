@@ -496,14 +496,14 @@ static int tc35876x_bridge_remove(struct i2c_client *client)
 }
 
 static const struct i2c_device_id tc35876x_bridge_id[] = {
-	{ "tc35876x", 0 },
+	{ "i2c_disp_brig", 0 },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, tc35876x_bridge_id);
 
 static struct i2c_driver tc35876x_bridge_i2c_driver = {
 	.driver = {
-		.name = "tc35876x",
+		.name = "i2c_disp_brig",
 	},
 	.id_table = tc35876x_bridge_id,
 	.probe = tc35876x_bridge_probe,
