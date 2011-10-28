@@ -35,7 +35,7 @@
 
 
 #define SGX_MAX_DEV_DATA			24
-#define	SGX_MAX_INIT_MEM_HANDLES	16
+#define	SGX_MAX_INIT_MEM_HANDLES	18
 
 
 typedef struct _SGX_BRIDGE_INFO_FOR_SRVINIT
