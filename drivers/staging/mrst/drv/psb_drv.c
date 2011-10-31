@@ -79,7 +79,7 @@ int drm_psb_topaz_clockgating = 0;
 #ifdef CONFIG_PM_RUNTIME
 int gfxrtdelay = 0;
 #endif
-static int PanelID = GCT_DETECT;
+static int PanelID = TC35876X;
 char HDMI_EDID[HDMI_MONITOR_NAME_LENGTH];
 
 static int psb_probe(struct pci_dev *pdev, const struct pci_device_id *ent);
