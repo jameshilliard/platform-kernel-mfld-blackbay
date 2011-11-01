@@ -31,6 +31,8 @@
 #include "psb_intel_reg.h"
 #include "psb_msvdx.h"
 #include "pnw_topaz.h"
+#include "mdfld_gl3.h"
+
 #include <linux/mutex.h>
 #include "mdfld_dsi_dbi.h"
 #include "mdfld_dsi_dbi_dpu.h"
