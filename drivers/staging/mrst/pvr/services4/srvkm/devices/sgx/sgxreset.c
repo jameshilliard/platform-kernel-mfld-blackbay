@@ -32,6 +32,25 @@
 
 #include "pdump_km.h"
 
+IMG_VOID SGXInitClocks(PVRSRV_SGXDEV_INFO       *psDevInfo,
+		IMG_UINT32                   ui32PDUMPFlags)
+{
+	IMG_UINT32      ui32RegVal;
+
+#if !defined(PDUMP)
+	PVR_UNREFERENCED_PARAMETER(ui32PDUMPFlags);
+#endif
+
+	ui32RegVal = psDevInfo->ui32ClkGateCtl;
+	OSWriteHWReg(psDevInfo->pvRegsBaseKM, EUR_CR_CLKGATECTL, ui32RegVal);
+	PDUMPREGWITHFLAGS(SGX_PDUMPREG_NAME, EUR_CR_CLKGATECTL, ui32RegVal, ui32PDUMPFlags);
+
+#if defined(EUR_CR_CLKGATECTL2)
+	ui32RegVal = psDevInfo->ui32ClkGateCtl2;
+	OSWriteHWReg(psDevInfo->pvRegsBaseKM, EUR_CR_CLKGATECTL2, ui32RegVal);
+	PDUMPREGWITHFLAGS(SGX_PDUMPREG_NAME, EUR_CR_CLKGATECTL2, ui32RegVal, ui32PDUMPFlags);
+#endif
+}
 
 static IMG_VOID SGXResetSoftReset(PVRSRV_SGXDEV_INFO	*psDevInfo,
 								  IMG_BOOL				bResetBIF,
@@ -436,6 +455,9 @@ IMG_VOID SGXReset(PVRSRV_SGXDEV_INFO	*psDevInfo,
 		SGXResetSoftReset(psDevInfo, IMG_FALSE, ui32PDUMPFlags, IMG_TRUE);
 		SGXResetSleep(psDevInfo, ui32PDUMPFlags, IMG_FALSE);
 	}	
+
+        SGXInitClocks(psDevInfo, ui32PDUMPFlags);
+        SGXResetSleep(psDevInfo, ui32PDUMPFlags, IMG_TRUE);
 
 	
 

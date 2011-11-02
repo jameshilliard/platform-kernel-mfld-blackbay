@@ -159,6 +159,8 @@ typedef struct _PVRSRV_SGXDEV_INFO_
 	IMG_UINT32				ui32EDMTaskReg0;
 	IMG_UINT32				ui32EDMTaskReg1;
 
+	IMG_UINT32                              ui32ClkGateCtl;
+	IMG_UINT32                              ui32ClkGateCtl2;
 	IMG_UINT32				ui32ClkGateStatusReg;
 	IMG_UINT32				ui32ClkGateStatusMask;
 #if defined(SGX_FEATURE_MP)
@@ -347,6 +349,9 @@ PVRSRV_ERROR SGXPostClockSpeedChange(IMG_HANDLE				hDevHandle,
 IMG_VOID SGXPanic(PVRSRV_SGXDEV_INFO	*psDevInfo);
 
 PVRSRV_ERROR SGXDevInitCompatCheck(PVRSRV_DEVICE_NODE *psDeviceNode);
+
+IMG_VOID SGXInitClocks(PVRSRV_SGXDEV_INFO       *psDevInfo,
+		       IMG_UINT32               ui32PDUMPFlags);
 
 #if defined(SGX_DYNAMIC_TIMING_INFO)
 IMG_VOID SysGetSGXTimingInformation(SGX_TIMING_INFORMATION *psSGXTimingInfo);

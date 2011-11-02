@@ -220,6 +220,10 @@ static PVRSRV_ERROR InitDevInfo(PVRSRV_PER_PROCESS_DATA *psPerProc,
 
 	psDevInfo->ui32EDMTaskReg0 = psInitInfo->ui32EDMTaskReg0;
 	psDevInfo->ui32EDMTaskReg1 = psInitInfo->ui32EDMTaskReg1;
+
+	psDevInfo->ui32ClkGateCtl = psInitInfo->ui32ClkGateCtl;
+	psDevInfo->ui32ClkGateCtl2 = psInitInfo->ui32ClkGateCtl2;
+
 	psDevInfo->ui32ClkGateStatusReg = psInitInfo->ui32ClkGateStatusReg;
 	psDevInfo->ui32ClkGateStatusMask = psInitInfo->ui32ClkGateStatusMask;
 #if defined(SGX_FEATURE_MP)
@@ -288,6 +292,10 @@ static PVRSRV_ERROR SGXRunScript(PVRSRV_SGXDEV_INFO *psDevInfo, SGX_INIT_COMMAND
 	return PVRSRV_ERROR_UNKNOWN_SCRIPT_OPERATION;
 }
 
+
+extern IMG_VOID SGXInitClocks(PVRSRV_SGXDEV_INFO       *psDevInfo,
+		IMG_UINT32                   ui32PDUMPFlags);
+
 PVRSRV_ERROR SGXInitialise(PVRSRV_SGXDEV_INFO	*psDevInfo,
 						   IMG_BOOL				bHardwareRecovery)
 {
@@ -299,7 +307,7 @@ PVRSRV_ERROR SGXInitialise(PVRSRV_SGXDEV_INFO	*psDevInfo,
 	IMG_BOOL				bPDumpIsSuspended = PDumpIsSuspended();
 #endif 
 
-	
+	SGXInitClocks(psDevInfo, PDUMP_FLAGS_CONTINUOUS);
 
 	PDUMPCOMMENTWITHFLAGS(PDUMP_FLAGS_CONTINUOUS, "SGX initialisation script part 1\n");
 	eError = SGXRunScript(psDevInfo, psDevInfo->sScripts.asInitCommandsPart1, SGX_MAX_INIT_COMMANDS);
