@@ -287,7 +287,8 @@ typedef struct _PVRSRV_SGX_RESOURCE_INFO
 
 typedef struct _SGX_MISC_INFO_
 {
-	SGX_MISC_INFO_REQUEST	eRequest;	
+	SGX_MISC_INFO_REQUEST	eRequest;
+	IMG_UINT32		pad;
 #if defined(SUPPORT_SGX_EDM_MEMORY_DEBUG)
 	IMG_DEV_VIRTADDR			sDevVAddrSrc;		
 	IMG_DEV_VIRTADDR			sDevVAddrDest;		
