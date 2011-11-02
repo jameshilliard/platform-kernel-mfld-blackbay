@@ -2763,7 +2763,7 @@ DummyBW(IMG_UINT32 ui32BridgeID,
 		IMG_VOID *psBridgeOut,
 		PVRSRV_PER_PROCESS_DATA *psPerProc)
 {
-#if !defined(DEBUG)
+#if !defined(PVR_DEBUG_EXT)
 	PVR_UNREFERENCED_PARAMETER(ui32BridgeID);
 #endif
 	PVR_UNREFERENCED_PARAMETER(psBridgeIn);
@@ -2792,7 +2792,7 @@ _SetDispatchTableEntry(IMG_UINT32 ui32Index,
 					   off_t err_offset)
 {
 	static IMG_UINT32 ui32PrevIndex = ~0UL;		
-#if !defined(DEBUG)
+#if !defined(PVR_DEBUG_EXT)
 	PVR_UNREFERENCED_PARAMETER(pszIOCName);
 #endif
 #if !defined(DEBUG_BRIDGE_KM_DISPATCH_TABLE) && !defined(DEBUG_BRIDGE_KM)
@@ -3886,7 +3886,7 @@ IMG_INT BridgedDispatchKM(PVRSRV_PER_PROCESS_DATA * psPerProc,
 		psBridgeOut = (IMG_PVOID)((IMG_PBYTE)psBridgeIn + PVRSRV_MAX_BRIDGE_IN_SIZE);
 
 		
-#if defined(DEBUG)
+#if defined(PVR_DEBUG_EXT)
 		PVR_ASSERT(psBridgePackageKM->ui32InBufferSize < PVRSRV_MAX_BRIDGE_IN_SIZE);
 		PVR_ASSERT(psBridgePackageKM->ui32OutBufferSize < PVRSRV_MAX_BRIDGE_OUT_SIZE);
 #endif

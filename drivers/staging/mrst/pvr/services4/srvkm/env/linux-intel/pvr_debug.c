@@ -373,7 +373,7 @@ IMG_VOID PVRSRVDebugPrintf	(
 
 #endif 
 
-#if defined(DEBUG)
+#if defined(PVR_DEBUG_EXT)
 
 IMG_VOID PVRDebugSetLevel(IMG_UINT32 uDebugLevel)
 {

@@ -35,7 +35,7 @@
 #include "sgxapi_km.h"
 #endif
 
-#if defined(DEBUG) || defined(TIMING)
+#if defined(PVR_DEBUG_EXT) || defined(TIMING)
 
 static volatile IMG_UINT32 *pui32TimerRegister = 0;
 

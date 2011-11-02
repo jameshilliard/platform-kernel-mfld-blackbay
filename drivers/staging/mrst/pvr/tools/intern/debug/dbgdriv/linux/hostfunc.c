@@ -55,7 +55,7 @@
 #include "hostfunc.h"
 #include "dbgdriv.h"
 
-#if defined(MODULE) && defined(DEBUG) && !defined(SUPPORT_DRI_DRM)
+#if defined(MODULE) && defined(PVR_DEBUG_EXT) && !defined(SUPPORT_DRI_DRM)
 IMG_UINT32	gPVRDebugLevel = (DBGPRIV_FATAL | DBGPRIV_ERROR | DBGPRIV_WARNING);
 
 #define PVR_STRING_TERMINATOR		'\0'

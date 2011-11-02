@@ -33,7 +33,7 @@ extern "C" {
 #endif
 
 
-#if defined(DEBUG) || defined(TIMING)
+#if defined(PVR_DEBUG_EXT) || defined(TIMING)
 
 
 typedef struct 

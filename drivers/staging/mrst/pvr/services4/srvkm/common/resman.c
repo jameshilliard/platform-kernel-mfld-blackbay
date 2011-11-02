@@ -64,7 +64,7 @@ static DEFINE_SEMAPHORE(lock);
 
 typedef struct _RESMAN_ITEM_
 {
-#ifdef DEBUG
+#ifdef PVR_DEBUG_EXT
 	IMG_UINT32				ui32Signature;
 #endif
 	struct _RESMAN_ITEM_	**ppsThis;	
@@ -82,7 +82,7 @@ typedef struct _RESMAN_ITEM_
 
 typedef struct _RESMAN_CONTEXT_
 {
-#ifdef DEBUG
+#ifdef PVR_DEBUG_EXT
 	IMG_UINT32					ui32Signature;
 #endif
 	struct	_RESMAN_CONTEXT_	**ppsThis;
@@ -128,7 +128,7 @@ static PVRSRV_ERROR FreeResourceByCriteria(PRESMAN_CONTEXT	psContext,
 										   IMG_BOOL			bExecuteCallback);
 
 
-#ifdef DEBUG
+#ifdef PVR_DEBUG_EXT
 	static IMG_VOID ValidateResList(PRESMAN_LIST psResList);
 	#define VALIDATERESLIST() ValidateResList(gpsResList)
 #else
@@ -204,7 +204,7 @@ PVRSRV_ERROR PVRSRVResManConnect(IMG_HANDLE			hPerProc,
 		return eError;
 	}
 
-#ifdef DEBUG
+#ifdef PVR_DEBUG_EXT
 	psResManContext->ui32Signature = RESMAN_SIGNATURE;
 #endif 
 	psResManContext->psResItemList	= IMG_NULL;
@@ -351,7 +351,7 @@ PRESMAN_ITEM ResManRegisterRes(PRESMAN_CONTEXT	psResManContext,
 	}
 
 	
-#ifdef DEBUG
+#ifdef PVR_DEBUG_EXT
 	psNewResItem->ui32Signature		= RESMAN_SIGNATURE;
 #endif 
 	psNewResItem->ui32ResType		= ui32ResType;
@@ -456,7 +456,7 @@ PVRSRV_ERROR ResManDissociateRes(RESMAN_ITEM		*psResItem,
 		return PVRSRV_ERROR_INVALID_PARAMS;
 	}
 
-#ifdef DEBUG 
+#ifdef PVR_DEBUG_EXT
 	PVR_ASSERT(psResItem->ui32Signature == RESMAN_SIGNATURE);
 #endif
 
@@ -507,7 +507,7 @@ IMG_INTERNAL PVRSRV_ERROR ResManFindResourceByPtr(PRESMAN_CONTEXT	psResManContex
 		return PVRSRV_ERROR_INVALID_PARAMS;
 	}
 
-#ifdef DEBUG	
+#ifdef PVR_DEBUG_EXT
 	PVR_ASSERT(psItem->ui32Signature == RESMAN_SIGNATURE);
 #endif
 
@@ -559,7 +559,7 @@ static PVRSRV_ERROR FreeResourceByPtr(RESMAN_ITEM	*psItem,
 		return PVRSRV_ERROR_INVALID_PARAMS;
 	}
 
-#ifdef DEBUG	
+#ifdef PVR_DEBUG_EXT
 	PVR_ASSERT(psItem->ui32Signature == RESMAN_SIGNATURE);
 #endif
 
@@ -667,7 +667,7 @@ static PVRSRV_ERROR FreeResourceByCriteria(PRESMAN_CONTEXT	psResManContext,
 }
 
 
-#ifdef DEBUG
+#ifdef PVR_DEBUG_EXT
 static IMG_VOID ValidateResList(PRESMAN_LIST psResList)
 {
 	PRESMAN_ITEM	psCurItem, *ppsThisItem;

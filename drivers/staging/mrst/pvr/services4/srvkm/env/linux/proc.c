@@ -77,7 +77,7 @@ static struct proc_dir_entry* g_pProcQueue;
 static struct proc_dir_entry* g_pProcVersion;
 static struct proc_dir_entry* g_pProcSysNodes;
 
-#ifdef DEBUG
+#ifdef PVR_DEBUG_EXT
 static struct proc_dir_entry* g_pProcDebugLevel;
 #endif
 
@@ -593,7 +593,7 @@ IMG_INT CreateProcEntries(IMG_VOID)
     }
 
 
-#ifdef DEBUG
+#ifdef PVR_DEBUG_EXT
 
 	g_pProcDebugLevel = CreateProcEntrySeq("debug_level", NULL, NULL,
 											ProcSeqShowDebugLevel,
@@ -675,7 +675,7 @@ IMG_VOID RemovePerProcessProcDir(PVRSRV_ENV_PER_PROCESS_DATA *psPerProc)
 
 IMG_VOID RemoveProcEntries(IMG_VOID)
 {
-#ifdef DEBUG
+#ifdef PVR_DEBUG_EXT
 	RemoveProcEntrySeq( g_pProcDebugLevel );
 #ifdef PVR_MANUAL_POWER_CONTROL
 	RemoveProcEntrySeq( g_pProcPowerLevel );

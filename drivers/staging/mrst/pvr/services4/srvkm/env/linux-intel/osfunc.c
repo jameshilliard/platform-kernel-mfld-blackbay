@@ -2030,7 +2030,7 @@ typedef struct _sWrapMemInfo_
     IMG_SYS_PHYADDR *psPhysAddr;
     IMG_INT iPageOffset;
     IMG_INT iContiguous;
-#if defined(DEBUG)
+#if defined(PVR_DEBUG_EXT)
     IMG_UINT32 ulStartAddr;
     IMG_UINT32 ulBeyondEndAddr;
     struct vm_area_struct *psVMArea;
@@ -2197,7 +2197,7 @@ PVRSRV_ERROR OSAcquirePhysPageAddr(IMG_VOID* pvCPUVAddr,
     memset(psInfo, 0, sizeof(*psInfo));
     psInfo->bWrapWorkaround = bWrapWorkaround;
 
-#if defined(DEBUG)
+#if defined(PVR_DEBUG_EXT)
     psInfo->ulStartAddr = ulStartAddrOrig;
     psInfo->ulBeyondEndAddr = ulBeyondEndAddrOrig;
 #endif
@@ -2273,7 +2273,7 @@ PVRSRV_ERROR OSAcquirePhysPageAddr(IMG_VOID* pvCPUVAddr,
         
         goto error_release_mmap_sem;
     }
-#if defined(DEBUG)
+#if defined(PVR_DEBUG_EXT)
     psInfo->psVMArea = psVMArea;
 #endif
 

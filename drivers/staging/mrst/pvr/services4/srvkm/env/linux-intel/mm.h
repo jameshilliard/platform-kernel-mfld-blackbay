@@ -190,7 +190,7 @@ LinuxMemAreaRootType(LinuxMemArea *psLinuxMemArea)
 const IMG_CHAR *LinuxMemAreaTypeToString(LINUX_MEM_AREA_TYPE eMemAreaType);
 
 
-#if defined(DEBUG)
+#if defined(PVR_DEBUG_EXT)
 const IMG_CHAR *HAPFlagsToString(u32 ui32Flags);
 #endif
 

@@ -132,11 +132,11 @@ static PKV_OFFSET_STRUCT
 CreateOffsetStruct(LinuxMemArea *psLinuxMemArea, IMG_UINT32 ui32Offset, IMG_UINT32 ui32RealByteSize)
 {
     PKV_OFFSET_STRUCT psOffsetStruct;
-#if defined(DEBUG)
+#if defined(PVR_DEBUG_EXT)
     const IMG_CHAR *pszName = LinuxMemAreaTypeToString(LinuxMemAreaRootType(psLinuxMemArea));
 #endif
 
-#if defined(DEBUG)
+#if defined(PVR_DEBUG_EXT)
     PVR_DPF((PVR_DBG_MESSAGE,
              "%s(%s, psLinuxMemArea: 0x%p, ui32AllocFlags: 0x%8lx)",
              __FUNCTION__, pszName, psLinuxMemArea, psLinuxMemArea->ui32AreaFlags));
@@ -655,13 +655,13 @@ PVRSRV_ERROR
 PVRMMapRegisterArea(LinuxMemArea *psLinuxMemArea)
 {
     PVRSRV_ERROR eError;
-#if defined(DEBUG)
+#if defined(PVR_DEBUG_EXT)
     const IMG_CHAR *pszName = LinuxMemAreaTypeToString(LinuxMemAreaRootType(psLinuxMemArea));
 #endif
 
     mutex_lock(&g_sMMapMutex);
 
-#if defined(DEBUG)
+#if defined(PVR_DEBUG_EXT)
     PVR_DPF((PVR_DBG_MESSAGE,
              "%s(%s, psLinuxMemArea 0x%p, ui32AllocFlags 0x%8lx)",
              __FUNCTION__, pszName, psLinuxMemArea,  psLinuxMemArea->ui32AreaFlags));

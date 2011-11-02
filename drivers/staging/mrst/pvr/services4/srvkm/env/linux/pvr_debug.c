@@ -385,7 +385,7 @@ IMG_VOID PVRSRVDebugPrintf	(
 
 #endif 
 
-#if defined(DEBUG)
+#if defined(PVR_DEBUG_EXT)
 
 IMG_INT PVRDebugProcSetLevel(struct file *file, const IMG_CHAR *buffer, IMG_UINT32 count, IMG_VOID *data)
 {

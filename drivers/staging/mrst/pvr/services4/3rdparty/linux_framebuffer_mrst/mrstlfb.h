@@ -248,7 +248,7 @@ typedef struct MRSTLFB_DEVINFO_TAG
 #define	MRSTLFB_PAGE_ROUNDUP(x) (((x) + MRSTLFB_PAGE_MASK) & MRSTLFB_PAGE_TRUNC)
 #endif
 
-#ifdef	DEBUG
+#ifdef	PVR_DEBUG_EXT
 #define	DEBUG_PRINTK(x) printk x
 #else
 #define	DEBUG_PRINTK(x)

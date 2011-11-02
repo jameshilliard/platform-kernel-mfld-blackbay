@@ -60,7 +60,7 @@
 #include <linux/pci.h>
 #endif 
 
-#if defined(DEBUG) && defined(PVR_MANUAL_POWER_CONTROL)
+#if defined(PVR_DEBUG_EXT) && defined(PVR_MANUAL_POWER_CONTROL)
 #include <asm/uaccess.h>
 #endif
 
@@ -97,7 +97,7 @@
 #endif
 
 MODULE_SUPPORTED_DEVICE(DEVNAME);
-#ifdef DEBUG
+#ifdef PVR_DEBUG_EXT
 static IMG_INT debug = DBGPRIV_WARNING;
 #include <linux/moduleparam.h>
 module_param(debug, int, 0);
@@ -134,7 +134,7 @@ struct mutex gPVRSRVLock;
 
 IMG_UINT32 gui32ReleasePID;
 
-#if defined(DEBUG) && defined(PVR_MANUAL_POWER_CONTROL)
+#if defined(PVR_DEBUG_EXT) && defined(PVR_MANUAL_POWER_CONTROL)
 static IMG_UINT32 gPVRPowerLevel;
 #endif
 
@@ -258,7 +258,7 @@ static IMG_VOID __devexit PVRSRVDriverRemove(LDM_DEV *pDevice)
 
 	if (SysAcquireData(&psSysData) == PVRSRV_OK)
 	{
-#if defined(DEBUG) && defined(PVR_MANUAL_POWER_CONTROL)
+#if defined(PVR_DEBUG_EXT) && defined(PVR_MANUAL_POWER_CONTROL)
 		if (gPVRPowerLevel != 0)
 		{
 			if (PVRSRVSetPowerStateKM(PVRSRV_SYS_POWER_STATE_D0) == PVRSRV_OK)
@@ -305,7 +305,7 @@ IMG_INT PVRSRVDriverSuspend(struct drm_device *pDevice, pm_message_t state)
 static IMG_INT PVRSRVDriverSuspend(LDM_DEV *pDevice, pm_message_t state)
 #endif
 {
-#if !(defined(DEBUG) && defined(PVR_MANUAL_POWER_CONTROL) && !defined(SUPPORT_DRI_DRM))
+#if !(defined(PVR_DEBUG_EXT) && defined(PVR_MANUAL_POWER_CONTROL) && !defined(SUPPORT_DRI_DRM))
 	PVR_TRACE(( "PVRSRVDriverSuspend(pDevice=%p)", pDevice));
 	printk(KERN_ALERT  "PVRSRVDriverSuspend(pDevice=%p)", pDevice);
 
@@ -324,7 +324,7 @@ IMG_INT PVRSRVDriverResume(struct drm_device *pDevice)
 static IMG_INT PVRSRVDriverResume(LDM_DEV *pDevice)
 #endif
 {
-#if !(defined(DEBUG) && defined(PVR_MANUAL_POWER_CONTROL) && !defined(SUPPORT_DRI_DRM))
+#if !(defined(PVR_DEBUG_EXT) && defined(PVR_MANUAL_POWER_CONTROL) && !defined(SUPPORT_DRI_DRM))
 	PVR_TRACE(("PVRSRVDriverResume(pDevice=%p)", pDevice));
 	printk(KERN_ALERT "PVRSRVDriverResume(pDevice=%p)", pDevice);
 
@@ -338,7 +338,7 @@ static IMG_INT PVRSRVDriverResume(LDM_DEV *pDevice)
 #endif 
 
 
-#if defined(DEBUG) && defined(PVR_MANUAL_POWER_CONTROL) && !defined(SUPPORT_DRI_DRM)
+#if defined(PVR_DEBUG_EXT) && defined(PVR_MANUAL_POWER_CONTROL) && !defined(SUPPORT_DRI_DRM)
 IMG_INT PVRProcSetPowerLevel(struct file *file, const IMG_CHAR *buffer, IMG_UINT32 count, IMG_VOID *data)
 {
 	IMG_CHAR data_buffer[2];
@@ -520,7 +520,7 @@ static IMG_INT __init PVRCore_Init(IMG_VOID)
 
 	mutex_init(&gPVRSRVLock);
 
-#ifdef DEBUG
+#ifdef PVR_DEBUG_EXT
 	PVRDebugSetLevel(debug);
 #endif
 
@@ -711,7 +711,7 @@ static IMG_VOID __exit PVRCore_Cleanup(IMG_VOID)
 #endif
 
 #else 
-#if defined(DEBUG) && defined(PVR_MANUAL_POWER_CONTROL)
+#if defined(PVR_DEBUG_EXT) && defined(PVR_MANUAL_POWER_CONTROL)
 	if (gPVRPowerLevel != 0)
 	{
 		if (PVRSRVSetPowerStateKM(PVRSRV_SYS_POWER_STATE_D0) == PVRSRV_OK)

@@ -26,7 +26,7 @@
 
 #ifdef DEBUG_RELEASE_BUILD
 #pragma optimize( "", off )
-#define DEBUG		1
+#define PVR_DEBUG_EXT		1
 #endif
 
 #ifndef __OSFUNC_H__

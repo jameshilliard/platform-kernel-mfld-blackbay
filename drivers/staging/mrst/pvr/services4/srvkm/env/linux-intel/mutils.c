@@ -94,7 +94,7 @@ PVRLinuxX86PATProbe(IMG_VOID)
 		g_write_combining_available = (IMG_BOOL)(pat_entry == PAT_LINUX_X86_WC);
 #endif
 	}
-#if defined(DEBUG)
+#if defined(PVR_DEBUG_EXT)
 #if defined(SUPPORT_LINUX_X86_WRITECOMBINE)
 	if (g_write_combining_available)
 	{

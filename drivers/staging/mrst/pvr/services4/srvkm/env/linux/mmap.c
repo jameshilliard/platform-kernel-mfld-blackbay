@@ -177,11 +177,11 @@ static PKV_OFFSET_STRUCT
 CreateOffsetStruct(LinuxMemArea *psLinuxMemArea, IMG_UINT32 ui32Offset, IMG_UINT32 ui32RealByteSize)
 {
     PKV_OFFSET_STRUCT psOffsetStruct;
-#if defined(DEBUG) || defined(DEBUG_LINUX_MMAP_AREAS)
+#if defined(PVR_DEBUG_EXT) || defined(DEBUG_LINUX_MMAP_AREAS)
     const IMG_CHAR *pszName = LinuxMemAreaTypeToString(LinuxMemAreaRootType(psLinuxMemArea));
 #endif
 
-#if defined(DEBUG) || defined(DEBUG_LINUX_MMAP_AREAS)
+#if defined(PVR_DEBUG_EXT) || defined(DEBUG_LINUX_MMAP_AREAS)
     PVR_DPF((PVR_DBG_MESSAGE,
              "%s(%s, psLinuxMemArea: 0x%p, ui32AllocFlags: 0x%8x)",
              __FUNCTION__, pszName, psLinuxMemArea, psLinuxMemArea->ui32AreaFlags));
@@ -224,7 +224,7 @@ CreateOffsetStruct(LinuxMemArea *psLinuxMemArea, IMG_UINT32 ui32Offset, IMG_UINT
 static IMG_VOID
 DestroyOffsetStruct(PKV_OFFSET_STRUCT psOffsetStruct)
 {
-#ifdef DEBUG
+#ifdef PVR_DEBUG_EXT
     IMG_CPU_PHYADDR CpuPAddr;
     CpuPAddr = LinuxMemAreaToCpuPAddr(psOffsetStruct->psLinuxMemArea, 0);
 #endif
@@ -236,7 +236,7 @@ DestroyOffsetStruct(PKV_OFFSET_STRUCT psOffsetStruct)
         list_del(&psOffsetStruct->sMMapItem);
     }
 
-#ifdef DEBUG
+#ifdef PVR_DEBUG_EXT
     PVR_DPF((PVR_DBG_MESSAGE, "%s: Table entry: "
              "psLinuxMemArea=%p, CpuPAddr=0x%08X", __FUNCTION__,
              psOffsetStruct->psLinuxMemArea,
@@ -914,13 +914,13 @@ PVRSRV_ERROR
 PVRMMapRegisterArea(LinuxMemArea *psLinuxMemArea)
 {
     PVRSRV_ERROR eError;
-#if defined(DEBUG) || defined(DEBUG_LINUX_MMAP_AREAS)
+#if defined(PVR_DEBUG_EXT) || defined(DEBUG_LINUX_MMAP_AREAS)
     const IMG_CHAR *pszName = LinuxMemAreaTypeToString(LinuxMemAreaRootType(psLinuxMemArea));
 #endif
 
     LinuxLockMutex(&g_sMMapMutex);
 
-#if defined(DEBUG) || defined(DEBUG_LINUX_MMAP_AREAS)
+#if defined(PVR_DEBUG_EXT) || defined(DEBUG_LINUX_MMAP_AREAS)
     PVR_DPF((PVR_DBG_MESSAGE,
              "%s(%s, psLinuxMemArea 0x%p, ui32AllocFlags 0x%8x)",
              __FUNCTION__, pszName, psLinuxMemArea,  psLinuxMemArea->ui32AreaFlags));
