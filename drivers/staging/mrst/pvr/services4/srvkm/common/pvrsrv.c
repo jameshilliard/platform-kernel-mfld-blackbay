@@ -953,6 +953,8 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVGetMiscInfoKM(PVRSRV_MISC_INFO *psMiscInfo)
 
 	if((psMiscInfo->ui32StateRequest & PVRSRV_MISC_INFO_CPUCACHEOP_PRESENT) != 0UL)
 	{
+		psMiscInfo->ui32StatePresent |=
+			PVRSRV_MISC_INFO_CPUCACHEOP_PRESENT;
 		if(psMiscInfo->sCacheOpCtl.bDeferOp)
 		{
 			
