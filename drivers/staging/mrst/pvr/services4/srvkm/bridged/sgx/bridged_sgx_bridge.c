@@ -40,6 +40,7 @@
 #include "power.h"
 #include "pvr_bridge_km.h"
 #include "sgx_bridge_km.h"
+#include "sgx_options.h"
 
 #if defined(SUPPORT_MSVDX)
 	#include "msvdx_bridge.h"
@@ -837,7 +838,7 @@ SGXReadHWPerfCBBW(IMG_UINT32							ui32BridgeID,
 static IMG_INT
 SGXDevInitPart2BW(IMG_UINT32 ui32BridgeID,
 				  PVRSRV_BRIDGE_IN_SGXDEVINITPART2 *psSGXDevInitPart2IN,
-				  PVRSRV_BRIDGE_RETURN *psRetOUT,
+				  PVRSRV_BRIDGE_OUT_SGXDEVINITPART2 *psSGXDevInitPart2OUT,
 				  PVRSRV_PER_PROCESS_DATA *psPerProc)
 {
 	IMG_HANDLE hDevCookieInt;
@@ -850,18 +851,20 @@ SGXDevInitPart2BW(IMG_UINT32 ui32BridgeID,
 
 	PVRSRV_BRIDGE_ASSERT_CMD(ui32BridgeID, PVRSRV_BRIDGE_SGX_DEVINITPART2);
 
+	psSGXDevInitPart2OUT->ui32KMBuildOptions = SGX_BUILD_OPTIONS;
+
 	if(!psPerProc->bInitProcess)
 	{
-		psRetOUT->eError = PVRSRV_ERROR_PROCESS_NOT_INITIALISED;
+		psSGXDevInitPart2OUT->eError = PVRSRV_ERROR_PROCESS_NOT_INITIALISED;
 		return 0;
 	}
 
-	psRetOUT->eError =
+	psSGXDevInitPart2OUT->eError =
 		PVRSRVLookupHandle(psPerProc->psHandleBase,
 						   &hDevCookieInt,
 						   psSGXDevInitPart2IN->hDevCookie,
 						   PVRSRV_HANDLE_TYPE_DEV_NODE);
-	if(psRetOUT->eError != PVRSRV_OK)
+	if(psSGXDevInitPart2OUT->eError != PVRSRV_OK)
 	{
 		return 0;
 	}
@@ -1028,7 +1031,7 @@ SGXDevInitPart2BW(IMG_UINT32 ui32BridgeID,
 	if (bLookupFailed)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "DevInitSGXPart2BW: A handle lookup failed"));
-		psRetOUT->eError = PVRSRV_ERROR_INIT2_PHASE_FAILED;
+		psSGXDevInitPart2OUT->eError = PVRSRV_ERROR_INIT2_PHASE_FAILED;
 		return 0;
 	}
 
@@ -1194,7 +1197,7 @@ SGXDevInitPart2BW(IMG_UINT32 ui32BridgeID,
 	if (bReleaseFailed)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "DevInitSGXPart2BW: A handle release failed"));
-		psRetOUT->eError = PVRSRV_ERROR_INIT2_PHASE_FAILED;
+		psSGXDevInitPart2OUT->eError = PVRSRV_ERROR_INIT2_PHASE_FAILED;
 		
 		PVR_DBG_BREAK;
 		return 0;
@@ -1323,14 +1326,14 @@ SGXDevInitPart2BW(IMG_UINT32 ui32BridgeID,
 
 		PVR_DPF((PVR_DBG_ERROR, "DevInitSGXPart2BW: A dissociate failed"));
 
-		psRetOUT->eError = PVRSRV_ERROR_INIT2_PHASE_FAILED;
+		psSGXDevInitPart2OUT->eError = PVRSRV_ERROR_INIT2_PHASE_FAILED;
 
 		
 		PVR_DBG_BREAK;
 		return 0;
 	}
 
-	psRetOUT->eError =
+	psSGXDevInitPart2OUT->eError =
 		DevInitSGXPart2KM(psPerProc,
 						  hDevCookieInt,
 						  &psSGXDevInitPart2IN->sInitInfo);
