@@ -3340,6 +3340,70 @@ PVRSRVModifyCompleteSyncOpsBW(IMG_UINT32							ui32BridgeID,
 	return 0;
 }
 
+static IMG_INT
+PVRSRVSyncOpsTakeTokenBW(IMG_UINT32                                 ui32BridgeID,
+		PVRSRV_BRIDGE_IN_SYNC_OPS_TAKE_TOKEN       *psSyncOpsTakeTokenIN,
+		PVRSRV_BRIDGE_OUT_SYNC_OPS_TAKE_TOKEN      *psSyncOpsTakeTokenOUT,
+		PVRSRV_PER_PROCESS_DATA                    *psPerProc)
+{
+	PVRSRV_KERNEL_SYNC_INFO *psKernelSyncInfo;
+
+	PVRSRV_BRIDGE_ASSERT_CMD(ui32BridgeID, PVRSRV_BRIDGE_SYNC_OPS_TAKE_TOKEN);
+
+	psSyncOpsTakeTokenOUT->eError = PVRSRVLookupHandle(psPerProc->psHandleBase,
+			(IMG_VOID**)&psKernelSyncInfo,
+			psSyncOpsTakeTokenIN->hKernelSyncInfo,
+			PVRSRV_HANDLE_TYPE_SYNC_INFO);
+	if (psSyncOpsTakeTokenOUT->eError != PVRSRV_OK)
+	{
+		PVR_DPF((PVR_DBG_ERROR, "PVRSRVSyncOpsTakeTokenBW: PVRSRVLookupHandle failed"));
+		return 0;
+	}
+
+	psSyncOpsTakeTokenOUT->ui32ReadOpsPending = psKernelSyncInfo->psSyncData->ui32ReadOpsPending;
+	psSyncOpsTakeTokenOUT->ui32WriteOpsPending = psKernelSyncInfo->psSyncData->ui32WriteOpsPending;
+
+	return 0;
+}
+
+static IMG_INT
+PVRSRVSyncOpsFlushToTokenBW(IMG_UINT32                                         ui32BridgeID,
+		PVRSRV_BRIDGE_IN_SYNC_OPS_FLUSH_TO_TOKEN           *psSyncOpsFlushToTokenIN,
+		PVRSRV_BRIDGE_RETURN                               *psSyncOpsFlushToTokenOUT,
+		PVRSRV_PER_PROCESS_DATA                            *psPerProc)
+{
+	PVRSRV_KERNEL_SYNC_INFO *psKernelSyncInfo;
+	IMG_UINT32 ui32ReadOpsPendingSnapshot;
+	IMG_UINT32 ui32WriteOpsPendingSnapshot;
+
+	PVRSRV_BRIDGE_ASSERT_CMD(ui32BridgeID, PVRSRV_BRIDGE_SYNC_OPS_FLUSH_TO_TOKEN);
+
+	psSyncOpsFlushToTokenOUT->eError = PVRSRVLookupHandle(psPerProc->psHandleBase,
+			(IMG_VOID**)&psKernelSyncInfo,
+			psSyncOpsFlushToTokenIN->hKernelSyncInfo,
+			PVRSRV_HANDLE_TYPE_SYNC_INFO);
+	if (psSyncOpsFlushToTokenOUT->eError != PVRSRV_OK)
+	{
+		PVR_DPF((PVR_DBG_ERROR, "PVRSRVSyncOpsFlushToTokenBW: PVRSRVLookupHandle failed"));
+		return 0;
+	}
+
+	ui32ReadOpsPendingSnapshot = psSyncOpsFlushToTokenIN->ui32ReadOpsPendingSnapshot;
+	ui32WriteOpsPendingSnapshot = psSyncOpsFlushToTokenIN->ui32WriteOpsPendingSnapshot;
+
+	psSyncOpsFlushToTokenOUT->eError = DoQuerySyncOpsSatisfied(psKernelSyncInfo,
+			ui32ReadOpsPendingSnapshot,
+			ui32WriteOpsPendingSnapshot);
+
+	if (psSyncOpsFlushToTokenOUT->eError != PVRSRV_OK && psSyncOpsFlushToTokenOUT->eError != PVRSRV_ERROR_RETRY)
+	{
+		PVR_DPF((PVR_DBG_ERROR, "PVRSRVSyncOpsFlushToTokenBW: DoQuerySyncOpsSatisfied failed"));
+		return 0;
+	}
+
+	return 0;
+}
+
 
 static IMG_INT
 PVRSRVSyncOpsFlushToModObjBW(IMG_UINT32                                         ui32BridgeID,
@@ -3757,6 +3821,9 @@ CommonBridgeInit(IMG_VOID)
 	PVR_IO_W(DESTROY_SYNC_INFO_MOD_OBJ, PVRSRVDestroySyncInfoModObjBW);
 	PVR_IO_RW(MODIFY_PENDING_SYNC_OPS, PVRSRVModifyPendingSyncOpsBW);
 	PVR_IO_W(MODIFY_COMPLETE_SYNC_OPS, PVRSRVModifyCompleteSyncOpsBW);
+	PVR_IO_RW(SYNC_OPS_TAKE_TOKEN, PVRSRVSyncOpsTakeTokenBW);
+	PVR_IO_W(SYNC_OPS_FLUSH_TO_TOKEN, PVRSRVSyncOpsFlushToTokenBW);
+
 	PVR_IO_W(SYNC_OPS_FLUSH_TO_MOD_OBJ, PVRSRVSyncOpsFlushToModObjBW);
 	PVR_IO_W(SYNC_OPS_FLUSH_TO_DELTA, PVRSRVSyncOpsFlushToDeltaBW);
 	PVR_IO_RW(ALLOC_SYNC_INFO, PVRSRVAllocSyncInfoBW);
