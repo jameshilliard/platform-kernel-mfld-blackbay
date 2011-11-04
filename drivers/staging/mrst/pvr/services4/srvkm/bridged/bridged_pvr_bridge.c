@@ -3017,48 +3017,28 @@ typedef struct _MODIFY_SYNC_OP_INFO
 	IMG_UINT32	ui32WriteOpsPendingSnapShot;
 } MODIFY_SYNC_OP_INFO;
 
-
-static PVRSRV_ERROR DoQuerySyncOpsSatisfied(MODIFY_SYNC_OP_INFO *psModSyncOpInfo)
+static PVRSRV_ERROR DoQuerySyncOpsSatisfied(PVRSRV_KERNEL_SYNC_INFO *psKernelSyncInfo,
+					IMG_UINT32 ui32ReadOpsPendingSnapShot,
+					IMG_UINT32 ui32WriteOpsPendingSnapShot)
 {
-	PVRSRV_KERNEL_SYNC_INFO *psKernelSyncInfo;
-
-	psKernelSyncInfo = psModSyncOpInfo->psKernelSyncInfo;
+	IMG_UINT32 ui32WriteOpsPending;
+	IMG_UINT32 ui32ReadOpsPending;
 
 	if (!psKernelSyncInfo)
 	{
 		return PVRSRV_ERROR_INVALID_PARAMS;
 	}
 
-	if((psModSyncOpInfo->ui32WriteOpsPendingSnapShot == psKernelSyncInfo->psSyncData->ui32WriteOpsComplete)
-	   && (psModSyncOpInfo->ui32ReadOpsPendingSnapShot == psKernelSyncInfo->psSyncData->ui32ReadOpsComplete))
-	{
-#if defined(PDUMP)
-		
-		PDumpComment("Poll for read ops complete to reach value (%u)", psModSyncOpInfo->ui32ReadOpsPendingSnapShot);
-		PDumpMemPolKM(psKernelSyncInfo->psSyncDataMemInfoKM,
-						  offsetof(PVRSRV_SYNC_DATA, ui32ReadOpsComplete),
-						  psModSyncOpInfo->ui32ReadOpsPendingSnapShot,
-						  0xFFFFFFFF,
-						  PDUMP_POLL_OPERATOR_EQUAL,
-						  0,
-						  MAKEUNIQUETAG(psKernelSyncInfo->psSyncDataMemInfoKM));
-						  
-		
-		PDumpComment("Poll for write ops complete to reach value (%u)", psModSyncOpInfo->ui32WriteOpsPendingSnapShot);
-		PDumpMemPolKM(psKernelSyncInfo->psSyncDataMemInfoKM,
-						  offsetof(PVRSRV_SYNC_DATA, ui32WriteOpsComplete),
-						  psModSyncOpInfo->ui32WriteOpsPendingSnapShot,
-						  0xFFFFFFFF,
-						  PDUMP_POLL_OPERATOR_EQUAL,
-						  0,
-						  MAKEUNIQUETAG(psKernelSyncInfo->psSyncDataMemInfoKM));
-#endif
+	ui32WriteOpsPending = psKernelSyncInfo->psSyncData->ui32WriteOpsPending;
+	ui32ReadOpsPending = psKernelSyncInfo->psSyncData->ui32ReadOpsPending;
+
+	if((ui32WriteOpsPending - ui32WriteOpsPendingSnapShot >=
+		ui32WriteOpsPending - psKernelSyncInfo->psSyncData->ui32WriteOpsComplete) &&
+	   (ui32ReadOpsPending - ui32ReadOpsPendingSnapShot >=
+		ui32ReadOpsPending - psKernelSyncInfo->psSyncData->ui32ReadOpsComplete))
 		return PVRSRV_OK;
-	}
-	else
-	{
-		return PVRSRV_ERROR_RETRY;
-	}
+
+	return PVRSRV_ERROR_RETRY;
 }
 
 static PVRSRV_ERROR DoModifyCompleteSyncOps(MODIFY_SYNC_OP_INFO *psModSyncOpInfo)
@@ -3115,7 +3095,9 @@ static PVRSRV_ERROR ModifyCompleteSyncOpsCallBack(IMG_PVOID		pvParam,
 		
 		LOOP_UNTIL_TIMEOUT(MAX_HW_TIME_US)
 		{
-			if (DoQuerySyncOpsSatisfied(psModSyncOpInfo) == PVRSRV_OK)
+			if (DoQuerySyncOpsSatisfied(psModSyncOpInfo->psKernelSyncInfo,
+						psModSyncOpInfo->ui32ReadOpsPendingSnapShot,
+	                                        psModSyncOpInfo->ui32WriteOpsPendingSnapShot) == PVRSRV_OK)
 			{
 				goto OpFlushedComplete;
 			}
@@ -3386,7 +3368,9 @@ PVRSRVSyncOpsFlushToModObjBW(IMG_UINT32                                         
 		return 0;
 	}
 
-	psSyncOpsFlushToModObjOUT->eError = DoQuerySyncOpsSatisfied(psModSyncOpInfo);
+	psSyncOpsFlushToModObjOUT->eError = DoQuerySyncOpsSatisfied(psModSyncOpInfo->psKernelSyncInfo,
+			psModSyncOpInfo->ui32ReadOpsPendingSnapShot,
+			psModSyncOpInfo->ui32WriteOpsPendingSnapShot);
 
 	if (psSyncOpsFlushToModObjOUT->eError != PVRSRV_OK && psSyncOpsFlushToModObjOUT->eError != PVRSRV_ERROR_RETRY)
 	{
