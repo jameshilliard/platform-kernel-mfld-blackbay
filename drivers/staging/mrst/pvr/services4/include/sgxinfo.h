@@ -210,6 +210,7 @@ typedef struct _SGX_CCB_KICK_
 #if defined(NO_HARDWARE)
 	IMG_UINT32	ui32WriteOpsPendingVal;
 #endif
+	IMG_HANDLE      hDevMemContext;
 } SGX_CCB_KICK;
 
 
