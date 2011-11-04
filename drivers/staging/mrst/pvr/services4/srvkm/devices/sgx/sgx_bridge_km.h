@@ -120,7 +120,8 @@ SGXAddSharedPBDescKM(PVRSRV_PER_PROCESS_DATA	*psPerProc,
 					 IMG_UINT32					ui32TotalPBSize,
 					 IMG_HANDLE					*phSharedPBDesc,
 					 PVRSRV_KERNEL_MEM_INFO		**psSharedPBDescSubKernelMemInfos,
-					 IMG_UINT32					ui32SharedPBDescSubKernelMemInfosCount);
+					 IMG_UINT32					ui32SharedPBDescSubKernelMemInfosCount,
+					 IMG_DEV_VIRTADDR			sHWPBDescDevVAddr);
 
 
 IMG_IMPORT PVRSRV_ERROR

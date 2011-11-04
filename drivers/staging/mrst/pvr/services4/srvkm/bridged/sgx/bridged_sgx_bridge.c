@@ -2006,7 +2006,8 @@ SGXAddSharedPBDescBW(IMG_UINT32 ui32BridgeID,
 								  psSGXAddSharedPBDescIN->ui32TotalPBSize,
 								  &hSharedPBDesc,
 								  ppsKernelMemInfos,
-								  ui32KernelMemInfoHandlesCount);
+								  ui32KernelMemInfoHandlesCount,
+								  psSGXAddSharedPBDescIN->sHWPBDescDevVAddr);
 
 
 	if (eError != PVRSRV_OK)

@@ -302,6 +302,7 @@ struct _PVRSRV_STUB_PBDESC_
 	IMG_HANDLE		hDevCookie;
 	PVRSRV_KERNEL_MEM_INFO  *psBlockKernelMemInfo;
 	PVRSRV_KERNEL_MEM_INFO  *psHWBlockKernelMemInfo;
+	IMG_DEV_VIRTADDR	sHWPBDescDevVAddr;
 	PVRSRV_STUB_PBDESC	*psNext;
 	PVRSRV_STUB_PBDESC	**ppsThis;
 };
