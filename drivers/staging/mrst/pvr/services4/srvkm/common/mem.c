@@ -30,7 +30,8 @@
 
 static PVRSRV_ERROR
 FreeSharedSysMemCallBack(IMG_PVOID	pvParam,
-						 IMG_UINT32	ui32Param)
+			 IMG_UINT32	ui32Param,
+			 IMG_BOOL	bDummy)
 {
 	PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo = pvParam;
 
@@ -111,11 +112,11 @@ PVRSRVFreeSharedSysMemoryKM(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 
 	if(psKernelMemInfo->sMemBlk.hResItem)
 	{
-		eError = ResManFreeResByPtr(psKernelMemInfo->sMemBlk.hResItem);
+		eError = ResManFreeResByPtr(psKernelMemInfo->sMemBlk.hResItem, CLEANUP_WITH_POLL);
 	}
 	else
 	{
-		eError = FreeSharedSysMemCallBack(psKernelMemInfo, 0);
+		eError = FreeSharedSysMemCallBack(psKernelMemInfo, 0, CLEANUP_WITH_POLL);
 	}
 
 	return eError;

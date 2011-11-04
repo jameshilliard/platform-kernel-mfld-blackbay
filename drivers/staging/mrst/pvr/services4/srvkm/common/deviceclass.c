@@ -541,14 +541,16 @@ PVRSRV_ERROR PVRSRVCloseDCDeviceKM (IMG_HANDLE	hDeviceKM,
 	psDCPerContextInfo = (PVRSRV_DISPLAYCLASS_PERCONTEXT_INFO *)hDeviceKM;
 
 	
-	eError = ResManFreeResByPtr(psDCPerContextInfo->hResItem);
+	eError = ResManFreeResByPtr(psDCPerContextInfo->hResItem, CLEANUP_WITH_POLL);
 
 	return eError;
 }
 
 
 static PVRSRV_ERROR CloseDCDeviceCallBack(IMG_PVOID		pvParam,
-										  IMG_UINT32	ui32Param)
+					IMG_UINT32	ui32Param,
+					IMG_BOOL	bDummy)
+
 {
 	PVRSRV_DISPLAYCLASS_PERCONTEXT_INFO *psDCPerContextInfo;
 	PVRSRV_DISPLAYCLASS_INFO *psDCInfo;
@@ -801,7 +803,7 @@ PVRSRV_ERROR PVRSRVDestroyDCSwapChainKM(IMG_HANDLE hSwapChainRef)
 
 	psSwapChainRef = hSwapChainRef;
 
-	eError = ResManFreeResByPtr(psSwapChainRef->hResItem);
+	eError = ResManFreeResByPtr(psSwapChainRef->hResItem, CLEANUP_WITH_POLL);
 
 	return eError;
 }
@@ -870,7 +872,8 @@ static PVRSRV_ERROR DestroyDCSwapChain(PVRSRV_DC_SWAPCHAIN *psSwapChain)
 }
 
 
-static PVRSRV_ERROR DestroyDCSwapChainRefCallBack(IMG_PVOID pvParam, IMG_UINT32 ui32Param)
+static PVRSRV_ERROR DestroyDCSwapChainRefCallBack(IMG_PVOID pvParam, IMG_UINT32 ui32Param,
+						  IMG_BOOL bDummy)
 {
 	PVRSRV_DC_SWAPCHAIN_REF *psSwapChainRef = (PVRSRV_DC_SWAPCHAIN_REF *) pvParam;
 	PVRSRV_ERROR eError = PVRSRV_OK;
@@ -1738,14 +1741,15 @@ PVRSRV_ERROR PVRSRVCloseBCDeviceKM (IMG_HANDLE	hDeviceKM,
 	psBCPerContextInfo = (PVRSRV_BUFFERCLASS_PERCONTEXT_INFO *)hDeviceKM;
 
 	
-	eError = ResManFreeResByPtr(psBCPerContextInfo->hResItem);
+	eError = ResManFreeResByPtr(psBCPerContextInfo->hResItem, CLEANUP_WITH_POLL);
 
 	return eError;
 }
 
 
 static PVRSRV_ERROR CloseBCDeviceCallBack(IMG_PVOID		pvParam,
-										  IMG_UINT32	ui32Param)
+					  IMG_UINT32	ui32Param,
+					  IMG_BOOL	bDummy)
 {
 	PVRSRV_BUFFERCLASS_PERCONTEXT_INFO *psBCPerContextInfo;
 	PVRSRV_BUFFERCLASS_INFO *psBCInfo;

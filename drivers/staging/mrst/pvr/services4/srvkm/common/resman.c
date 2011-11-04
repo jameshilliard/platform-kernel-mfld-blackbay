@@ -118,7 +118,7 @@ static IMPLEMENT_LIST_INSERT(RESMAN_CONTEXT)
 
 #define PRINT_RESLIST(x, y, z)
 
-static PVRSRV_ERROR FreeResourceByPtr(RESMAN_ITEM *psItem, IMG_BOOL bExecuteCallback);
+static PVRSRV_ERROR FreeResourceByPtr(RESMAN_ITEM *psItem, IMG_BOOL bExecuteCallback, IMG_BOOL bForceCleanup);
 
 static PVRSRV_ERROR FreeResourceByCriteria(PRESMAN_CONTEXT	psContext,
 										   IMG_UINT32		ui32SearchCriteria,
@@ -372,7 +372,7 @@ PRESMAN_ITEM ResManRegisterRes(PRESMAN_CONTEXT	psResManContext,
 	return(psNewResItem);
 }
 
-PVRSRV_ERROR ResManFreeResByPtr(RESMAN_ITEM	*psResItem)
+PVRSRV_ERROR ResManFreeResByPtr(RESMAN_ITEM	*psResItem, IMG_BOOL bForceCleanup)
 {
 	PVRSRV_ERROR eError;
 
@@ -394,7 +394,7 @@ PVRSRV_ERROR ResManFreeResByPtr(RESMAN_ITEM	*psResItem)
 	VALIDATERESLIST();
 
 	
-	eError = FreeResourceByPtr(psResItem, IMG_TRUE);
+	eError = FreeResourceByPtr(psResItem, IMG_TRUE, bForceCleanup);
 
 	
 	VALIDATERESLIST();
@@ -471,7 +471,7 @@ PVRSRV_ERROR ResManDissociateRes(RESMAN_ITEM		*psResItem,
 	}
 	else
 	{
-		eError = FreeResourceByPtr(psResItem, IMG_FALSE);
+		eError = FreeResourceByPtr(psResItem, IMG_FALSE, CLEANUP_WITH_POLL);
 		if(eError != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "ResManDissociateRes: failed to free resource by pointer"));
@@ -547,7 +547,8 @@ IMG_INTERNAL PVRSRV_ERROR ResManFindResourceByPtr(PRESMAN_CONTEXT	psResManContex
 }
 
 static PVRSRV_ERROR FreeResourceByPtr(RESMAN_ITEM	*psItem,
-									  IMG_BOOL		bExecuteCallback)
+				  IMG_BOOL		bExecuteCallback,
+				  IMG_BOOL		bForceCleanup)
 {
 	PVRSRV_ERROR eError;
 
@@ -584,7 +585,8 @@ static PVRSRV_ERROR FreeResourceByPtr(RESMAN_ITEM	*psItem,
 	
 	if (bExecuteCallback)
 	{
-		eError = psItem->pfnFreeResource(psItem->pvParam, psItem->ui32Param);
+		eError = psItem->pfnFreeResource(psItem->pvParam, psItem->ui32Param,
+						 bForceCleanup);
 	 	if (eError != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR, "FreeResourceByPtr: ERROR calling FreeResource function"));
@@ -660,7 +662,7 @@ static PVRSRV_ERROR FreeResourceByCriteria(PRESMAN_CONTEXT	psResManContext,
 						 				ui32Param)) != IMG_NULL
 		  	&& eError == PVRSRV_OK)
 	{
-		eError = FreeResourceByPtr(psCurItem, bExecuteCallback);
+		eError = FreeResourceByPtr(psCurItem, bExecuteCallback, CLEANUP_WITH_POLL);
 	}
 
 	return eError;

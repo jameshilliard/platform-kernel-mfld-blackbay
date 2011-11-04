@@ -732,7 +732,7 @@ BM_DestroyContext(IMG_HANDLE	hBMContext,
 	else
 	{
 		
-		eError = ResManFreeResByPtr(pBMContext->hResItem);
+		eError = ResManFreeResByPtr(pBMContext->hResItem, CLEANUP_WITH_POLL);
 		if(eError != PVRSRV_OK)
 		{
 			PVR_DPF ((PVR_DBG_ERROR, "BM_DestroyContext: ResManFreeResByPtr failed %d",eError));
@@ -784,7 +784,8 @@ static PVRSRV_ERROR BM_DestroyContextCallBack_AnyVaCb(BM_HEAP *psBMHeap, va_list
 
 
 static PVRSRV_ERROR BM_DestroyContextCallBack(IMG_PVOID		pvParam,
-											  IMG_UINT32	ui32Param)
+						  IMG_UINT32	ui32Param,
+						  IMG_BOOL	bDummy)
 {
 	BM_CONTEXT *pBMContext = pvParam;
 	PVRSRV_DEVICE_NODE *psDeviceNode;
@@ -1004,7 +1005,7 @@ BM_CreateContext(PVRSRV_DEVICE_NODE			*psDeviceNode,
 	return (IMG_HANDLE)pBMContext;
 
 cleanup:
-	(IMG_VOID)BM_DestroyContextCallBack(pBMContext, 0);
+	(IMG_VOID)BM_DestroyContextCallBack(pBMContext, 0, CLEANUP_WITH_POLL);
 
 	return IMG_NULL;
 }

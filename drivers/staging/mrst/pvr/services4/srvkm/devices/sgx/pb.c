@@ -47,8 +47,10 @@ static IMPLEMENT_LIST_REMOVE(PVRSRV_STUB_PBDESC)
 static PRESMAN_ITEM psResItemCreateSharedPB = IMG_NULL;
 static PVRSRV_PER_PROCESS_DATA *psPerProcCreateSharedPB = IMG_NULL;
 
-static PVRSRV_ERROR SGXCleanupSharedPBDescCallback(IMG_PVOID pvParam, IMG_UINT32 ui32Param);
-static PVRSRV_ERROR SGXCleanupSharedPBDescCreateLockCallback(IMG_PVOID pvParam, IMG_UINT32 ui32Param);
+static PVRSRV_ERROR SGXCleanupSharedPBDescCallback(IMG_PVOID pvParam, IMG_UINT32 ui32Param,
+						IMG_BOOL bDummy);
+static PVRSRV_ERROR SGXCleanupSharedPBDescCreateLockCallback(IMG_PVOID pvParam, IMG_UINT32 ui32Param,
+						IMG_BOOL bDummy);
 
 IMG_EXPORT PVRSRV_ERROR
 SGXFindSharedPBDescKM(PVRSRV_PER_PROCESS_DATA	*psPerProc,
@@ -217,13 +219,15 @@ SGXCleanupSharedPBDescKM(PVRSRV_STUB_PBDESC *psStubPBDescIn)
 
 		SGXCleanupRequest(psDeviceNode,
 						  &sHWPBDescDevVAddr,
-						  PVRSRV_CLEANUPCMD_PB);
+						  PVRSRV_CLEANUPCMD_PB,
+						  CLEANUP_WITH_POLL);
 	}
 	return PVRSRV_OK;
 
 }
 
-static PVRSRV_ERROR SGXCleanupSharedPBDescCallback(IMG_PVOID pvParam, IMG_UINT32 ui32Param)
+static PVRSRV_ERROR SGXCleanupSharedPBDescCallback(IMG_PVOID pvParam, IMG_UINT32 ui32Param,
+							IMG_BOOL bDummy)
 {
 	PVRSRV_STUB_PBDESC *psStubPBDesc = (PVRSRV_STUB_PBDESC *)pvParam;
 
@@ -232,7 +236,8 @@ static PVRSRV_ERROR SGXCleanupSharedPBDescCallback(IMG_PVOID pvParam, IMG_UINT32
 	return SGXCleanupSharedPBDescKM(psStubPBDesc);
 }
 
-static PVRSRV_ERROR SGXCleanupSharedPBDescCreateLockCallback(IMG_PVOID pvParam, IMG_UINT32 ui32Param)
+static PVRSRV_ERROR SGXCleanupSharedPBDescCreateLockCallback(IMG_PVOID pvParam, IMG_UINT32 ui32Param,
+								IMG_BOOL bDummy)
 {
 #ifdef PVR_DEBUG_EXT
 	PVRSRV_PER_PROCESS_DATA *psPerProc = (PVRSRV_PER_PROCESS_DATA *)pvParam;
@@ -255,7 +260,7 @@ SGXUnrefSharedPBDescKM(IMG_HANDLE hSharedPBDesc)
 {
 	PVR_ASSERT(hSharedPBDesc != IMG_NULL);
 
-	return ResManFreeResByPtr(hSharedPBDesc);
+	return ResManFreeResByPtr(hSharedPBDesc, CLEANUP_WITH_POLL);
 }
 
 
@@ -287,7 +292,7 @@ SGXAddSharedPBDescKM(PVRSRV_PER_PROCESS_DATA	*psPerProc,
 	{
 		PVR_ASSERT(psResItemCreateSharedPB != IMG_NULL);
 
-		ResManFreeResByPtr(psResItemCreateSharedPB);
+		ResManFreeResByPtr(psResItemCreateSharedPB, CLEANUP_WITH_POLL);
 
 		PVR_ASSERT(psResItemCreateSharedPB == IMG_NULL);
 		PVR_ASSERT(psPerProcCreateSharedPB == IMG_NULL);

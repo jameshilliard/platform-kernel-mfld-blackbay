@@ -3076,7 +3076,8 @@ static PVRSRV_ERROR DoModifyCompleteSyncOps(MODIFY_SYNC_OP_INFO *psModSyncOpInfo
 
 
 static PVRSRV_ERROR ModifyCompleteSyncOpsCallBack(IMG_PVOID		pvParam,
-													IMG_UINT32	ui32Param)
+						IMG_UINT32	ui32Param,
+						IMG_BOOL bDummy)
 {
 	MODIFY_SYNC_OP_INFO		*psModSyncOpInfo;
 
@@ -3212,7 +3213,7 @@ PVRSRVDestroySyncInfoModObjBW(IMG_UINT32                                        
 		return 0;
 	}
 
-	psDestroySyncInfoModObjOUT->eError = ResManFreeResByPtr(psModSyncOpInfo->hResItem);
+	psDestroySyncInfoModObjOUT->eError = ResManFreeResByPtr(psModSyncOpInfo->hResItem, CLEANUP_WITH_POLL);
 	if (psDestroySyncInfoModObjOUT->eError != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "PVRSRVDestroySyncInfoModObjBW: ResManFreeResByPtr failed"));
@@ -3524,7 +3525,8 @@ PVRSRVSyncOpsFlushToDeltaBW(IMG_UINT32                                         u
 
 static PVRSRV_ERROR
 FreeSyncInfoCallback(IMG_PVOID	pvParam,
-					 IMG_UINT32	ui32Param)
+			 IMG_UINT32	ui32Param,
+			 IMG_BOOL bDummy)
 {
 	PVRSRV_KERNEL_SYNC_INFO *psSyncInfo;
 	PVRSRV_ERROR eError;
@@ -3646,7 +3648,7 @@ PVRSRVFreeSyncInfoBW(IMG_UINT32                                          ui32Bri
 		return 0;
 	}
 
-	eError = ResManFreeResByPtr(psSyncInfo->hResItem);
+	eError = ResManFreeResByPtr(psSyncInfo->hResItem, CLEANUP_WITH_POLL);
 	if (eError != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "PVRSRVFreeSyncInfoBW: ResManFreeResByPtr failed"));

@@ -70,13 +70,14 @@ IMG_HANDLE SGXRegisterHWTransferContextKM(IMG_HANDLE				psDeviceNode,
 										  PVRSRV_PER_PROCESS_DATA	*psPerProc);
 
 IMG_IMPORT
-IMG_VOID SGXFlushHWRenderTargetKM(IMG_HANDLE psSGXDevInfo, IMG_DEV_VIRTADDR psHWRTDataSetDevVAddr);
+IMG_VOID SGXFlushHWRenderTargetKM(IMG_HANDLE psSGXDevInfo, IMG_DEV_VIRTADDR psHWRTDataSetDevVAddr,
+					IMG_BOOL bForceCleanup);
 
 IMG_IMPORT
-PVRSRV_ERROR SGXUnregisterHWRenderContextKM(IMG_HANDLE hHWRenderContext);
+PVRSRV_ERROR SGXUnregisterHWRenderContextKM(IMG_HANDLE hHWRenderContext, IMG_BOOL bForceCleanup);
 
 IMG_IMPORT
-PVRSRV_ERROR SGXUnregisterHWTransferContextKM(IMG_HANDLE hHWTransferContext);
+PVRSRV_ERROR SGXUnregisterHWTransferContextKM(IMG_HANDLE hHWTransferContext, IMG_BOOL bForceCleanup);
 
 #if defined(SGX_FEATURE_2D_HARDWARE)
 IMG_IMPORT
@@ -94,6 +95,7 @@ IMG_UINT32 SGXConvertTimeStamp(PVRSRV_SGXDEV_INFO	*psDevInfo,
 
 IMG_VOID SGXCleanupRequest(PVRSRV_DEVICE_NODE	*psDeviceNode,
 							IMG_DEV_VIRTADDR	*psHWDataDevVAddr,
-							IMG_UINT32			ui32CleanupType);
+							IMG_UINT32			ui32CleanupType,
+							IMG_BOOL		bForceCleanup);
 							   
 

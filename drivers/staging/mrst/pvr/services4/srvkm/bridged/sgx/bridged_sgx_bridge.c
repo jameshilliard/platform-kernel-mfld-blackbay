@@ -1408,7 +1408,8 @@ SGXUnregisterHWRenderContextBW(IMG_UINT32 ui32BridgeID,
 		return 0;
 	}
 
-	psRetOUT->eError = SGXUnregisterHWRenderContextKM(hHWRenderContextInt);
+	psRetOUT->eError = SGXUnregisterHWRenderContextKM(hHWRenderContextInt,
+						psSGXUnregHWRenderContextIN->bForceCleanup);
 	if(psRetOUT->eError != PVRSRV_OK)
 	{
 		return 0;
@@ -1489,7 +1490,8 @@ SGXUnregisterHWTransferContextBW(IMG_UINT32 ui32BridgeID,
 		return 0;
 	}
 
-	psRetOUT->eError = SGXUnregisterHWTransferContextKM(hHWTransferContextInt);
+	psRetOUT->eError = SGXUnregisterHWTransferContextKM(hHWTransferContextInt,
+							psSGXUnregHWTransferContextIN->bForceCleanup);
 	if(psRetOUT->eError != PVRSRV_OK)
 	{
 		return 0;
@@ -1605,7 +1607,8 @@ SGXFlushHWRenderTargetBW(IMG_UINT32 ui32BridgeID,
 		return 0;
 	}
 
-	SGXFlushHWRenderTargetKM(hDevCookieInt, psSGXFlushHWRenderTargetIN->sHWRTDataSetDevVAddr);
+	SGXFlushHWRenderTargetKM(hDevCookieInt, psSGXFlushHWRenderTargetIN->sHWRTDataSetDevVAddr,
+				IMG_FALSE);
 
 	return 0;
 }
