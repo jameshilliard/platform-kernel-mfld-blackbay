@@ -258,6 +258,7 @@ typedef struct _PVRSRV_TRANSFER_SGX_KICK_
 #if defined(PDUMP)
 	IMG_UINT32		ui32CCBDumpWOff;
 #endif
+	IMG_HANDLE		dummy;
 } PVRSRV_TRANSFER_SGX_KICK, *PPVRSRV_TRANSFER_SGX_KICK;
 
 #if defined(SGX_FEATURE_2D_HARDWARE)
@@ -284,6 +285,7 @@ typedef struct _PVRSRV_2D_SGX_KICK_
 #if defined(PDUMP)
 	IMG_UINT32		ui32CCBDumpWOff;
 #endif
+	IMG_HANDLE		dummy;
 } PVRSRV_2D_SGX_KICK, *PPVRSRV_2D_SGX_KICK;
 #endif	
 #endif	
