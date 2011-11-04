@@ -161,7 +161,7 @@ PVRSRVDrmOpen(struct drm_device *dev, struct drm_file *file)
 	return PVRSRVOpen(dev, file);
 }
 
-#if defined(SUPPORT_DRI_DRM_EXT) && !defined(PVR_LINUX_USING_WORKQUEUES)
+#if defined(SUPPORT_DRI_DRM_EXT)
 DRI_DRM_STATIC void
 PVRSRVDrmPostClose(struct drm_device *dev, struct drm_file *file)
 {

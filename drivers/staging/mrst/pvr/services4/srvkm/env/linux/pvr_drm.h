@@ -47,11 +47,7 @@ IMG_INT PVRSRV_BridgeDispatchKM(struct drm_device *dev, IMG_VOID *arg, struct dr
 IMG_INT PVRSRVDrmLoad(struct drm_device *dev, IMG_UINT32 flags);
 IMG_INT PVRSRVDrmUnload(struct drm_device *dev);
 IMG_INT PVRSRVDrmOpen(struct drm_device *dev, struct drm_file *file);
-#if defined(PVR_LINUX_USING_WORKQUEUES)
-DRI_DRM_STATIC IMG_INT PVRSRVDrmRelease(struct inode *inode, struct file *filp);
-#else
 IMG_VOID PVRSRVDrmPostClose(struct drm_device *dev, struct drm_file *file);
-#endif
 IMG_INT PVRDRMIsMaster(struct drm_device *dev, IMG_VOID *arg, struct drm_file *pFile);
 IMG_INT PVRDRMUnprivCmd(struct drm_device *dev, IMG_VOID *arg, struct drm_file *pFile);
 IMG_INT PVRDRM_Dummy_ioctl(struct drm_device *dev, IMG_VOID *arg, struct drm_file *pFile);
