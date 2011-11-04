@@ -99,6 +99,7 @@ typedef struct _SGXMKIF_HOST_CTL_
 
 	IMG_UINT32				ui32TimeWraps;				
 	IMG_UINT32				ui32HostClock;				
+	IMG_UINT32				ui32AssertFail;
 
 #if defined(SGX_FEATURE_EXTENDED_PERF_COUNTERS)
 	IMG_UINT32				aui32PerfGroup[PVRSRV_SGX_HWPERF_NUM_COUNTERS];	

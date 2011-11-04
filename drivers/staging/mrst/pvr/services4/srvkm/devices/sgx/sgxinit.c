@@ -969,10 +969,15 @@ static IMG_VOID SGXDumpDebugInfo (PVRSRV_SGXDEV_INFO	*psDevInfo,
 	QueueDumpDebugInfo();
 
 	{
-		
+		SGXMKIF_HOST_CTL	*psSGXHostCtl = psDevInfo->psSGXHostCtl;
+		IMG_UINT32		*pui32HostCtlBuffer = (IMG_UINT32 *)psDevInfo->psSGXHostCtl;
+		IMG_UINT32		ui32LoopCounter;
 
-		IMG_UINT32	*pui32HostCtlBuffer = (IMG_UINT32 *)psDevInfo->psSGXHostCtl;
-		IMG_UINT32	ui32LoopCounter;
+		if (psSGXHostCtl->ui32AssertFail != 0)
+		{
+			PVR_LOG(("SGX Microkernel assert fail: 0x%08X", psSGXHostCtl->ui32AssertFail));
+			psSGXHostCtl->ui32AssertFail = 0;
+		}
 
 		PVR_LOG(("SGX Host control:"));
 
