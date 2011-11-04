@@ -177,13 +177,6 @@ typedef struct _SGXMKIF_TRANSFERCMD_SHARED_
 	IMG_UINT32			ui32NumDstSyncs;
 	PVRSRV_DEVICE_SYNC_OBJECT	asDstSyncs[SGX_MAX_DST_SYNCS];
 	
-	IMG_UINT32		ui32DstReadOpPendingVal;
-	IMG_DEV_VIRTADDR	sDstReadOpsCompleteDevAddr;
-	
-	IMG_UINT32		ui32DstWriteOpPendingVal;
-	IMG_DEV_VIRTADDR	sDstWriteOpsCompleteDevAddr;
-
-	
 	IMG_UINT32		ui32TASyncWriteOpsPendingVal;
 	IMG_DEV_VIRTADDR	sTASyncWriteOpsCompleteDevVAddr;
 	IMG_UINT32		ui32TASyncReadOpsPendingVal;
