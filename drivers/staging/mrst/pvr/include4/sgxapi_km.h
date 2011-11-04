@@ -51,18 +51,19 @@ extern "C" {
 #define SGX_PDSPIXEL_CODEDATA_HEAP_ID			6
 #define SGX_PDSVERTEX_CODEDATA_HEAP_ID			7
 #define SGX_SYNCINFO_HEAP_ID					8
-#define SGX_3DPARAMETERS_HEAP_ID				9
+#define SGX_SHARED_3DPARAMETERS_HEAP_ID                         9
+#define SGX_PERCONTEXT_3DPARAMETERS_HEAP_ID                     10
 #if defined(SUPPORT_SGX_GENERAL_MAPPING_HEAP)
-#define SGX_GENERAL_MAPPING_HEAP_ID				10
+#define SGX_GENERAL_MAPPING_HEAP_ID				11
 #endif
 #if defined(SGX_FEATURE_2D_HARDWARE)
-#define SGX_2D_HEAP_ID							11
+#define SGX_2D_HEAP_ID							12
 #else
 #if defined(FIX_HW_BRN_26915)
-#define SGX_CGBUFFER_HEAP_ID					12
+#define SGX_CGBUFFER_HEAP_ID					13
 #endif
 #endif
-#define SGX_MAX_HEAP_ID							13
+#define SGX_MAX_HEAP_ID							14
 
 #if defined(SGX543) || defined(SGX544) || defined(SGX554)
 #define SGX_USE_CODE_SEGMENT_RANGE_BITS		23

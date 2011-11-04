@@ -1864,27 +1864,32 @@ PVRSRV_ERROR SGXRegisterDevice (PVRSRV_DEVICE_NODE *psDeviceNode)
 	psDeviceMemoryHeap++;
 
 
-	
-	psDeviceMemoryHeap->ui32HeapID = HEAP_ID( PVRSRV_DEVICE_TYPE_SGX, SGX_3DPARAMETERS_HEAP_ID);
-	psDeviceMemoryHeap->sDevVAddrBase.uiAddr = SGX_3DPARAMETERS_HEAP_BASE;
-	psDeviceMemoryHeap->ui32HeapSize = SGX_3DPARAMETERS_HEAP_SIZE;
-	psDeviceMemoryHeap->pszName = "3DParameters";
-	psDeviceMemoryHeap->pszBSName = "3DParameters BS";
-#if defined(SUPPORT_PERCONTEXT_PB)
+	psDeviceMemoryHeap->ui32HeapID = HEAP_ID(PVRSRV_DEVICE_TYPE_SGX, SGX_SHARED_3DPARAMETERS_HEAP_ID);
+	psDeviceMemoryHeap->sDevVAddrBase.uiAddr = SGX_SHARED_3DPARAMETERS_HEAP_BASE;
+	psDeviceMemoryHeap->ui32HeapSize = SGX_SHARED_3DPARAMETERS_HEAP_SIZE;
+	psDeviceMemoryHeap->pszName = "Shared 3DParameters";
+	psDeviceMemoryHeap->pszBSName = "Shared 3DParameters BS";
 	psDeviceMemoryHeap->ui32Attribs = PVRSRV_HAP_WRITECOMBINE
-															| PVRSRV_MEM_RAM_BACKED_ALLOCATION
-															| PVRSRV_HAP_SINGLE_PROCESS;
-	psDeviceMemoryHeap->DevMemHeapType = DEVICE_MEMORY_HEAP_PERCONTEXT;
-#else
-	psDeviceMemoryHeap->ui32Attribs = PVRSRV_HAP_WRITECOMBINE
-													| PVRSRV_MEM_RAM_BACKED_ALLOCATION
-													| PVRSRV_HAP_MULTI_PROCESS;
+						| PVRSRV_MEM_RAM_BACKED_ALLOCATION
+						| PVRSRV_HAP_MULTI_PROCESS;
 	psDeviceMemoryHeap->DevMemHeapType = DEVICE_MEMORY_HEAP_SHARED_EXPORTED;
-#endif
-	
+
 	psDeviceMemoryHeap->ui32DataPageSize = SGX_MMU_PAGE_SIZE;
 	psDeviceMemoryHeap++;
 
+
+	psDeviceMemoryHeap->ui32HeapID = HEAP_ID(PVRSRV_DEVICE_TYPE_SGX, SGX_PERCONTEXT_3DPARAMETERS_HEAP_ID);
+	psDeviceMemoryHeap->sDevVAddrBase.uiAddr = SGX_PERCONTEXT_3DPARAMETERS_HEAP_BASE;
+	psDeviceMemoryHeap->ui32HeapSize = SGX_PERCONTEXT_3DPARAMETERS_HEAP_SIZE;
+	psDeviceMemoryHeap->pszName = "Percontext 3DParameters";
+	psDeviceMemoryHeap->pszBSName = "Percontext 3DParameters BS";
+	psDeviceMemoryHeap->ui32Attribs = PVRSRV_HAP_WRITECOMBINE
+						| PVRSRV_MEM_RAM_BACKED_ALLOCATION
+						| PVRSRV_HAP_SINGLE_PROCESS;
+	psDeviceMemoryHeap->DevMemHeapType = DEVICE_MEMORY_HEAP_PERCONTEXT;
+
+	psDeviceMemoryHeap->ui32DataPageSize = SGX_MMU_PAGE_SIZE;
+	psDeviceMemoryHeap++;
 
 #if defined(SUPPORT_SGX_GENERAL_MAPPING_HEAP)
 	
