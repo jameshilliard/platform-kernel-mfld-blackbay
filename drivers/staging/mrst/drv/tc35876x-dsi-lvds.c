@@ -286,7 +286,9 @@ void tc35876x_set_bridge_reset_state(int state)
 {
 	struct tc35876x_platform_data *pdata;
 
-	WARN_ON(!tc35876x_client);
+	if (WARN(!tc35876x_client, "%s called before probe", __func__))
+		return;
+
 	dev_dbg(&tc35876x_client->dev, "%s: state %d\n", __func__, state);
 
 	pdata = dev_get_platdata(&tc35876x_client->dev);
@@ -315,7 +317,9 @@ void tc35876x_configure_lvds_bridge(struct drm_device *dev)
 	u32 txtasurecnt;
 	u32 id;
 
-	WARN_ON(!tc35876x_client);
+	if (WARN(!tc35876x_client, "%s called before probe", __func__))
+		return;
+
 	dev_dbg(&tc35876x_client->dev, "%s\n", __func__);
 
 	tc35876x_regr(i2c, IDREG, &id);
@@ -391,7 +395,9 @@ void tc35876x_toshiba_bridge_panel_off(void)
 {
 	struct tc35876x_platform_data *pdata;
 
-	WARN_ON(!tc35876x_client);
+	if (WARN(!tc35876x_client, "%s called before probe", __func__))
+		return;
+
 	dev_dbg(&tc35876x_client->dev, "%s\n", __func__);
 
 	if (pdata->gpio_panel_bl_en != -1)
@@ -405,7 +411,9 @@ void tc35876x_toshiba_bridge_panel_on(void)
 {
 	struct tc35876x_platform_data *pdata;
 
-	WARN_ON(!tc35876x_client);
+	if (WARN(!tc35876x_client, "%s called before probe", __func__))
+		return;
+
 	dev_dbg(&tc35876x_client->dev, "%s\n", __func__);
 
 	pdata = dev_get_platdata(&tc35876x_client->dev);
@@ -422,7 +430,9 @@ void tc35876x_toshiba_bridge_panel_on(void)
 
 void tc35876x_bridge_get_display_params(struct drm_display_mode *mode)
 {
-	WARN_ON(!tc35876x_client);
+	if (WARN(!tc35876x_client, "%s called before probe", __func__))
+		return;
+
 	dev_dbg(&tc35876x_client->dev, "%s\n", __func__);
 
 	/* FIXME: do this properly. */
