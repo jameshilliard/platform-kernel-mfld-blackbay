@@ -207,7 +207,7 @@ static int secure_fd_export_prepare(int cmd, void *param_in, void *sec_meminfo)
 		return 0;
 
 	switch (cmd) {
-	case PVRSRV_BRIDGE_EXPORT_DEVICEMEM:
+	case PVRSRV_BRIDGE_EXPORT_DEVICEMEM_2:
 		if (sec_meminfo) {
 			pr_err("pvr: %s: can only export one MemInfo "
 					 "per file descriptor", __func__);
@@ -215,7 +215,7 @@ static int secure_fd_export_prepare(int cmd, void *param_in, void *sec_meminfo)
 		}
 		break;
 
-	case PVRSRV_BRIDGE_MAP_DEV_MEMORY:
+	case PVRSRV_BRIDGE_MAP_DEV_MEMORY_2:
 	{
 		PVRSRV_BRIDGE_IN_MAP_DEV_MEMORY *map_devmem_in = param_in;
 
@@ -248,7 +248,7 @@ static void secure_fd_export_finish(int cmd, void *param_out,
 	if (!support_secure_fd_export())
 		return;
 
-	if (cmd != PVRSRV_BRIDGE_EXPORT_DEVICEMEM)
+	if (cmd != PVRSRV_BRIDGE_EXPORT_DEVICEMEM_2)
 		return;
 
 	*sec_mem_info = map_devmem_out->hMemInfo;
