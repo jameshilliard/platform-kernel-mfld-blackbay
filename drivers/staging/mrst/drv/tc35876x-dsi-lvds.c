@@ -26,15 +26,9 @@
 #include "mdfld_output.h"
 #include "mdfld_dsi_pkg_sender.h"
 #include "tc35876x-dsi-lvds.h"
+#include <linux/i2c/tc35876x.h>
 
 static struct i2c_client *tc35876x_client;
-
-/* GPIO pins. FIXME: Get these from platform data (firmware) */
-#define GPIO_MIPI_BRIDGE_RESET	115
-#define GPIO_MIPI_PANEL_RESET	128
-#define GPIO_MIPI_LCD_STBYB	173
-#define GPIO_MIPI_LCD_BIAS_EN	108
-#define GPIO_MIPI_LCD_VADD	110
 
 #define FLD_MASK(start, end)	(((1 << ((start) - (end) + 1)) - 1) << (end))
 #define FLD_VAL(val, start, end) (((val) << (end)) & FLD_MASK(start, end))
@@ -290,18 +284,25 @@ static int tc35876x_regr(struct i2c_client *client, u16 reg, u32 *value)
 
 void tc35876x_set_bridge_reset_state(int state)
 {
+	struct tc35876x_platform_data *pdata;
+
 	WARN_ON(!tc35876x_client);
 	dev_dbg(&tc35876x_client->dev, "%s: state %d\n", __func__, state);
 
+	pdata = dev_get_platdata(&tc35876x_client->dev);
+
+	if (pdata->gpio_bridge_reset == -1)
+		return;
+
 	if (state) {
-		gpio_set_value_cansleep(GPIO_MIPI_BRIDGE_RESET, 0);
+		gpio_set_value_cansleep(pdata->gpio_bridge_reset, 0);
 		mdelay(10);
 	} else {
 		/* Pull MIPI Bridge reset pin to Low */
-		gpio_set_value_cansleep(GPIO_MIPI_BRIDGE_RESET, 0);
+		gpio_set_value_cansleep(pdata->gpio_bridge_reset, 0);
 		mdelay(20);
 		/* Pull MIPI Bridge reset pin to High */
-		gpio_set_value_cansleep(GPIO_MIPI_BRIDGE_RESET, 1);
+		gpio_set_value_cansleep(pdata->gpio_bridge_reset, 1);
 		mdelay(40);
 	}
 }
@@ -388,37 +389,35 @@ void tc35876x_configure_lvds_bridge(struct drm_device *dev)
 
 void tc35876x_toshiba_bridge_panel_off(void)
 {
+	struct tc35876x_platform_data *pdata;
+
 	WARN_ON(!tc35876x_client);
 	dev_dbg(&tc35876x_client->dev, "%s\n", __func__);
 
-	gpio_set_value_cansleep(GPIO_MIPI_LCD_STBYB, 0);
-	mdelay(1);
+	if (pdata->gpio_panel_bl_en != -1)
+		gpio_set_value_cansleep(pdata->gpio_panel_bl_en, 0);
 
-	gpio_set_value_cansleep(GPIO_MIPI_PANEL_RESET, 0);
-	mdelay(1);
+	if (pdata->gpio_panel_vadd != -1)
+		gpio_set_value_cansleep(pdata->gpio_panel_vadd, 0);
 }
 
 void tc35876x_toshiba_bridge_panel_on(void)
 {
+	struct tc35876x_platform_data *pdata;
+
 	WARN_ON(!tc35876x_client);
 	dev_dbg(&tc35876x_client->dev, "%s\n", __func__);
 
-	gpio_set_value_cansleep(GPIO_MIPI_LCD_STBYB, 0);
-	gpio_set_value_cansleep(GPIO_MIPI_PANEL_RESET, 0);
-	gpio_set_value_cansleep(GPIO_MIPI_LCD_VADD, 0);
-	gpio_set_value_cansleep(GPIO_MIPI_LCD_BIAS_EN, 0);
-	mdelay(10);
+	pdata = dev_get_platdata(&tc35876x_client->dev);
 
-	gpio_set_value_cansleep(GPIO_MIPI_LCD_STBYB, 1);
-	mdelay(10);
+	if (pdata->gpio_panel_vadd != -1) {
+		gpio_set_value_cansleep(pdata->gpio_panel_vadd, 1);
+		/* FIXME: check sleep from panel spec */
+		msleep(50);
+	}
 
-	gpio_set_value_cansleep(GPIO_MIPI_LCD_VADD, 1);
-	mdelay(50);
-
-	gpio_set_value_cansleep(GPIO_MIPI_PANEL_RESET, 1);
-	mdelay(100);
-
-	gpio_set_value_cansleep(GPIO_MIPI_LCD_BIAS_EN, 1);
+	if (pdata->gpio_panel_bl_en != -1)
+		gpio_set_value_cansleep(pdata->gpio_panel_bl_en, 1);
 }
 
 void tc35876x_bridge_get_display_params(struct drm_display_mode *mode)
@@ -451,6 +450,8 @@ void tc35876x_bridge_get_display_params(struct drm_display_mode *mode)
 static int tc35876x_bridge_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
+	struct tc35876x_platform_data *pdata;
+
 	dev_info(&client->dev, "%s\n", __func__);
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
@@ -459,21 +460,26 @@ static int tc35876x_bridge_probe(struct i2c_client *client,
 		return -ENODEV;
 	}
 
-	/* FIXME: get GPIOs from platform data, check for errors. */
-	gpio_request(GPIO_MIPI_BRIDGE_RESET, "tc35876x bridge reset");
-	gpio_direction_output(GPIO_MIPI_BRIDGE_RESET, 0);
+	pdata = dev_get_platdata(&client->dev);
+	if (!pdata) {
+		dev_err(&client->dev, "%s: no platform data\n", __func__);
+		return -ENODEV;
+	}
 
-	gpio_request(GPIO_MIPI_PANEL_RESET, "tc35876x panel reset");
-	gpio_direction_output(GPIO_MIPI_PANEL_RESET, 0);
+	if (pdata->gpio_bridge_reset != -1) {
+		gpio_request(pdata->gpio_bridge_reset, "tc35876x bridge reset");
+		gpio_direction_output(pdata->gpio_bridge_reset, 0);
+	}
 
-	gpio_request(GPIO_MIPI_LCD_STBYB, "tc35876x lcd stbyb");
-	gpio_direction_output(GPIO_MIPI_LCD_STBYB, 0);
+	if (pdata->gpio_panel_bl_en != -1) {
+		gpio_request(pdata->gpio_panel_bl_en, "tc35876x panel bl en");
+		gpio_direction_output(pdata->gpio_panel_bl_en, 0);
+	}
 
-	gpio_request(GPIO_MIPI_LCD_BIAS_EN, "tc35876x lcd bias en");
-	gpio_direction_output(GPIO_MIPI_LCD_BIAS_EN, 0);
-
-	gpio_request(GPIO_MIPI_LCD_VADD, "tc35876x lcd vadd");
-	gpio_direction_output(GPIO_MIPI_LCD_VADD, 0);
+	if (pdata->gpio_panel_vadd != -1) {
+		gpio_request(pdata->gpio_panel_vadd, "tc35876x panel vadd");
+		gpio_direction_output(pdata->gpio_panel_vadd, 0);
+	}
 
 	tc35876x_client = client;
 
@@ -482,13 +488,18 @@ static int tc35876x_bridge_probe(struct i2c_client *client,
 
 static int tc35876x_bridge_remove(struct i2c_client *client)
 {
+	struct tc35876x_platform_data *pdata = dev_get_platdata(&client->dev);
+
 	dev_dbg(&client->dev, "%s\n", __func__);
 
-	gpio_free(GPIO_MIPI_BRIDGE_RESET);
-	gpio_free(GPIO_MIPI_PANEL_RESET);
-	gpio_free(GPIO_MIPI_LCD_STBYB);
-	gpio_free(GPIO_MIPI_LCD_BIAS_EN);
-	gpio_free(GPIO_MIPI_LCD_VADD);
+	if (pdata->gpio_bridge_reset != -1)
+		gpio_free(pdata->gpio_bridge_reset);
+
+	if (pdata->gpio_panel_bl_en != -1)
+		gpio_free(pdata->gpio_panel_bl_en);
+
+	if (pdata->gpio_panel_vadd != -1)
+		gpio_free(pdata->gpio_panel_vadd);
 
 	tc35876x_client = NULL;
 
