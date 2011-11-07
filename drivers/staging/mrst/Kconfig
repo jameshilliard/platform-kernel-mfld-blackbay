@@ -16,24 +16,38 @@ config DRM_INTEL_MID
 	help
 	  xxxxxxxxxxxxxxxxxxxxxxxxxx
 
-choice 
-	prompt "Build IMG kernel service as "
+choice
+	prompt "PVR ABI version"
 	depends on DRM_INTEL_MID
-	default DRM_MID_RELEASE
+	default PVR_ABI_RELEASE
 
-config DRM_MID_RELEASE
-	bool "Release"
+config PVR_ABI_RELEASE
+	bool "Release ABI"
 	depends on DRM_INTEL_MID
 	help
-	  Build IMG kernel services as release
+	  Select release mode for the IOCTL and firmware ABI. Note
+	  that this will work only with the PVR user space libraries
+	  built with the release mode ABI option too.
 
-config DRM_MID_DEBUG
-	bool "Debug"
+
+config PVR_ABI_DEBUG
+	bool "Debug ABI"
 	depends on DRM_INTEL_MID
 	help
-	 Build IMG kernel services as debug	
+	  Select debug mode for the IOCTL and firmware ABI. This will
+	  enable extra debugging options with the help of the user space
+	  libraries, like PDUMP (PDUMP needs to be enabled separately).
+
+	  Note that this will work only with the PVR user space libraries
+	  built with the debug mode ABI option too.
 
 endchoice
+
+config PVR_DEBUG
+	bool "PVR debug messages/asserts"
+	depends on DRM_INTEL_MID
+	help
+	  Enable debug messages and asserts.
 
 config DRM_MDFLD
 	tristate "Intel Medfield"

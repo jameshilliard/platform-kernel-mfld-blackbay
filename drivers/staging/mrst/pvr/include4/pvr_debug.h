@@ -60,7 +60,7 @@ extern "C" {
 
 #define PVR_DBGDRIV_MESSAGE		DBGPRIV_DBGDRV_MESSAGE, "", 0
 
-#if !defined(PVRSRV_NEED_PVR_ASSERT) && defined(PVR_DEBUG_EXT)
+#if !defined(PVRSRV_NEED_PVR_ASSERT) && defined(DEBUG)
 #define PVRSRV_NEED_PVR_ASSERT
 #endif
 
