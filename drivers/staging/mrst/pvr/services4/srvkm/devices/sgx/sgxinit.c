@@ -2065,8 +2065,6 @@ PVRSRV_ERROR SGXDevInitCompatCheck(PVRSRV_DEVICE_NODE *psDeviceNode)
 		eError = PVRSRV_ERROR_BUILD_MISMATCH;
 
 		goto chk_exit;
-	} else {
-		pr_debug("pvr: user compile options ok\n");
 	}
 
 #if !defined (NO_HARDWARE)
@@ -2187,8 +2185,6 @@ PVRSRV_ERROR SGXDevInitCompatCheck(PVRSRV_DEVICE_NODE *psDeviceNode)
 		eError = PVRSRV_ERROR_BUILD_MISMATCH;
 
 		goto chk_exit;
-	} else {
-		pr_debug("pvr: firwmare build options match\n");
 	}
 #endif 
 
