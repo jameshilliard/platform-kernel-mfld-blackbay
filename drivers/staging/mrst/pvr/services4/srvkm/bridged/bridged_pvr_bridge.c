@@ -2785,7 +2785,6 @@ _SetDispatchTableEntry(IMG_UINT32 ui32Index,
 					   size_t in_size, size_t out_size,
 					   off_t err_offset)
 {
-	static IMG_UINT32 ui32PrevIndex = ~0UL;		
 #if !defined(PVR_DEBUG_EXT)
 	PVR_UNREFERENCED_PARAMETER(pszIOCName);
 #endif
@@ -2813,24 +2812,6 @@ _SetDispatchTableEntry(IMG_UINT32 ui32Index,
 		PVR_DPF((PVR_DBG_ERROR, "NOTE: Enabling DEBUG_BRIDGE_KM_DISPATCH_TABLE may help debug this issue."));
 	}
 
-	
-	if((ui32PrevIndex != ~0UL) &&
-	   ((ui32Index >= ui32PrevIndex + DISPATCH_TABLE_GAP_THRESHOLD) ||
-		(ui32Index <= ui32PrevIndex)))
-	{
-#if defined(DEBUG_BRIDGE_KM)
-		PVR_DPF((PVR_DBG_WARNING,
-				 "%s: There is a gap in the dispatch table between indices %u (%s) and %u (%s)",
-				 __FUNCTION__, ui32PrevIndex, g_BridgeDispatchTable[ui32PrevIndex].pszIOCName,
-				 ui32Index, pszIOCName));
-#else
-		PVR_DPF((PVR_DBG_WARNING,
-				 "%s: There is a gap in the dispatch table between indices %u and %u (%s)",
-				 __FUNCTION__, (IMG_UINT)ui32PrevIndex, (IMG_UINT)ui32Index, pszIOCName));
-#endif
-		PVR_DPF((PVR_DBG_ERROR, "NOTE: Enabling DEBUG_BRIDGE_KM_DISPATCH_TABLE may help debug this issue."));
-	}
-
 	g_BridgeDispatchTable[ui32Index].pfFunction = pfFunction;
 	g_BridgeDispatchTable[ui32Index].in_size = in_size;
 	g_BridgeDispatchTable[ui32Index].out_size = out_size;
@@ -2841,8 +2822,6 @@ _SetDispatchTableEntry(IMG_UINT32 ui32Index,
 	g_BridgeDispatchTable[ui32Index].ui32CallCount = 0;
 	g_BridgeDispatchTable[ui32Index].ui32CopyFromUserTotalBytes = 0;
 #endif
-
-	ui32PrevIndex = ui32Index;
 }
 
 static IMG_INT
