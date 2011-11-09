@@ -126,9 +126,7 @@ typedef struct _PVRSRV_SGXDEV_INFO_
 #if defined(FIX_HW_BRN_29823)
 	PPVRSRV_KERNEL_MEM_INFO	psKernelDummyTermStreamMemInfo; 
 #endif
-#if defined(PVRSRV_USSE_EDM_STATUS_DEBUG)
 	PPVRSRV_KERNEL_MEM_INFO	psKernelEDMStatusBufferMemInfo; 
-#endif
 #if defined(SGX_FEATURE_OVERLAPPED_SPM)
 	PPVRSRV_KERNEL_MEM_INFO	psKernelTmpRgnHeaderMemInfo; 
 #endif

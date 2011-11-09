@@ -96,9 +96,7 @@ typedef struct _SGX_BRIDGE_INIT_INFO_
 #if defined(FIX_HW_BRN_29823)
 	IMG_HANDLE	hKernelDummyTermStreamMemInfo;
 #endif
-#if defined(PVRSRV_USSE_EDM_STATUS_DEBUG)
 	IMG_HANDLE	hKernelEDMStatusBufferMemInfo;
-#endif
 #if defined(SGX_FEATURE_OVERLAPPED_SPM)
 	IMG_HANDLE hKernelTmpRgnHeaderMemInfo;
 #endif

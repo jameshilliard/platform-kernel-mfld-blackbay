@@ -846,6 +846,7 @@ SGXDevInitPart2BW(IMG_UINT32 ui32BridgeID,
 	IMG_BOOL bDissociateFailed = IMG_FALSE;
 	IMG_BOOL bLookupFailed = IMG_FALSE;
 	IMG_BOOL bReleaseFailed = IMG_FALSE;
+	IMG_HANDLE edm_stat_minfo;
 	IMG_HANDLE hDummy;
 	IMG_UINT32 i;
 
@@ -987,16 +988,13 @@ SGXDevInitPart2BW(IMG_UINT32 ui32BridgeID,
 	}
 #endif
 
-#if defined(PVRSRV_USSE_EDM_STATUS_DEBUG)
-	eError = PVRSRVLookupHandle(psPerProc->psHandleBase,
-						   &hDummy,
-						   psSGXDevInitPart2IN->sInitInfo.hKernelEDMStatusBufferMemInfo,
-						   PVRSRV_HANDLE_TYPE_MEM_INFO);
-	if (eError != PVRSRV_OK)
-	{
-		bLookupFailed = IMG_TRUE;
+	edm_stat_minfo = psSGXDevInitPart2IN->sInitInfo.hKernelEDMStatusBufferMemInfo;
+	if (edm_stat_minfo) {
+		eError = PVRSRVLookupHandle(psPerProc->psHandleBase, &hDummy, edm_stat_minfo,
+					    PVRSRV_HANDLE_TYPE_MEM_INFO);
+		if (eError != PVRSRV_OK)
+			bLookupFailed = IMG_TRUE;
 	}
-#endif
 
 #if defined(SGX_FEATURE_SPM_MODE_0)
 	eError = PVRSRVLookupHandle(psPerProc->psHandleBase,
@@ -1154,16 +1152,15 @@ SGXDevInitPart2BW(IMG_UINT32 ui32BridgeID,
 	}
 #endif
 
-#if defined(PVRSRV_USSE_EDM_STATUS_DEBUG)
-	eError = PVRSRVLookupAndReleaseHandle(psPerProc->psHandleBase,
+	if (edm_stat_minfo) {
+		eError = PVRSRVLookupAndReleaseHandle(psPerProc->psHandleBase,
 						   &psSGXDevInitPart2IN->sInitInfo.hKernelEDMStatusBufferMemInfo,
-						   psSGXDevInitPart2IN->sInitInfo.hKernelEDMStatusBufferMemInfo,
-						   PVRSRV_HANDLE_TYPE_MEM_INFO);
-	if (eError != PVRSRV_OK)
-	{
-		bReleaseFailed = IMG_TRUE;
+						   edm_stat_minfo, PVRSRV_HANDLE_TYPE_MEM_INFO);
+		if (eError != PVRSRV_OK)
+			bReleaseFailed = IMG_TRUE;
+	} else {
+		psSGXDevInitPart2IN->sInitInfo.hKernelEDMStatusBufferMemInfo = NULL;
 	}
-#endif
 
 #if defined(SGX_FEATURE_SPM_MODE_0)
 	eError = PVRSRVLookupAndReleaseHandle(psPerProc->psHandleBase,
@@ -1277,10 +1274,11 @@ SGXDevInitPart2BW(IMG_UINT32 ui32BridgeID,
 	bDissociateFailed |= (IMG_BOOL)(eError != PVRSRV_OK);
 #endif
 
-#if defined(PVRSRV_USSE_EDM_STATUS_DEBUG)
-	eError = PVRSRVDissociateDeviceMemKM(hDevCookieInt, psSGXDevInitPart2IN->sInitInfo.hKernelEDMStatusBufferMemInfo);
-	bDissociateFailed |= (IMG_BOOL)(eError != PVRSRV_OK);
-#endif
+	if (psSGXDevInitPart2IN->sInitInfo.hKernelEDMStatusBufferMemInfo) {
+		eError = PVRSRVDissociateDeviceMemKM(hDevCookieInt,
+					     psSGXDevInitPart2IN->sInitInfo.hKernelEDMStatusBufferMemInfo);
+		bDissociateFailed |= (IMG_BOOL)(eError != PVRSRV_OK);
+	}
 
 #if defined(SGX_FEATURE_SPM_MODE_0)
 	eError = PVRSRVDissociateDeviceMemKM(hDevCookieInt, psSGXDevInitPart2IN->sInitInfo.hKernelTmpDPMStateMemInfo);

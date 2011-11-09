@@ -172,9 +172,7 @@ static PVRSRV_ERROR InitDevInfo(PVRSRV_PER_PROCESS_DATA *psPerProc,
 #if defined(FIX_HW_BRN_29823)
 	psDevInfo->psKernelDummyTermStreamMemInfo = (PVRSRV_KERNEL_MEM_INFO *)psInitInfo->hKernelDummyTermStreamMemInfo;
 #endif
-#if defined(PVRSRV_USSE_EDM_STATUS_DEBUG)
 	psDevInfo->psKernelEDMStatusBufferMemInfo = (PVRSRV_KERNEL_MEM_INFO *)psInitInfo->hKernelEDMStatusBufferMemInfo;
-#endif
 #if defined(SGX_FEATURE_OVERLAPPED_SPM)
 	psDevInfo->psKernelTmpRgnHeaderMemInfo = (PVRSRV_KERNEL_MEM_INFO *)psInitInfo->hKernelTmpRgnHeaderMemInfo;
 #endif
@@ -1009,7 +1007,7 @@ static IMG_VOID SGXDumpDebugInfo (PVRSRV_SGXDEV_INFO	*psDevInfo,
 		}
 	}
 
-	#if defined(PVRSRV_USSE_EDM_STATUS_DEBUG)
+	if (psDevInfo->psKernelEDMStatusBufferMemInfo)
 	{
 		IMG_UINT32	*pui32MKTraceBuffer = psDevInfo->psKernelEDMStatusBufferMemInfo->pvLinAddrKM;
 		IMG_UINT32	ui32LastStatusCode, ui32WriteOffset;
@@ -1040,7 +1038,6 @@ static IMG_VOID SGXDumpDebugInfo (PVRSRV_SGXDEV_INFO	*psDevInfo,
 		}
 		#endif 
 	}
-	#endif 
 
 	{
 		
@@ -2567,14 +2564,18 @@ PVRSRV_ERROR SGXGetMiscInfoKM(PVRSRV_SGXDEV_INFO	*psDevInfo,
 		case SGX_MISC_INFO_REQUEST_DRIVER_SGXREV:
 		{
 			PVRSRV_SGX_MISCINFO_FEATURES		*psSGXFeatures;
+			PVRSRV_KERNEL_MEM_INFO		*edm_status_minfo;
 
 			psSGXFeatures = &((PVRSRV_SGX_MISCINFO_INFO*)(psMemInfo->pvLinAddrKM))->sSGXFeatures;
 
-#if defined(PVRSRV_USSE_EDM_STATUS_DEBUG)
-			
-			psSGXFeatures->sDevVAEDMStatusBuffer = psDevInfo->psKernelEDMStatusBufferMemInfo->sDevVAddr;
-			psSGXFeatures->pvEDMStatusBuffer = psDevInfo->psKernelEDMStatusBufferMemInfo->pvLinAddrKM;
-#endif
+			edm_status_minfo = psDevInfo->psKernelEDMStatusBufferMemInfo;
+			if (edm_status_minfo) {
+				psSGXFeatures->sDevVAEDMStatusBuffer = edm_status_minfo->sDevVAddr;
+				psSGXFeatures->pvEDMStatusBuffer = edm_status_minfo->pvLinAddrKM;
+			} else {
+				psSGXFeatures->sDevVAEDMStatusBuffer.uiAddr = 0;
+				psSGXFeatures->pvEDMStatusBuffer = NULL;
+			}
 
 			psMiscInfo->uData.sSGXFeatures = *psSGXFeatures;
 			return PVRSRV_OK;

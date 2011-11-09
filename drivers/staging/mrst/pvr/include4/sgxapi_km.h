@@ -200,10 +200,8 @@ typedef struct _PVRSRV_SGX_MISCINFO_FEATURES
 #if defined(SUPPORT_SGX_EDM_MEMORY_DEBUG)
 	IMG_UINT32			ui32DeviceMemValue;		
 #endif
-#if defined(PVRSRV_USSE_EDM_STATUS_DEBUG)
 	IMG_DEV_VIRTADDR	sDevVAEDMStatusBuffer;	
 	IMG_PVOID			pvEDMStatusBuffer;		
-#endif
 } PVRSRV_SGX_MISCINFO_FEATURES;
 
 
