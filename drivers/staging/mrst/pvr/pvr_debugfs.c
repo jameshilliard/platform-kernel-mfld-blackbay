@@ -31,6 +31,7 @@
 #include "sgxinfokm.h"
 #include "syscommon.h"
 #include "pvr_bridge_km.h"
+#include "sgx_bridge_km.h"
 #include "sgxutils.h"
 #include "pvr_debugfs.h"
 #include "mmu.h"
@@ -39,6 +40,50 @@
 #include "pvr_trace_cmd.h"
 
 static struct dentry *pvr_debugfs_dir;
+static u32 reset_sgx;
+
+static int pvr_debugfs_reset_sgx(void)
+{
+	PVRSRV_DEVICE_NODE *dev_node;
+	PVRSRV_ERROR err;
+	int r = 0;
+
+	dev_node = pvr_get_sgx_dev_node();
+	if (!dev_node)
+		return -ENODEV;
+
+	err = PVRSRVSetDevicePowerStateKM(dev_node->sDevId.ui32DeviceIndex,
+					  PVRSRV_DEV_POWER_STATE_ON,
+					  KERNEL_ID, IMG_FALSE);
+	if (err != PVRSRV_OK)
+		return -EIO;
+
+	HWRecoveryResetSGX(dev_node, 0, KERNEL_ID);
+
+	/* power down if no activity */
+	SGXTestActivePowerEvent(dev_node, KERNEL_ID);
+
+	return r;
+}
+
+static int pvr_debugfs_reset_sgx_wrapper(void *data, u64 val)
+{
+	u32 *var = data;
+
+	if (var == &reset_sgx) {
+		int r = -EINVAL;
+
+		if (val == 1)
+			r = pvr_debugfs_reset_sgx();
+		return r;
+	}
+
+	BUG();
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(pvr_debugfs_reset_sgx_fops, NULL,
+			pvr_debugfs_reset_sgx_wrapper, "%llu\n");
+
 
 #ifdef CONFIG_PVR_TRACE_CMD
 
@@ -106,6 +151,10 @@ int pvr_debugfs_init(void)
 {
 	pvr_debugfs_dir = debugfs_create_dir("pvr", NULL);
 	if (!pvr_debugfs_dir)
+		goto err;
+
+	if (!debugfs_create_file("reset_sgx", S_IWUSR, pvr_debugfs_dir,
+				 &reset_sgx, &pvr_debugfs_reset_sgx_fops))
 		goto err;
 
 #ifdef CONFIG_PVR_TRACE_CMD
