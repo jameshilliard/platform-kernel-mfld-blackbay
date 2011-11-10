@@ -128,15 +128,26 @@ IMG_IMPORT PVRSRV_ERROR
 SGXGetInternalDevInfoKM(IMG_HANDLE hDevCookie,
 						SGX_INTERNAL_DEVINFO *psSGXInternalDevInfo);
 
-extern PVRSRV_SGXDEV_INFO	*pvr_sgx_dev_info;
+extern PVRSRV_DEVICE_NODE *pvr_sgx_dev_node;
 
-PVRSRV_SGXDEV_INFO *__pvr_get_sgx_dev_info(void);
+PVRSRV_DEVICE_NODE *__pvr_get_sgx_dev_node(void);
+static inline PVRSRV_DEVICE_NODE *pvr_get_sgx_dev_node(void)
+{
+	if (pvr_sgx_dev_node)
+		return pvr_sgx_dev_node;
+
+	return __pvr_get_sgx_dev_node();
+}
+
 static inline PVRSRV_SGXDEV_INFO *pvr_get_sgx_dev_info(void)
 {
-	if (pvr_sgx_dev_info)
-		return pvr_sgx_dev_info;
+	PVRSRV_DEVICE_NODE *dev_node;
 
-	return __pvr_get_sgx_dev_info();
+	dev_node = pvr_get_sgx_dev_node();
+	if (!dev_node)
+		return NULL;
+
+	return dev_node->pvDevice;
 }
 
 #if defined (__cplusplus)

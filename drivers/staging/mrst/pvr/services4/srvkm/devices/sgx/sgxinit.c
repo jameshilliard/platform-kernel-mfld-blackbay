@@ -110,9 +110,9 @@ static IMG_UINT32 DeinitDevInfo(PVRSRV_SGXDEV_INFO *psDevInfo)
 	return PVRSRV_OK;
 }
 
-PVRSRV_SGXDEV_INFO *pvr_sgx_dev_info;
+PVRSRV_DEVICE_NODE *pvr_sgx_dev_node;
 
-PVRSRV_SGXDEV_INFO *__pvr_get_sgx_dev_info(void)
+PVRSRV_DEVICE_NODE *__pvr_get_sgx_dev_node(void)
 {
 	PVRSRV_DEVICE_NODE	*dev_node;
 	PVRSRV_ERROR		err;
@@ -125,9 +125,9 @@ PVRSRV_SGXDEV_INFO *__pvr_get_sgx_dev_info(void)
 		return NULL;
 	}
 
-	pvr_sgx_dev_info = dev_node->pvDevice;
+	pvr_sgx_dev_node = dev_node;
 
-	return pvr_sgx_dev_info;
+	return pvr_sgx_dev_node;
 }
 
 static PVRSRV_ERROR InitDevInfo(PVRSRV_PER_PROCESS_DATA *psPerProc,
