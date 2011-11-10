@@ -123,3 +123,13 @@ config PVR_TRACE_CMD_BUF_SHIFT
 	  1  -> 4kB
 	  3  -> 32kB
 	  10 -> 4MB
+
+config PVR_TRACE_FW_DUMP_TO_CONSOLE
+	bool "Dump firmware trace to console in case of SGX HW recovery"
+	default n
+	help
+	  Answer y, if you want the firmware trace to be dumped to the
+	  console automatically, in case of an SGX HW recovery. Note that
+	  for this, you need a PVR user space library (and the firmware
+	  within that) built with tracing enabled. The same trace is also
+	  available through the firmware_trace PVR debugfs entry.
