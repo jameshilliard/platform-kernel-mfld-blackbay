@@ -147,6 +147,77 @@ static const struct file_operations pvr_dbg_trcmd_fops = {
 };
 #endif
 
+static struct sgx_fw_state *fw_state;
+static unsigned long fw_state_busy;
+
+static int pvr_dbg_fw_state_open(struct inode *inode, struct file *file)
+{
+	PVRSRV_SGXDEV_INFO *dev_info;
+	int r = 0;
+
+	dev_info = pvr_get_sgx_dev_info();
+	if (!dev_info)
+		return -ENODEV;
+
+	if (test_and_set_bit(0, &fw_state_busy))
+		return -EBUSY;
+
+	fw_state = vmalloc(sizeof(*fw_state));
+	if (!fw_state) {
+		clear_bit(0, &fw_state_busy);
+
+		return -ENOMEM;
+	}
+
+	r = sgx_save_fw_state(dev_info, fw_state);
+	if (r < 0) {
+		vfree(fw_state);
+		clear_bit(0, &fw_state_busy);
+
+		return r;
+	}
+
+	return 0;
+}
+
+static int pvr_dbg_fw_state_release(struct inode *inode, struct file *file)
+{
+	vfree(fw_state);
+	clear_bit(0, &fw_state_busy);
+
+	return 0;
+}
+
+static ssize_t pvr_dbg_fw_state_read(struct file *file, char __user *buffer,
+				  size_t count, loff_t *ppos)
+{
+	char rec[48];
+	ssize_t ret;
+
+	if (*ppos >= ARRAY_SIZE(fw_state->trace) + 1)
+		return 0;
+
+	if (!*ppos)
+		ret = sgx_print_fw_status_code(rec, sizeof(rec),
+						fw_state->status_code);
+	else
+		ret = sgx_print_fw_trace_rec(rec, sizeof(rec), fw_state,
+						*ppos - 1);
+	(*ppos)++;
+
+	if (copy_to_user(buffer, rec, ret))
+		return -EFAULT;
+
+	return ret;
+}
+
+static const struct file_operations pvr_dbg_fw_state_fops = {
+	.owner		= THIS_MODULE,
+	.open		= pvr_dbg_fw_state_open,
+	.release	= pvr_dbg_fw_state_release,
+	.read		= pvr_dbg_fw_state_read,
+};
+
 int pvr_debugfs_init(void)
 {
 	pvr_debugfs_dir = debugfs_create_dir("pvr", NULL);
@@ -162,6 +233,10 @@ int pvr_debugfs_init(void)
 				NULL, &pvr_dbg_trcmd_fops))
 		goto err;
 #endif
+	if (!debugfs_create_file("firmware_trace", S_IRUGO, pvr_debugfs_dir,
+				NULL, &pvr_dbg_fw_state_fops))
+		goto err;
+
 	return 0;
 err:
 	debugfs_remove_recursive(pvr_debugfs_dir);
