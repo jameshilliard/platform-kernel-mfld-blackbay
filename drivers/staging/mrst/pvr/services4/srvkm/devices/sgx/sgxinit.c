@@ -1108,8 +1108,6 @@ static IMG_VOID SGXDumpDebugInfo (PVRSRV_SGXDEV_INFO	*psDevInfo,
 }
 
 
-#if defined(SYS_USING_INTERRUPTS) || defined(SUPPORT_HW_RECOVERY)
-static
 IMG_VOID HWRecoveryResetSGX (PVRSRV_DEVICE_NODE *psDeviceNode,
 							 IMG_UINT32 		ui32Component,
 							 IMG_UINT32			ui32CallerID)
@@ -1167,7 +1165,6 @@ IMG_VOID HWRecoveryResetSGX (PVRSRV_DEVICE_NODE *psDeviceNode,
 	
 	PVRSRVProcessQueues(ui32CallerID, IMG_TRUE);
 }
-#endif 
 
 
 #if defined(SUPPORT_HW_RECOVERY)

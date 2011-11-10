@@ -329,6 +329,10 @@ struct sgx_fw_state {
 
 PVRSRV_ERROR SGXRegisterDevice (PVRSRV_DEVICE_NODE *psDeviceNode);
 
+IMG_VOID HWRecoveryResetSGX(PVRSRV_DEVICE_NODE *psDeviceNode,
+			     IMG_UINT32 ui32Component,
+			     IMG_UINT32 ui32CallerID);
+
 IMG_VOID SGXOSTimer(IMG_VOID *pvData);
 
 IMG_VOID SGXReset(PVRSRV_SGXDEV_INFO	*psDevInfo,
