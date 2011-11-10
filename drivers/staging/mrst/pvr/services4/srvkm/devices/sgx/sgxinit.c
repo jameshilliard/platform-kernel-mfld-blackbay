@@ -931,6 +931,76 @@ static IMG_VOID SGXDumpDebugReg (PVRSRV_SGXDEV_INFO	*psDevInfo,
 	PVR_LOG(("(P%u) %s%08X", ui32CoreNum, pszName, ui32RegVal));
 }
 
+int sgx_print_fw_status_code(char *buf, size_t buf_size, uint32_t status_code)
+{
+	return scnprintf(buf, buf_size, "pvr firmware status code %08x\n",
+			 status_code);
+}
+
+int sgx_print_fw_trace_rec(char *buf, size_t buf_size,
+			  const struct sgx_fw_state *state, int rec_idx)
+{
+	const struct sgx_fw_trace_rec *rec;
+
+	rec_idx = (state->write_ofs + rec_idx) % ARRAY_SIZE(state->trace);
+	rec = &state->trace[rec_idx];
+
+	return scnprintf(buf, buf_size, "%08X %08X %08X %08X\n",
+			rec->v[0], rec->v[1], rec->v[2], rec->v[3]);
+}
+
+int sgx_save_fw_state(PVRSRV_SGXDEV_INFO *sgx_dev, struct sgx_fw_state *state)
+{
+	struct sgx_fw_state *src;
+
+	if (!sgx_dev->psKernelEDMStatusBufferMemInfo)
+		return -ENODEV;
+
+	src = sgx_dev->psKernelEDMStatusBufferMemInfo->pvLinAddrKM;
+	*state = *src;
+
+	return 0;
+}
+
+#ifdef CONFIG_PVR_TRACE_FW_DUMP_TO_CONSOLE
+static void dump_fw_trace(const struct sgx_fw_state *state)
+{
+	char buf[48];
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(state->trace); i++) {
+		sgx_print_fw_trace_rec(buf, sizeof(buf), state, i);
+		printk(KERN_ERR "%s", buf);
+	}
+}
+#else
+static void dump_fw_trace(const struct sgx_fw_state *state)
+{
+}
+#endif
+
+static void dump_fw_state(PVRSRV_SGXDEV_INFO *sgx_dev)
+{
+	struct sgx_fw_state *state;
+	char buf[48];
+
+	state = vmalloc(sizeof(*state));
+	if (!state)
+		return;
+
+	if (sgx_save_fw_state(sgx_dev, state) < 0) {
+		pr_err("pvr: fw state not available\n");
+		vfree(state);
+
+		return;
+	}
+
+	sgx_print_fw_status_code(buf, sizeof(buf), state->status_code);
+	printk(KERN_ERR "%s", buf);
+	dump_fw_trace(state);
+	vfree(state);
+}
+
 static IMG_VOID SGXDumpDebugInfo (PVRSRV_SGXDEV_INFO	*psDevInfo,
 								  IMG_BOOL				bDumpSGXRegs)
 {
@@ -1007,37 +1077,7 @@ static IMG_VOID SGXDumpDebugInfo (PVRSRV_SGXDEV_INFO	*psDevInfo,
 		}
 	}
 
-	if (psDevInfo->psKernelEDMStatusBufferMemInfo)
-	{
-		IMG_UINT32	*pui32MKTraceBuffer = psDevInfo->psKernelEDMStatusBufferMemInfo->pvLinAddrKM;
-		IMG_UINT32	ui32LastStatusCode, ui32WriteOffset;
-
-		ui32LastStatusCode = *pui32MKTraceBuffer;
-		pui32MKTraceBuffer++;
-		ui32WriteOffset = *pui32MKTraceBuffer;
-		pui32MKTraceBuffer++;
-
-		PVR_LOG(("Last SGX microkernel status code: %08X", ui32LastStatusCode));
-
-		#if defined(PVRSRV_DUMP_MK_TRACE)
-		
-
-		{
-			IMG_UINT32	ui32LoopCounter;
-
-			for (ui32LoopCounter = 0;
-				 ui32LoopCounter < SGXMK_TRACE_BUFFER_SIZE;
-				 ui32LoopCounter++)
-			{
-				IMG_UINT32	*pui32BufPtr;
-				pui32BufPtr = pui32MKTraceBuffer +
-								(((ui32WriteOffset + ui32LoopCounter) % SGXMK_TRACE_BUFFER_SIZE) * 4);
-				PVR_LOG(("\t(MKT-%X) %08X %08X %08X %08X", ui32LoopCounter,
-						 pui32BufPtr[2], pui32BufPtr[3], pui32BufPtr[1], pui32BufPtr[0]));
-			}
-		}
-		#endif 
-	}
+	dump_fw_state(psDevInfo);
 
 	{
 		

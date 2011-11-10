@@ -317,6 +317,16 @@ typedef struct _PVRSRV_SGX_CCB_INFO_
 #endif
 } PVRSRV_SGX_CCB_INFO;
 
+struct sgx_fw_trace_rec {
+	uint32_t v[4];
+};
+
+struct sgx_fw_state {
+	uint32_t status_code;
+	uint32_t write_ofs;
+	struct sgx_fw_trace_rec trace[SGXMK_TRACE_BUFFER_SIZE];
+};
+
 PVRSRV_ERROR SGXRegisterDevice (PVRSRV_DEVICE_NODE *psDeviceNode);
 
 IMG_VOID SGXOSTimer(IMG_VOID *pvData);
@@ -372,6 +382,11 @@ static INLINE IMG_VOID NoHardwareGenerateEvent(PVRSRV_SGXDEV_INFO		*psDevInfo,
 	OSWriteHWReg(psDevInfo->pvRegsBaseKM, ui32StatusRegister, ui32RegVal);
 }
 #endif
+
+int sgx_save_fw_state(PVRSRV_SGXDEV_INFO *sgx_dev, struct sgx_fw_state *state);
+int sgx_print_fw_status_code(char *buf, size_t buf_size, uint32_t status_code);
+int sgx_print_fw_trace_rec(char *buf, size_t buf_size,
+			  const struct sgx_fw_state *state, int rec_idx);
 
 #if defined(__cplusplus)
 }
