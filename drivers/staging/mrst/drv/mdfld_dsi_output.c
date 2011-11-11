@@ -206,20 +206,20 @@ void mdfld_dsi_brightness_init (struct mdfld_dsi_config * dsi_config, int pipe)
  * Manage the mipi display brightness.
  * TODO: refine this interface later
  */
-#define BACKLIGHT_DUTY_FACTOR		0x63
-#define MIN_BACKLIGHT_DUTY_FACTOR	0x10
 #define PWM0DUTYCYCLE			0x67
 static void tc35876x_brightness_control(struct drm_device *dev, int pipe,
 					int level)
 {
 	int ret;
-	int duty_val;
+	u8 duty_val;
 
-	duty_val = min(MIN_BACKLIGHT_DUTY_FACTOR,
-		level * BACKLIGHT_DUTY_FACTOR / MDFLD_DSI_BRIGHTNESS_MAX_LEVEL);
+	level = clamp(level, 0, MDFLD_DSI_BRIGHTNESS_MAX_LEVEL);
 
-	printk(KERN_ALERT "[DISPLAY] %s: level = %d, duty_val = %d\n", __func__,
-		level, duty_val);
+	/* PWM duty cycle 0x00...0x63 corresponds to 0...99% */
+	duty_val = level * 0x63 / MDFLD_DSI_BRIGHTNESS_MAX_LEVEL;
+
+	printk(KERN_DEBUG "[DISPLAY] %s: level = %d, duty_val = %d\n", __func__,
+	       level, duty_val);
 
 	ret = intel_scu_ipc_iowrite8(PWM0DUTYCYCLE, duty_val);
 	if (ret)
