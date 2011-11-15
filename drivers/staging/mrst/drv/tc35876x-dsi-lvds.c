@@ -457,6 +457,22 @@ void tc35876x_bridge_get_display_params(struct drm_display_mode *mode)
 	dev_info(&tc35876x_client->dev, "clock = %d\n", mode->clock);
 }
 
+/* DV1 Active area 216.96 x 135.6 mm */
+#define DV1_PANEL_WIDTH 217
+#define DV1_PANEL_HEIGHT 136
+
+int tc35876x_bridge_get_panel_info(struct drm_device *dev, int pipe,
+				struct panel_info *pi)
+{
+	if (!dev || !pi)
+		return -EINVAL;
+
+	pi->width_mm = DV1_PANEL_WIDTH;
+	pi->height_mm = DV1_PANEL_HEIGHT;
+
+	return 0;
+}
+
 static int tc35876x_bridge_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {

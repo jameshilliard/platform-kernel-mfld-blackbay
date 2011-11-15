@@ -213,9 +213,11 @@ void tmd_vid_init(struct drm_device* dev, struct panel_funcs* p_funcs)
 	p_funcs->encoder_helper_funcs = &mdfld_tpo_dpi_encoder_helper_funcs;
 	p_funcs->get_config_mode = &tmd_vid_get_config_mode;
 	p_funcs->update_fb = NULL;
-	p_funcs->get_panel_info = tmd_vid_get_panel_info;
 	if (get_panel_type(dev, 0) != TC35876X) { /* FIXME: pipe */
+		p_funcs->get_panel_info = tmd_vid_get_panel_info;
 		p_funcs->reset = mdfld_dsi_panel_reset;
 		p_funcs->drv_ic_init = mdfld_dsi_tmd_drv_ic_init;
+	} else {
+		p_funcs->get_panel_info = tc35876x_bridge_get_panel_info;
 	}
 }
