@@ -499,6 +499,9 @@ static void psb_lastclose(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv =
 		(struct drm_psb_private *) dev->dev_private;
+	struct psb_fbdev * fbdev = dev_priv->fbdev;
+
+	drm_fb_helper_restore_fbdev_mode(&fbdev->psb_fb_helper);
 
 	return;
 
