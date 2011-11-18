@@ -35,6 +35,20 @@
 	((type *)(((IMG_CHAR *)(psCCBMemInfo)->pvLinAddrKM) + \
 		(psCCBKick)->offset))
 
+static inline u32 sgx_read_reg(PVRSRV_DEVICE_NODE *dev_node, unsigned reg)
+{
+	PVRSRV_SGXDEV_INFO *sgx_info = dev_node->pvDevice;
+
+	return readl(sgx_info->pvRegsBaseKM + reg);
+}
+
+static inline void sgx_write_reg(PVRSRV_DEVICE_NODE *dev_node, unsigned reg,
+				u32 val)
+{
+	PVRSRV_SGXDEV_INFO *sgx_info = dev_node->pvDevice;
+
+	writel(val, sgx_info->pvRegsBaseKM + reg);
+}
 
 IMG_IMPORT
 IMG_VOID SGXTestActivePowerEvent(PVRSRV_DEVICE_NODE	*psDeviceNode,
