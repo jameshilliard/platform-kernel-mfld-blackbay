@@ -77,38 +77,49 @@ DEFINE_SIMPLE_ATTRIBUTE(pvr_debugfs_reset_sgx_fops, NULL,
 static void *trcmd_str_buf;
 static u8 *trcmd_snapshot;
 static size_t trcmd_snapshot_size;
-static unsigned long trcmd_busy;
+static int trcmd_busy;
+static DEFINE_SPINLOCK(trcmd_lock);	/* locks trcmd_busy */
 
 static int pvr_dbg_trcmd_open(struct inode *inode, struct file *file)
 {
 	int r;
 
-	if (test_and_set_bit(0, &trcmd_busy))
+	spin_lock(&trcmd_lock);
+	if (trcmd_busy) {
+		spin_unlock(&trcmd_lock);
 		return -EBUSY;
+	}
+	trcmd_busy = 1;
+	spin_unlock(&trcmd_lock);
 
 	trcmd_str_buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
 	if (!trcmd_str_buf) {
-		clear_bit(0, &trcmd_busy);
-
-		return -ENOMEM;
+		r = -ENOMEM;
+		goto err;
 	}
 
 	r = pvr_trcmd_create_snapshot(&trcmd_snapshot, &trcmd_snapshot_size);
 	if (r < 0) {
 		kfree(trcmd_str_buf);
-		clear_bit(0, &trcmd_busy);
-
-		return r;
+		goto err;
 	}
-
 	return 0;
+err:
+	spin_lock(&trcmd_lock);
+	trcmd_busy = 0;
+	spin_unlock(&trcmd_lock);
+
+	return r;
 }
 
 static int pvr_dbg_trcmd_release(struct inode *inode, struct file *file)
 {
 	pvr_trcmd_destroy_snapshot(trcmd_snapshot);
 	kfree(trcmd_str_buf);
-	clear_bit(0, &trcmd_busy);
+
+	spin_lock(&trcmd_lock);
+	trcmd_busy = 0;
+	spin_unlock(&trcmd_lock);
 
 	return 0;
 }
@@ -135,7 +146,8 @@ static const struct file_operations pvr_dbg_trcmd_fops = {
 #endif
 
 static struct sgx_fw_state *fw_state;
-static unsigned long fw_state_busy;
+static int fw_state_busy;
+static DEFINE_SPINLOCK(fw_state_lock);  /* locks fw_state_busy */
 
 static int pvr_dbg_fw_state_open(struct inode *inode, struct file *file)
 {
@@ -146,31 +158,42 @@ static int pvr_dbg_fw_state_open(struct inode *inode, struct file *file)
 	if (!dev_node)
 		return -ENODEV;
 
-	if (test_and_set_bit(0, &fw_state_busy))
+	spin_lock(&fw_state_lock);
+	if (fw_state_busy) {
+		spin_unlock(&fw_state_lock);
 		return -EBUSY;
+	}
+	fw_state_busy = 1;
+	spin_unlock(&trcmd_lock);
 
 	fw_state = vmalloc(sizeof(*fw_state));
 	if (!fw_state) {
-		clear_bit(0, &fw_state_busy);
-
-		return -ENOMEM;
+		r = -ENOMEM;
+		goto err;
 	}
 
 	r = sgx_save_fw_state(dev_node, fw_state);
 	if (r < 0) {
 		vfree(fw_state);
-		clear_bit(0, &fw_state_busy);
-
-		return r;
+		goto err;
 	}
 
 	return 0;
+err:
+	spin_lock(&fw_state_lock);
+	fw_state_busy = 0;
+	spin_unlock(&fw_state_lock);
+
+	return r;
 }
 
 static int pvr_dbg_fw_state_release(struct inode *inode, struct file *file)
 {
 	vfree(fw_state);
-	clear_bit(0, &fw_state_busy);
+
+	spin_lock(&fw_state_lock);
+	fw_state_busy = 0;
+	spin_unlock(&fw_state_lock);
 
 	return 0;
 }
