@@ -20,5 +20,9 @@ int sgx_print_fw_trace_rec(char *buf, size_t buf_size,
 int sgx_save_fw_state(PVRSRV_DEVICE_NODE *dev_node, struct sgx_fw_state *state);
 void sgx_dump_fw_state(PVRSRV_DEVICE_NODE *dev_node);
 int sgx_trigger_reset(PVRSRV_DEVICE_NODE *dev_node);
+void sgx_save_registers_no_pwron(PVRSRV_DEVICE_NODE *dev_node,
+				 struct sgx_registers *regs);
+int sgx_save_registers(PVRSRV_DEVICE_NODE *dev_node,
+			struct sgx_registers *regs);
 
 #endif

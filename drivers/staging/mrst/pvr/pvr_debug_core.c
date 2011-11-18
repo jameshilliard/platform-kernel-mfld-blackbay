@@ -113,3 +113,31 @@ int sgx_trigger_reset(PVRSRV_DEVICE_NODE *dev_node)
 
 	return r;
 }
+
+void sgx_save_registers_no_pwron(PVRSRV_DEVICE_NODE *dev_node,
+				 struct sgx_registers *regs)
+{
+	int reg;
+
+	for (reg = 0; reg < ARRAY_SIZE(regs->v); reg++)
+		regs->v[reg] = sgx_read_reg(dev_node, reg * 4);
+}
+
+int sgx_save_registers(PVRSRV_DEVICE_NODE *dev_node, struct sgx_registers *regs)
+{
+	PVRSRV_ERROR err;
+
+	err = PVRSRVSetDevicePowerStateKM(dev_node->sDevId.ui32DeviceIndex,
+					  PVRSRV_DEV_POWER_STATE_ON,
+					  KERNEL_ID, IMG_TRUE);
+	if (err != PVRSRV_OK)
+		return -EIO;
+
+	sgx_save_registers_no_pwron(dev_node, regs);
+
+	PVRSRVPowerUnlock(KERNEL_ID);
+	/* power down if no activity */
+	SGXTestActivePowerEvent(dev_node, KERNEL_ID);
+
+	return 0;
+}
