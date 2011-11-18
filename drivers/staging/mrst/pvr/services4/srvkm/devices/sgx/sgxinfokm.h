@@ -319,6 +319,8 @@ typedef struct _PVRSRV_SGX_CCB_INFO_
 
 PVRSRV_ERROR SGXRegisterDevice (PVRSRV_DEVICE_NODE *psDeviceNode);
 
+IMG_VOID HWRecoveryResetSGXNoLock(PVRSRV_DEVICE_NODE *psDeviceNode);
+
 IMG_VOID HWRecoveryResetSGX(PVRSRV_DEVICE_NODE *psDeviceNode,
 			     IMG_UINT32 ui32Component,
 			     IMG_UINT32 ui32CallerID);

@@ -1039,27 +1039,11 @@ static IMG_VOID SGXDumpDebugInfo (PVRSRV_DEVICE_NODE *dev_node, IMG_BOOL bDumpSG
 }
 
 
-IMG_VOID HWRecoveryResetSGX (PVRSRV_DEVICE_NODE *psDeviceNode,
-							 IMG_UINT32 		ui32Component,
-							 IMG_UINT32			ui32CallerID)
+IMG_VOID HWRecoveryResetSGXNoLock(PVRSRV_DEVICE_NODE *psDeviceNode)
 {
 	PVRSRV_ERROR		eError;
 	PVRSRV_SGXDEV_INFO	*psDevInfo = (PVRSRV_SGXDEV_INFO*)psDeviceNode->pvDevice;
 	SGXMKIF_HOST_CTL	*psSGXHostCtl = (SGXMKIF_HOST_CTL *)psDevInfo->psSGXHostCtl;
-
-	PVR_UNREFERENCED_PARAMETER(ui32Component);
-
-	
-
-	eError = PVRSRVPowerLock(ui32CallerID, IMG_FALSE);
-	if(eError != PVRSRV_OK)
-	{
-		
-
-
-		PVR_DPF((PVR_DBG_WARNING,"HWRecoveryResetSGX: Power transition in progress"));
-		return;
-	}
 
 	psSGXHostCtl->ui32InterruptClearFlags |= PVRSRV_USSE_EDM_INTERRUPT_HWR;
 
@@ -1087,16 +1071,32 @@ IMG_VOID HWRecoveryResetSGX (PVRSRV_DEVICE_NODE *psDeviceNode,
 	
 	PDUMPRESUME();
 
-	PVRSRVPowerUnlock(ui32CallerID);
-
-	
-	SGXScheduleProcessQueuesKM(psDeviceNode);
-
-	
-	
-	PVRSRVProcessQueues(ui32CallerID, IMG_TRUE);
 }
 
+IMG_VOID HWRecoveryResetSGX(PVRSRV_DEVICE_NODE *psDeviceNode,
+			    IMG_UINT32 ui32Component,
+			    IMG_UINT32 ui32CallerID)
+{
+	PVRSRV_ERROR		eError;
+	PVRSRV_SGXDEV_INFO	*sgx_info;
+
+	PVR_UNREFERENCED_PARAMETER(ui32Component);
+
+	sgx_info = psDeviceNode->pvDevice;
+	eError = PVRSRVPowerLock(ui32CallerID, IMG_FALSE);
+	if (eError != PVRSRV_OK) {
+		pr_warn("pvr: %s: power transition in progress", __func__);
+
+		return;
+	}
+
+	HWRecoveryResetSGXNoLock(psDeviceNode);
+
+	PVRSRVPowerUnlock(ui32CallerID);
+
+	SGXScheduleProcessQueuesKM(psDeviceNode);
+	PVRSRVProcessQueues(ui32CallerID, IMG_TRUE);
+}
 
 #if defined(SUPPORT_HW_RECOVERY)
 IMG_VOID SGXOSTimer(IMG_VOID *pvData)

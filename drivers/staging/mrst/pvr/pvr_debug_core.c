@@ -101,12 +101,13 @@ int sgx_trigger_reset(PVRSRV_DEVICE_NODE *dev_node)
 
 	err = PVRSRVSetDevicePowerStateKM(dev_node->sDevId.ui32DeviceIndex,
 					  PVRSRV_DEV_POWER_STATE_ON,
-					  KERNEL_ID, IMG_FALSE);
+					  KERNEL_ID, IMG_TRUE);
 	if (err != PVRSRV_OK)
 		return -EIO;
 
-	HWRecoveryResetSGX(dev_node, 0, KERNEL_ID);
+	HWRecoveryResetSGXNoLock(dev_node);
 
+	PVRSRVPowerUnlock(KERNEL_ID);
 	/* power down if no activity */
 	SGXTestActivePowerEvent(dev_node, KERNEL_ID);
 
