@@ -53,6 +53,7 @@
 #include "srvkm.h"
 #include "pvr_trace_cmd.h"
 #include "pvr_debug_core.h"
+#include "pvr_debugfs.h"
 
 #define VAR(x) #x
 
@@ -1048,6 +1049,8 @@ IMG_VOID HWRecoveryResetSGXNoLock(PVRSRV_DEVICE_NODE *psDeviceNode)
 	psSGXHostCtl->ui32InterruptClearFlags |= PVRSRV_USSE_EDM_INTERRUPT_HWR;
 
 	PVR_LOG(("HWRecoveryResetSGX: SGX Hardware Recovery triggered"));
+
+	pvr_debugfs_hwrec_create_snapshot(psDeviceNode);
 
 	SGXDumpDebugInfo(psDeviceNode, IMG_TRUE);
 
