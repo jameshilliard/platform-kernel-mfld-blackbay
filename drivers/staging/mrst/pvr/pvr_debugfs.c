@@ -28,7 +28,6 @@
 #include "img_types.h"
 #include "servicesext.h"
 #include "services.h"
-#include "sgxinfokm.h"
 #include "syscommon.h"
 #include "pvr_bridge_km.h"
 #include "sgx_bridge_km.h"
@@ -38,6 +37,7 @@
 #include "bridged_support.h"
 #include "mm.h"
 #include "pvr_trace_cmd.h"
+#include "pvr_debug_core.h"
 
 static struct dentry *pvr_debugfs_dir;
 static u32 reset_sgx;
@@ -45,25 +45,12 @@ static u32 reset_sgx;
 static int pvr_debugfs_reset_sgx(void)
 {
 	PVRSRV_DEVICE_NODE *dev_node;
-	PVRSRV_ERROR err;
-	int r = 0;
 
 	dev_node = pvr_get_sgx_dev_node();
 	if (!dev_node)
 		return -ENODEV;
 
-	err = PVRSRVSetDevicePowerStateKM(dev_node->sDevId.ui32DeviceIndex,
-					  PVRSRV_DEV_POWER_STATE_ON,
-					  KERNEL_ID, IMG_FALSE);
-	if (err != PVRSRV_OK)
-		return -EIO;
-
-	HWRecoveryResetSGX(dev_node, 0, KERNEL_ID);
-
-	/* power down if no activity */
-	SGXTestActivePowerEvent(dev_node, KERNEL_ID);
-
-	return r;
+	return sgx_trigger_reset(dev_node);
 }
 
 static int pvr_debugfs_reset_sgx_wrapper(void *data, u64 val)
@@ -152,11 +139,11 @@ static unsigned long fw_state_busy;
 
 static int pvr_dbg_fw_state_open(struct inode *inode, struct file *file)
 {
-	PVRSRV_SGXDEV_INFO *dev_info;
+	PVRSRV_DEVICE_NODE *dev_node;
 	int r = 0;
 
-	dev_info = pvr_get_sgx_dev_info();
-	if (!dev_info)
+	dev_node = pvr_get_sgx_dev_node();
+	if (!dev_node)
 		return -ENODEV;
 
 	if (test_and_set_bit(0, &fw_state_busy))
@@ -169,7 +156,7 @@ static int pvr_dbg_fw_state_open(struct inode *inode, struct file *file)
 		return -ENOMEM;
 	}
 
-	r = sgx_save_fw_state(dev_info, fw_state);
+	r = sgx_save_fw_state(dev_node, fw_state);
 	if (r < 0) {
 		vfree(fw_state);
 		clear_bit(0, &fw_state_busy);

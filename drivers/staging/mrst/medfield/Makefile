@@ -193,6 +193,7 @@ medfield_gfx-$(CONFIG_MDFLD_DSI_DPU) += $(DRMDRVDIR)/mdfld_dsi_dbi_dpu.o
 
 medfield_gfx-$(CONFIG_MDFD_GL3) += $(DRMDRVDIR)/mdfld_gl3.o
 
+medfield_gfx-y += $(PVRDIR)/pvr_debug_core.o
 medfield_gfx-$(CONFIG_DEBUG_FS) += $(PVRDIR)/pvr_debugfs.o
 medfield_gfx-$(CONFIG_PVR_TRACE_CMD) += $(PVRDIR)/pvr_trace_cmd.o
 
