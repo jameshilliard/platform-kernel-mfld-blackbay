@@ -3850,6 +3850,13 @@ IMG_INT BridgedDispatchKM(PVRSRV_PER_PROCESS_DATA * psPerProc,
 	IMG_INT      err          = -EFAULT;
 	PVRSRV_ERROR pvr_err      = PVRSRV_OK;
 
+	if(ui32BridgeID >= (BRIDGE_DISPATCH_TABLE_ENTRY_COUNT))
+	{
+		PVR_DPF((PVR_DBG_ERROR, "%s: ui32BridgeID = %d is out if range!",
+				 __FUNCTION__, ui32BridgeID));
+		goto return_fault;
+	}
+
 	dte = &g_BridgeDispatchTable[ui32BridgeID];
 
 #if defined(DEBUG_TRACE_BRIDGE_KM)
@@ -3953,12 +3960,6 @@ IMG_INT BridgedDispatchKM(PVRSRV_PER_PROCESS_DATA * psPerProc,
 	psBridgeOut = psBridgePackageKM->pvParamOut;
 #endif
 
-	if(ui32BridgeID >= (BRIDGE_DISPATCH_TABLE_ENTRY_COUNT))
-	{
-		PVR_DPF((PVR_DBG_ERROR, "%s: ui32BridgeID = %d is out if range!",
-				 __FUNCTION__, ui32BridgeID));
-		goto return_fault;
-	}
 	pfBridgeHandler = (BridgeWrapperFunction)dte->pfFunction;
 	err = pfBridgeHandler(ui32BridgeID,
 						  psBridgeIn,
