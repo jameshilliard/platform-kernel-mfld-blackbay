@@ -106,7 +106,7 @@ write_scanout_regs(struct pending_flip *pending_flip, uint32_t offset)
 static void
 increase_read_ops_pending(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 {
-	if (psKernelMemInfo)
+	if (psKernelMemInfo && psKernelMemInfo->psKernelSyncInfo)
 		psKernelMemInfo->psKernelSyncInfo
 			->psSyncData->ui32ReadOpsPending++;
 }
@@ -114,7 +114,7 @@ increase_read_ops_pending(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 static void
 increase_read_ops_completed(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 {
-	if (psKernelMemInfo)
+	if (psKernelMemInfo && psKernelMemInfo->psKernelSyncInfo)
 		psKernelMemInfo->psKernelSyncInfo
 			->psSyncData->ui32ReadOpsComplete++;
 }
