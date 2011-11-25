@@ -1,22 +1,22 @@
 ccflags-y += \
-	-I$(src)/bc_video \
-	-I$(src)/drv \
-	-I$(src)/imgv \
-	-I$(src)/pvr \
-	-I$(src)/pvr/include4 \
-	-I$(src)/pvr/services4/3rdparty/linux_framebuffer_mrst \
-	-I$(src)/pvr/services4/include \
-	-I$(src)/pvr/services4/include/env/linux \
-	-I$(src)/pvr/services4/srvkm/bridged \
-	-I$(src)/pvr/services4/srvkm/bridged/sgx \
-	-I$(src)/pvr/services4/srvkm/common \
-	-I$(src)/pvr/services4/srvkm/devices/sgx \
-	-I$(src)/pvr/services4/srvkm/env/linux \
-	-I$(src)/pvr/services4/srvkm/hwdefs \
-	-I$(src)/pvr/services4/srvkm/include \
-	-I$(src)/pvr/services4/system/include \
-	-I$(src)/pvr/services4/system/unified \
-	-Iinclude/drm \
+	-I$(srctree)/$(src)/bc_video \
+	-I$(srctree)/$(src)/drv \
+	-I$(srctree)/$(src)/imgv \
+	-I$(srctree)/$(src)/pvr \
+	-I$(srctree)/$(src)/pvr/include4 \
+	-I$(srctree)/$(src)/pvr/services4/3rdparty/linux_framebuffer_mrst \
+	-I$(srctree)/$(src)/pvr/services4/include \
+	-I$(srctree)/$(src)/pvr/services4/include/env/linux \
+	-I$(srctree)/$(src)/pvr/services4/srvkm/bridged \
+	-I$(srctree)/$(src)/pvr/services4/srvkm/bridged/sgx \
+	-I$(srctree)/$(src)/pvr/services4/srvkm/common \
+	-I$(srctree)/$(src)/pvr/services4/srvkm/devices/sgx \
+	-I$(srctree)/$(src)/pvr/services4/srvkm/env/linux \
+	-I$(srctree)/$(src)/pvr/services4/srvkm/hwdefs \
+	-I$(srctree)/$(src)/pvr/services4/srvkm/include \
+	-I$(srctree)/$(src)/pvr/services4/system/include \
+	-I$(srctree)/$(src)/pvr/services4/system/unified \
+	-I$(srctree)/include/drm \
 	-Iinclude/linux
 
 ccflags-y += -DSGX540 -DSUPPORT_SGX540 -DSGX_CORE_REV=121
