@@ -168,7 +168,7 @@ static int pvr_dbg_fw_state_open(struct inode *inode, struct file *file)
 		return -EBUSY;
 	}
 	fw_state_busy = 1;
-	spin_unlock(&trcmd_lock);
+	spin_unlock(&fw_state_lock);
 
 	fw_state = vmalloc(sizeof(*fw_state));
 	if (!fw_state) {
