@@ -38,7 +38,7 @@ int sgx_print_fw_trace_rec(char *buf, size_t buf_size,
 	rec = &state->trace[rec_idx];
 
 	return scnprintf(buf, buf_size, "%08X %08X %08X %08X\n",
-			rec->v[0], rec->v[1], rec->v[2], rec->v[3]);
+			rec->v[2], rec->v[3], rec->v[1], rec->v[0]);
 }
 
 int sgx_save_fw_state(PVRSRV_DEVICE_NODE *dev_node, struct sgx_fw_state *state)
