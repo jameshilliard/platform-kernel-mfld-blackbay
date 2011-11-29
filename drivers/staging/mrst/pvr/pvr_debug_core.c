@@ -82,7 +82,7 @@ void sgx_dump_fw_state(PVRSRV_DEVICE_NODE *dev_node)
 		return;
 
 	if (sgx_save_fw_state(dev_node, state) < 0) {
-		pr_err("pvr: fw state not available\n");
+		pr_info("pvr: fw state not available\n");
 		vfree(state);
 
 		return;
