@@ -1142,7 +1142,6 @@ static void ospm_resume_display(struct drm_device *drm_dev)
 	mdfld_restore_cursor_overlay_registers(drm_dev);
 }
 
-#if 1
 /*
  * ospm_suspend_pci
  *
@@ -1153,7 +1152,6 @@ static void ospm_suspend_pci(struct pci_dev *pdev)
 {
 	struct drm_device *dev = pci_get_drvdata(pdev);
 	struct drm_psb_private *dev_priv = dev->dev_private;
-	int bsm, vbt;
 
 	if (gbSuspended)
 		return;
@@ -1163,21 +1161,15 @@ static void ospm_suspend_pci(struct pci_dev *pdev)
 #endif
 
 #ifdef CONFIG_MDFD_GL3
-	/* Power off GL3 after all GFX sub-systems are powered off. */
 	gl3_invalidate();
-	ospm_power_island_down(OSPM_GL3_CACHE_ISLAND);
 #endif
+	/* Power off GL3 after all GFX sub-systems are powered off. */
+	ospm_power_island_down(OSPM_GL3_CACHE_ISLAND);
 
-	pci_save_state(pdev);
-	pci_read_config_dword(pdev, 0x5C, &bsm);
-	dev_priv->saveBSM = bsm;
-	pci_read_config_dword(pdev, 0xFC, &vbt);
-	dev_priv->saveVBT = vbt;
+	pci_read_config_dword(pdev, 0x5C, &dev_priv->saveBSM);
+	pci_read_config_dword(pdev, 0xFC, &dev_priv->saveVBT);
 	pci_read_config_dword(pdev, PSB_PCIx_MSI_ADDR_LOC, &dev_priv->msi_addr);
 	pci_read_config_dword(pdev, PSB_PCIx_MSI_DATA_LOC, &dev_priv->msi_data);
-
-	pci_disable_device(pdev);
-	pci_set_power_state(pdev, PCI_D3hot);
 
 	gbSuspended = true;
 }
@@ -1192,7 +1184,6 @@ static bool ospm_resume_pci(struct pci_dev *pdev)
 {
 	struct drm_device *dev = pci_get_drvdata(pdev);
 	struct drm_psb_private *dev_priv = dev->dev_private;
-	int ret = 0;
 
 	if (!gbSuspended)
 		return true;
@@ -1201,31 +1192,21 @@ static bool ospm_resume_pci(struct pci_dev *pdev)
 	printk(KERN_ALERT "ospm_resume_pci\n");
 #endif
 
-	pci_set_power_state(pdev, PCI_D0);
-	pci_restore_state(pdev);
 	pci_write_config_dword(pdev, 0x5c, dev_priv->saveBSM);
 	pci_write_config_dword(pdev, 0xFC, dev_priv->saveVBT);
-	/* retoring MSI address and data in PCIx space */
 	pci_write_config_dword(pdev, PSB_PCIx_MSI_ADDR_LOC, dev_priv->msi_addr);
 	pci_write_config_dword(pdev, PSB_PCIx_MSI_DATA_LOC, dev_priv->msi_data);
-	ret = pci_enable_device(pdev);
 
-	if (ret != 0)
-		printk(KERN_ALERT "ospm_resume_pci: pci_enable_device failed: %d\n", ret);
-	else
-		gbSuspended = false;
+	gbSuspended = false;
 
 #ifdef CONFIG_MDFD_GL3
-	if (!ret) {
-		// Powerup GL3 - can be used by any GFX-sub-system.
-		ospm_power_island_up(OSPM_GL3_CACHE_ISLAND);
-
-	}
+	/* Powerup GL3 - can be used by any GFX-sub-system. */
+	ospm_power_island_up(OSPM_GL3_CACHE_ISLAND);
 #endif
 
-	return !gbSuspended;
+	return true;
 }
-#endif
+
 /*
  * ospm_power_suspend
  *
