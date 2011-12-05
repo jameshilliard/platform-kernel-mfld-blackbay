@@ -1261,8 +1261,9 @@ static bool ospm_resume_pci(struct pci_dev *pdev)
  * Description: OSPM is telling our driver to suspend so save state
  * and power down all hardware.
  */
-int ospm_power_suspend(struct pci_dev *pdev, pm_message_t state)
+int ospm_power_suspend(struct device *dev)
 {
+	struct pci_dev *pdev = to_pci_dev(dev);
 	int ret = 0;
 	int graphics_access_count;
 	int videoenc_access_count;
@@ -1422,8 +1423,10 @@ void ospm_power_island_up(int hw_islands)
 /*
  * ospm_power_resume
  */
-int ospm_power_resume(struct pci_dev *pdev)
+int ospm_power_resume(struct device *dev)
 {
+	struct pci_dev *pdev = to_pci_dev(dev);
+
 	if (gbSuspendInProgress || gbResumeInProgress) {
 #ifdef OSPM_GFX_DPK
 		printk(KERN_ALERT "OSPM_GFX_DPK: %s hw_island: Suspend || gbResumeInProgress!!!! \n", __func__);
@@ -1798,9 +1801,7 @@ void ospm_runtime_pm_forbid(struct drm_device * dev)
 
 int psb_runtime_suspend(struct device *dev)
 {
-	pm_message_t state;
 	int ret = 0;
-	state.event = 0;
 
 #ifdef OSPM_GFX_DPK
 	printk(KERN_ALERT "OSPM_GFX_DPK: %s \n", __func__);
@@ -1815,7 +1816,7 @@ int psb_runtime_suspend(struct device *dev)
                 return -EBUSY;
         }
         else
-		ret = ospm_power_suspend(gpDrmDevice->pdev, state);
+		ret = ospm_power_suspend(&gpDrmDevice->pdev->dev);
 
 	return ret;
 }

@@ -67,8 +67,8 @@ void ospm_power_uninit(void);
 /*
  * OSPM will call these functions
  */
-int ospm_power_suspend(struct pci_dev *pdev, pm_message_t state);
-int ospm_power_resume(struct pci_dev *pdev);
+int ospm_power_suspend(struct device *dev);
+int ospm_power_resume(struct device *dev);
 
 /*
  * These are the functions the driver should use to wrap all hw access

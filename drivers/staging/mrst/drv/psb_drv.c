@@ -2700,6 +2700,8 @@ static const struct dev_pm_ops psb_pm_ops = {
 	.runtime_suspend = psb_runtime_suspend,
 	.runtime_resume = psb_runtime_resume,
 	.runtime_idle = psb_runtime_idle,
+	.resume = ospm_power_resume,
+	.suspend = ospm_power_suspend,
 };
 
 static struct drm_driver driver = {
@@ -2746,8 +2748,6 @@ static struct drm_driver driver = {
 static struct pci_driver psb_pci_driver = {
 	.name = DRIVER_NAME,
 	.id_table = pciidlist,
-	.resume = ospm_power_resume,
-	.suspend = ospm_power_suspend,
 	.probe = psb_probe,
 	.remove = psb_remove,
 #ifdef CONFIG_PM
