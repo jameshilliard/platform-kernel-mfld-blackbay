@@ -76,9 +76,6 @@ int drm_topaz_sbuswa;
 int drm_psb_ospm = 1;
 int drm_psb_gl3_enable = 1;
 int drm_psb_topaz_clockgating = 0;
-#ifdef CONFIG_PM_RUNTIME
-int gfxrtdelay = 0;
-#endif
 static int PanelID = TC35876X;
 char HDMI_EDID[HDMI_MONITOR_NAME_LENGTH];
 
@@ -92,7 +89,6 @@ MODULE_PARM_DESC(force_pipeb, "Forces PIPEB to become primary fb");
 MODULE_PARM_DESC(ta_mem_size, "TA memory size in kiB");
 MODULE_PARM_DESC(ospm, "switch for ospm support");
 MODULE_PARM_DESC(gl3_enabled, "Enable GL3 cache");
-MODULE_PARM_DESC(rtpm, "Specifies Runtime PM delay for GFX");
 MODULE_PARM_DESC(msvdx_pmpolicy, "msvdx power management policy btw frames");
 MODULE_PARM_DESC(topaz_pmpolicy, "topaz power managerment policy btw frames");
 MODULE_PARM_DESC(topaz_sbuswa, "WA for topaz sysbus write");
@@ -114,9 +110,6 @@ module_param_named(topaz_pmpolicy, drm_topaz_pmpolicy, int, 0600);
 module_param_named(topaz_sbuswa, drm_topaz_sbuswa, int, 0600);
 module_param_named(ospm, drm_psb_ospm, int, 0600);
 module_param_named(gl3_enabled, drm_psb_gl3_enable, int, 0600);
-#ifdef CONFIG_PM_RUNTIME
-module_param_named(rtpm, gfxrtdelay, int, 0600);
-#endif
 module_param_named(topaz_clockgating, drm_psb_topaz_clockgating, int, 0600);
 module_param_named(PanelID, PanelID, int, 0600);
 module_param_string(hdmi_edid, HDMI_EDID, 20, 0600);

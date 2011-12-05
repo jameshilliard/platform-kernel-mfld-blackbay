@@ -1329,10 +1329,6 @@ extern int drm_psb_topaz_clockgating;
 
 extern char HDMI_EDID[20];
 
-#ifdef CONFIG_PM_RUNTIME
-extern int gfxrtdelay;
-#endif
-
 #define PSB_UDELAY(usec)                        \
 do {                                            \
 	if (drm_psb_cpurelax == 0)              \
