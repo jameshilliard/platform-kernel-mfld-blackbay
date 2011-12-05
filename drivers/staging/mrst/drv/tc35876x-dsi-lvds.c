@@ -549,54 +549,9 @@ static struct i2c_driver tc35876x_bridge_i2c_driver = {
 	.remove = __devexit_p(tc35876x_bridge_remove),
 };
 
-#if 0
-#define TC35876X_I2C_ADAPTER	2
-#define TC35876X_I2C_ADDR	0x0f
-
-/* HACK to create I2C device while it's not created by platform code */
-static int __init tc35876x_hack_create_device(void)
-{
-	struct i2c_adapter *adapter;
-	struct i2c_client *client;
-	struct i2c_board_info info = {
-		.type = "tc35876x",
-		.addr = TC35876X_I2C_ADDR,
-	};
-
-	pr_debug("%s\n", __func__);
-
-	adapter = i2c_get_adapter(TC35876X_I2C_ADAPTER);
-	if (!adapter) {
-		pr_err("%s: i2c_get_adapter(%d) failed\n", __func__,
-			TC35876X_I2C_ADAPTER);
-		return -EINVAL;
-	}
-
-	client = i2c_new_device(adapter, &info);
-	if (!client) {
-		pr_err("%s: i2c_new_device() failed\n", __func__);
-		i2c_put_adapter(adapter);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-#else
-static inline int __init tc35876x_hack_create_device(void)
-{
-	return 0;
-}
-#endif
-
 int tc35876x_bridge_init(void)
 {
-	int r;
-
 	pr_debug("%s\n", __func__);
-
-	r = tc35876x_hack_create_device();
-	if (r)
-		return r;
 
 	return i2c_add_driver(&tc35876x_bridge_i2c_driver);
 }
