@@ -1061,7 +1061,7 @@ static int psb_driver_unload(struct drm_device *dev)
 		dev->dev_private = NULL;
 	}
 
-	ospm_power_uninit();
+	ospm_power_uninit(dev);
 
 	return 0;
 }

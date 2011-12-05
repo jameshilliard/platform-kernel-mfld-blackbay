@@ -61,7 +61,7 @@ void ospm_apm_power_down_msvdx(struct drm_device *dev);
 void ospm_apm_power_down_topaz(struct drm_device *dev);
 
 void ospm_power_init(struct drm_device *dev);
-void ospm_power_uninit(void);
+void ospm_power_uninit(struct drm_device *dev);
 
 
 /*

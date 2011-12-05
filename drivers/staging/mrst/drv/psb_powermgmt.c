@@ -163,7 +163,7 @@ static int ospm_runtime_pm_msvdx_suspend(struct drm_device *dev)
 	}
 
 	MSVDX_NEW_PMSTATE(dev, msvdx_priv, PSB_PMSTATE_POWERDOWN);
-	psb_irq_uninstall_islands(gpDrmDevice, OSPM_VIDEO_DEC_ISLAND);
+	psb_irq_uninstall_islands(dev, OSPM_VIDEO_DEC_ISLAND);
 	psb_msvdx_save_context(dev);
 	ospm_power_island_down(OSPM_VIDEO_DEC_ISLAND);
 	//printk(KERN_ALERT "%s done\n", __func__);
@@ -230,10 +230,10 @@ static int ospm_runtime_pm_topaz_suspend(struct drm_device *dev)
 		goto out;
 	}
 
-	psb_irq_uninstall_islands(gpDrmDevice, OSPM_VIDEO_ENC_ISLAND);
+	psb_irq_uninstall_islands(dev, OSPM_VIDEO_ENC_ISLAND);
 
 	if (encode_running) /* has encode session running */
-		pnw_topaz_save_mtx_state(gpDrmDevice);
+		pnw_topaz_save_mtx_state(dev);
 	PNW_TOPAZ_NEW_PMSTATE(dev, pnw_topaz_priv, PSB_PMSTATE_POWERDOWN);
 
 	ospm_power_island_down(OSPM_VIDEO_ENC_ISLAND);
@@ -270,8 +270,8 @@ static int ospm_runtime_pm_topaz_resume(struct drm_device *dev)
 		PSB_DEBUG_PM("Topaz: no encode running\n");
 
 	if (encode_running) { /* has encode session running */
-		psb_irq_uninstall_islands(gpDrmDevice, OSPM_VIDEO_ENC_ISLAND);
-		pnw_topaz_restore_mtx_state(gpDrmDevice);
+		psb_irq_uninstall_islands(dev, OSPM_VIDEO_ENC_ISLAND);
+		pnw_topaz_restore_mtx_state(dev);
 	}
 	PNW_TOPAZ_NEW_PMSTATE(dev, pnw_topaz_priv, PSB_PMSTATE_POWERUP);
 
@@ -361,7 +361,7 @@ void ospm_apm_power_down_topaz(struct drm_device *dev)
 
 	gbSuspendInProgress = true;
 	psb_irq_uninstall_islands(dev, OSPM_VIDEO_ENC_ISLAND);
-	pnw_topaz_save_mtx_state(gpDrmDevice);
+	pnw_topaz_save_mtx_state(dev);
 	PNW_TOPAZ_NEW_PMSTATE(dev, pnw_topaz_priv, PSB_PMSTATE_POWERDOWN);
 
 	ospm_power_island_down(OSPM_VIDEO_ENC_ISLAND);
@@ -416,11 +416,11 @@ void ospm_power_init(struct drm_device *dev)
  *
  * Description: Uninitialize this ospm power management module
  */
-void ospm_power_uninit(void)
+void ospm_power_uninit(struct drm_device *drm_dev)
 {
 	mutex_destroy(&g_ospm_mutex);
-	pm_runtime_forbid(&gpDrmDevice->pdev->dev);
-	pm_runtime_get_noresume(&gpDrmDevice->pdev->dev);
+	pm_runtime_forbid(&drm_dev->pdev->dev);
+	pm_runtime_get_noresume(&drm_dev->pdev->dev);
 }
 
 
@@ -1138,10 +1138,9 @@ static void ospm_suspend_display(struct drm_device *dev)
  * Description: Resume the display hardware restoring state and enabling
  * as necessary.
  */
-static void ospm_resume_display(struct pci_dev *pdev)
+static void ospm_resume_display(struct drm_device *drm_dev)
 {
-	struct drm_device *dev = pci_get_drvdata(pdev);
-	struct drm_psb_private *dev_priv = dev->dev_private;
+	struct drm_psb_private *dev_priv = drm_dev->dev_private;
 	struct psb_gtt *pg = dev_priv->pg;
 
 #ifdef OSPM_GFX_DPK
@@ -1154,7 +1153,7 @@ static void ospm_resume_display(struct pci_dev *pdev)
 	ospm_power_island_up(OSPM_DISPLAY_ISLAND);
 
 	PSB_WVDC32(pg->pge_ctl | _PSB_PGETBL_ENABLED, PSB_PGETBL_CTL);
-	pci_write_config_word(pdev, PSB_GMCH_CTRL,
+	pci_write_config_word(drm_dev->pdev, PSB_GMCH_CTRL,
 			      pg->gmch_ctrl | _PSB_GMCH_ENABLED);
 
 	/* Don't reinitialize the GTT as it is unnecessary.  The gtt is
@@ -1164,10 +1163,10 @@ static void ospm_resume_display(struct pci_dev *pdev)
 	 */
 	/*psb_gtt_init(dev_priv->pg, 1);*/
 
-	mdfld_restore_display_registers(dev, 1);
-	mdfld_restore_display_registers(dev, 0);
-	mdfld_restore_display_registers(dev, 2);
-	mdfld_restore_cursor_overlay_registers(dev);
+	mdfld_restore_display_registers(drm_dev, 1);
+	mdfld_restore_display_registers(drm_dev, 0);
+	mdfld_restore_display_registers(drm_dev, 2);
+	mdfld_restore_cursor_overlay_registers(drm_dev);
 }
 
 #if 1
@@ -1264,6 +1263,7 @@ static bool ospm_resume_pci(struct pci_dev *pdev)
 int ospm_power_suspend(struct device *dev)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
+	struct drm_device *drm_dev = pci_get_drvdata(pdev);
 	int ret = 0;
 	int graphics_access_count;
 	int videoenc_access_count;
@@ -1295,15 +1295,15 @@ int ospm_power_suspend(struct device *dev)
 		if (!ret) {
 			gbSuspendInProgress = true;
 
-			psb_irq_uninstall_islands(gpDrmDevice, OSPM_DISPLAY_ISLAND);
-			ospm_suspend_display(gpDrmDevice);
+			psb_irq_uninstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
+			ospm_suspend_display(drm_dev);
 #if 1
 			/* FIXME: video driver support for Linux Runtime PM */
-			if (ospm_runtime_pm_msvdx_suspend(gpDrmDevice) != 0) {
+			if (ospm_runtime_pm_msvdx_suspend(drm_dev) != 0) {
 				suspend_pci = false;
 			}
 
-			if (ospm_runtime_pm_topaz_suspend(gpDrmDevice) != 0) {
+			if (ospm_runtime_pm_topaz_suspend(drm_dev) != 0) {
 				suspend_pci = false;
 			}
 
@@ -1329,12 +1329,13 @@ int ospm_power_suspend(struct device *dev)
  */
 void ospm_power_island_up(int hw_islands)
 {
+	struct drm_device *drm_dev = gpDrmDevice; /* FIXME: Pass as parameter */
+	struct drm_psb_private *dev_priv = drm_dev->dev_private;
 	u32 pwr_cnt = 0;
 	u32 pwr_sts = 0;
 	u32 pwr_mask = 0;
 	u32 cnt = 0;
 	unsigned long flags;
-	struct drm_psb_private *dev_priv = (struct drm_psb_private *) gpDrmDevice->dev_private;
 
 	if (hw_islands & (OSPM_GRAPHICS_ISLAND | OSPM_VIDEO_ENC_ISLAND |
 				OSPM_VIDEO_DEC_ISLAND | OSPM_GL3_CACHE_ISLAND |
@@ -1426,6 +1427,7 @@ void ospm_power_island_up(int hw_islands)
 int ospm_power_resume(struct device *dev)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
+	struct drm_device *drm_dev = pci_get_drvdata(pdev);
 
 	if (gbSuspendInProgress || gbResumeInProgress) {
 #ifdef OSPM_GFX_DPK
@@ -1444,9 +1446,9 @@ int ospm_power_resume(struct device *dev)
 
 	ospm_resume_pci(pdev);
 
-	ospm_resume_display(gpDrmDevice->pdev);
-	psb_irq_preinstall_islands(gpDrmDevice, OSPM_DISPLAY_ISLAND);
-	psb_irq_postinstall_islands(gpDrmDevice, OSPM_DISPLAY_ISLAND);
+	ospm_resume_display(drm_dev);
+	psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
+	psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
 
 	gbResumeInProgress = false;
 
@@ -1463,12 +1465,13 @@ int ospm_power_resume(struct device *dev)
  */
 void ospm_power_island_down(int islands)
 {
+	struct drm_device *drm_dev = gpDrmDevice; /* FIXME: Pass as parameter */
+	struct drm_psb_private *dev_priv = drm_dev->dev_private;
 	u32 pwr_cnt = 0;
 	u32 pwr_mask = 0;
 	u32 pwr_sts = 0;
 	u32 cnt = 0;
 	unsigned long flags;
-	struct drm_psb_private *dev_priv = (struct drm_psb_private *) gpDrmDevice->dev_private;
 
 	g_hw_power_status_mask &= ~islands;
 
@@ -1573,17 +1576,17 @@ bool ospm_power_is_hw_on(int hw_islands)
  */
 bool ospm_power_using_hw_begin(int hw_island, UHBUsage usage)
 {
+	struct drm_device *drm_dev = gpDrmDevice; /* FIXME: Pass as parameter */
 	bool ret = true;
 	bool island_is_off = false;
 	bool b_atomic = (in_interrupt() || in_atomic());
 	bool locked = true;
-	struct pci_dev *pdev = gpDrmDevice->pdev;
 	IMG_UINT32 deviceID = 0;
 	bool force_on = usage ? true : false;
 
 #ifdef CONFIG_PM_RUNTIME
 	/* increment pm_runtime_refcount */
-	pm_runtime_get(&pdev->dev);
+	pm_runtime_get(&drm_dev->pdev->dev);
 #endif
 
 	/*quick path, not 100% race safe, but should be enough comapre to current other code in this file */
@@ -1591,7 +1594,7 @@ bool ospm_power_using_hw_begin(int hw_island, UHBUsage usage)
 		if (hw_island & (OSPM_ALL_ISLANDS & ~g_hw_power_status_mask)) {
 #ifdef CONFIG_PM_RUNTIME
 			/* decrement pm_runtime_refcount */
-			pm_runtime_put(&pdev->dev);
+			pm_runtime_put(&drm_dev->pdev->dev);
 #endif
 			return false;
 		} else {
@@ -1614,30 +1617,30 @@ bool ospm_power_using_hw_begin(int hw_island, UHBUsage usage)
 	if (ret && island_is_off && force_on) {
 		gbResumeInProgress = true;
 
-		ret = ospm_resume_pci(pdev);
+		ret = ospm_resume_pci(drm_dev->pdev);
 
 		if (ret) {
 			switch (hw_island) {
 			case OSPM_DISPLAY_ISLAND:
 				deviceID = gui32MRSTDisplayDeviceID;
-				ospm_resume_display(pdev);
-				psb_irq_preinstall_islands(gpDrmDevice, OSPM_DISPLAY_ISLAND);
-				psb_irq_postinstall_islands(gpDrmDevice, OSPM_DISPLAY_ISLAND);
+				ospm_resume_display(drm_dev);
+				psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
+				psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
 				break;
 			case OSPM_GRAPHICS_ISLAND:
 				deviceID = gui32SGXDeviceID;
 				ospm_power_island_up(OSPM_GRAPHICS_ISLAND);
-				psb_irq_preinstall_islands(gpDrmDevice, OSPM_GRAPHICS_ISLAND);
-				psb_irq_postinstall_islands(gpDrmDevice, OSPM_GRAPHICS_ISLAND);
+				psb_irq_preinstall_islands(drm_dev, OSPM_GRAPHICS_ISLAND);
+				psb_irq_postinstall_islands(drm_dev, OSPM_GRAPHICS_ISLAND);
 				break;
 #if 1
 			case OSPM_VIDEO_DEC_ISLAND:
 				if (!ospm_power_is_hw_on(OSPM_DISPLAY_ISLAND)) {
 					//printk(KERN_ALERT "%s power on display for video decode use\n", __func__);
 					deviceID = gui32MRSTDisplayDeviceID;
-					ospm_resume_display(pdev);
-					psb_irq_preinstall_islands(gpDrmDevice, OSPM_DISPLAY_ISLAND);
-					psb_irq_postinstall_islands(gpDrmDevice, OSPM_DISPLAY_ISLAND);
+					ospm_resume_display(drm_dev);
+					psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
+					psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
 				} else {
 					//printk(KERN_ALERT "%s display is already on for video decode use\n", __func__);
 				}
@@ -1646,9 +1649,9 @@ bool ospm_power_using_hw_begin(int hw_island, UHBUsage usage)
 					//printk(KERN_ALERT "%s power on video decode\n", __func__);
 					deviceID = gui32MRSTMSVDXDeviceID;
 					ospm_power_island_up(OSPM_VIDEO_DEC_ISLAND);
-					ospm_runtime_pm_msvdx_resume(gpDrmDevice);
-					psb_irq_preinstall_islands(gpDrmDevice, OSPM_VIDEO_DEC_ISLAND);
-					psb_irq_postinstall_islands(gpDrmDevice, OSPM_VIDEO_DEC_ISLAND);
+					ospm_runtime_pm_msvdx_resume(drm_dev);
+					psb_irq_preinstall_islands(drm_dev, OSPM_VIDEO_DEC_ISLAND);
+					psb_irq_postinstall_islands(drm_dev, OSPM_VIDEO_DEC_ISLAND);
 				} else {
 					//printk(KERN_ALERT "%s video decode is already on\n", __func__);
 				}
@@ -1658,9 +1661,9 @@ bool ospm_power_using_hw_begin(int hw_island, UHBUsage usage)
 				if (!ospm_power_is_hw_on(OSPM_DISPLAY_ISLAND)) {
 					//printk(KERN_ALERT "%s power on display for video encode\n", __func__);
 					deviceID = gui32MRSTDisplayDeviceID;
-					ospm_resume_display(pdev);
-					psb_irq_preinstall_islands(gpDrmDevice, OSPM_DISPLAY_ISLAND);
-					psb_irq_postinstall_islands(gpDrmDevice, OSPM_DISPLAY_ISLAND);
+					ospm_resume_display(drm_dev);
+					psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
+					psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
 				} else {
 					//printk(KERN_ALERT "%s display is already on for video encode use\n", __func__);
 				}
@@ -1669,9 +1672,9 @@ bool ospm_power_using_hw_begin(int hw_island, UHBUsage usage)
 					//printk(KERN_ALERT "%s power on video encode\n", __func__);
 					deviceID = gui32MRSTTOPAZDeviceID;
 					ospm_power_island_up(OSPM_VIDEO_ENC_ISLAND);
-					ospm_runtime_pm_topaz_resume(gpDrmDevice);
-					psb_irq_preinstall_islands(gpDrmDevice, OSPM_VIDEO_ENC_ISLAND);
-					psb_irq_postinstall_islands(gpDrmDevice, OSPM_VIDEO_ENC_ISLAND);
+					ospm_runtime_pm_topaz_resume(drm_dev);
+					psb_irq_preinstall_islands(drm_dev, OSPM_VIDEO_ENC_ISLAND);
+					psb_irq_postinstall_islands(drm_dev, OSPM_VIDEO_ENC_ISLAND);
 				} else {
 					//printk(KERN_ALERT "%s video decode is already on\n", __func__);
 				}
@@ -1709,7 +1712,7 @@ increase_count:
 	} else {
 #ifdef CONFIG_PM_RUNTIME
 		/* decrement pm_runtime_refcount */
-		pm_runtime_put(&pdev->dev);
+		pm_runtime_put(&drm_dev->pdev->dev);
 #endif
 	}
 
@@ -1729,6 +1732,8 @@ increase_count:
  */
 void ospm_power_using_hw_end(int hw_island)
 {
+	struct drm_device *drm_dev = gpDrmDevice; /* FIXME: Pass as parameter */
+
 	switch (hw_island) {
 	case OSPM_GRAPHICS_ISLAND:
 		atomic_dec(&g_graphics_access_count);
@@ -1745,7 +1750,7 @@ void ospm_power_using_hw_end(int hw_island)
 	}
 
 	//decrement runtime pm ref count
-	pm_runtime_put(&gpDrmDevice->pdev->dev);
+	pm_runtime_put(&drm_dev->pdev->dev);
 
 	WARN_ON(atomic_read(&g_graphics_access_count) < 0);
 	WARN_ON(atomic_read(&g_videoenc_access_count) < 0);
@@ -1816,16 +1821,19 @@ int psb_runtime_suspend(struct device *dev)
                 return -EBUSY;
         }
         else
-		ret = ospm_power_suspend(&gpDrmDevice->pdev->dev);
+		ret = ospm_power_suspend(dev);
 
 	return ret;
 }
 
 int psb_runtime_resume(struct device *dev)
 {
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct drm_device *drm_dev = pci_get_drvdata(pdev);
+
 	//Notify HDMI Audio sub-system about the resume.
 #ifdef CONFIG_SND_INTELMID_HDMI_AUDIO
-	struct drm_psb_private* dev_priv = gpDrmDevice->dev_private;
+	struct drm_psb_private *dev_priv = drm_dev->dev_private;
 
 	if (dev_priv->had_pvt_data)
 		dev_priv->had_interface->resume(dev_priv->had_pvt_data);
@@ -1836,8 +1844,11 @@ int psb_runtime_resume(struct device *dev)
 
 int psb_runtime_idle(struct device *dev)
 {
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct drm_device *drm_dev = pci_get_drvdata(pdev);
+
 #ifdef CONFIG_SND_INTELMID_HDMI_AUDIO
-	struct drm_psb_private* dev_priv = gpDrmDevice->dev_private;
+	struct drm_psb_private *dev_priv = drm_dev->dev_private;
 	int hdmi_audio_busy = 0;
 	pm_event_t hdmi_audio_event;
 #endif
@@ -1846,8 +1857,8 @@ int psb_runtime_idle(struct device *dev)
 	int msvdx_hw_busy = 0;
 	int topaz_hw_busy = 0;
 
-	msvdx_hw_busy = ospm_runtime_check_msvdx_hw_busy(gpDrmDevice);
-	topaz_hw_busy = ospm_runtime_check_topaz_hw_busy(gpDrmDevice);
+	msvdx_hw_busy = ospm_runtime_check_msvdx_hw_busy(drm_dev);
+	topaz_hw_busy = ospm_runtime_check_topaz_hw_busy(drm_dev);
 #endif
 
 #ifdef CONFIG_SND_INTELMID_HDMI_AUDIO
