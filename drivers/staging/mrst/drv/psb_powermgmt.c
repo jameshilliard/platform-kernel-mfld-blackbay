@@ -378,6 +378,9 @@ void ospm_power_init(struct drm_device *dev)
 #endif
 
 	spin_lock_init(&dev_priv->ospm_lock);
+
+	/* Runtime PM for PCI drivers. */
+	pm_runtime_put_noidle(&dev->pdev->dev);
 }
 
 /*
@@ -387,9 +390,10 @@ void ospm_power_init(struct drm_device *dev)
  */
 void ospm_power_uninit(struct drm_device *drm_dev)
 {
-	mutex_destroy(&g_ospm_mutex);
-	pm_runtime_forbid(&drm_dev->pdev->dev);
+	/* Runtime PM for PCI drivers. */
 	pm_runtime_get_noresume(&drm_dev->pdev->dev);
+
+	mutex_destroy(&g_ospm_mutex);
 }
 
 
@@ -1552,18 +1556,12 @@ bool ospm_power_using_hw_begin(int hw_island, UHBUsage usage)
 	IMG_UINT32 deviceID = 0;
 	bool force_on = usage ? true : false;
 
-#ifdef CONFIG_PM_RUNTIME
-	/* increment pm_runtime_refcount */
 	pm_runtime_get(&drm_dev->pdev->dev);
-#endif
 
 	/*quick path, not 100% race safe, but should be enough comapre to current other code in this file */
 	if (!force_on) {
 		if (hw_island & (OSPM_ALL_ISLANDS & ~g_hw_power_status_mask)) {
-#ifdef CONFIG_PM_RUNTIME
-			/* decrement pm_runtime_refcount */
 			pm_runtime_put(&drm_dev->pdev->dev);
-#endif
 			return false;
 		} else {
 			locked = false;
@@ -1678,10 +1676,7 @@ increase_count:
 			break;
 		}
 	} else {
-#ifdef CONFIG_PM_RUNTIME
-		/* decrement pm_runtime_refcount */
 		pm_runtime_put(&drm_dev->pdev->dev);
-#endif
 	}
 
 	if (!b_atomic && locked)
@@ -1717,7 +1712,6 @@ void ospm_power_using_hw_end(int hw_island)
 		break;
 	}
 
-	//decrement runtime pm ref count
 	pm_runtime_put(&drm_dev->pdev->dev);
 
 	WARN_ON(atomic_read(&g_graphics_access_count) < 0);
@@ -1760,7 +1754,9 @@ int psb_runtime_resume(struct device *dev)
 	if (dev_priv->had_pvt_data)
 		dev_priv->had_interface->resume(dev_priv->had_pvt_data);
 #endif
-	/*Nop for GFX*/
+
+	ospm_power_resume(dev);
+
 	return 0;
 }
 
