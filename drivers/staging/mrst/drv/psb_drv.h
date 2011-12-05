@@ -1323,7 +1323,6 @@ static inline void REGISTER_WRITE8(struct drm_device *dev,
 extern int drm_psb_cpurelax;
 extern int drm_psb_udelaydivider;
 extern int drm_psb_udelaymultiplier;
-extern int drm_psb_gl3_enable;
 extern int drm_psb_topaz_clockgating;
 
 extern char HDMI_EDID[20];
