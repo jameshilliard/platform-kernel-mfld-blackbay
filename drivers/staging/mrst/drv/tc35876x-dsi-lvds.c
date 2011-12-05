@@ -400,6 +400,8 @@ void tc35876x_toshiba_bridge_panel_off(void)
 
 	dev_dbg(&tc35876x_client->dev, "%s\n", __func__);
 
+	pdata = dev_get_platdata(&tc35876x_client->dev);
+
 	if (pdata->gpio_panel_bl_en != -1)
 		gpio_set_value_cansleep(pdata->gpio_panel_bl_en, 0);
 
