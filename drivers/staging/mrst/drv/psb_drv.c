@@ -73,7 +73,6 @@ int drm_psb_udelaydivider = 1;
 int drm_psb_udelaymultiplier = 1;
 int drm_topaz_pmpolicy = PSB_PMPOLICY_NOPM;
 int drm_topaz_sbuswa;
-int drm_psb_ospm = 1;
 int drm_psb_gl3_enable = 1;
 int drm_psb_topaz_clockgating = 0;
 static int PanelID = TC35876X;
@@ -87,7 +86,6 @@ MODULE_PARM_DESC(trap_pagefaults, "Error and reset on MMU pagefaults");
 MODULE_PARM_DESC(disable_vsync, "Disable vsync interrupts");
 MODULE_PARM_DESC(force_pipeb, "Forces PIPEB to become primary fb");
 MODULE_PARM_DESC(ta_mem_size, "TA memory size in kiB");
-MODULE_PARM_DESC(ospm, "switch for ospm support");
 MODULE_PARM_DESC(gl3_enabled, "Enable GL3 cache");
 MODULE_PARM_DESC(msvdx_pmpolicy, "msvdx power management policy btw frames");
 MODULE_PARM_DESC(topaz_pmpolicy, "topaz power managerment policy btw frames");
@@ -108,28 +106,11 @@ module_param_named(udelay_multiplier, drm_psb_udelaymultiplier, int, 0600);
 module_param_named(udelay_divider, drm_psb_udelaydivider, int, 0600);
 module_param_named(topaz_pmpolicy, drm_topaz_pmpolicy, int, 0600);
 module_param_named(topaz_sbuswa, drm_topaz_sbuswa, int, 0600);
-module_param_named(ospm, drm_psb_ospm, int, 0600);
 module_param_named(gl3_enabled, drm_psb_gl3_enable, int, 0600);
 module_param_named(topaz_clockgating, drm_psb_topaz_clockgating, int, 0600);
 module_param_named(PanelID, PanelID, int, 0600);
 module_param_string(hdmi_edid, HDMI_EDID, 20, 0600);
 #ifndef MODULE
-/* Make ospm configurable via cmdline firstly, and others can be enabled if needed. */
-static int __init config_ospm(char *arg)
-{
-	/* ospm turn on/off control can be passed in as a cmdline parameter */
-	/* to enable this feature add ospm=1 to cmdline */
-	/* to disable this feature add ospm=0 to cmdline */
-	if (!arg)
-		return -EINVAL;
-
-	if (!strcasecmp(arg, "0"))
-		drm_psb_ospm = 0;
-	else if (!strcasecmp(arg, "1"))
-		drm_psb_ospm = 1;
-
-	return 0;
-}
 static int __init config_gl3(char *arg)
 {
 	if (!arg)
@@ -142,7 +123,6 @@ static int __init config_gl3(char *arg)
 
 	return 0;
 }
-early_param("ospm", config_ospm);
 early_param("gl3_enabled", config_gl3);
 #endif
 

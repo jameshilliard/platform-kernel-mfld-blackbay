@@ -1320,7 +1320,6 @@ static inline void REGISTER_WRITE8(struct drm_device *dev,
 
 #define IS_PENWELL(dev) 0 /* FIXME */
 
-extern int drm_psb_ospm;
 extern int drm_psb_cpurelax;
 extern int drm_psb_udelaydivider;
 extern int drm_psb_udelaymultiplier;

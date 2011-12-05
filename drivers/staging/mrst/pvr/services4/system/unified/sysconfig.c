@@ -387,8 +387,8 @@ PVRSRV_ERROR SysInitialise(IMG_VOID)
 	psTimingInfo->ui32CoreClockSpeed = SYS_SGX_CLOCK_SPEED;
 	psTimingInfo->ui32HWRecoveryFreq = SYS_SGX_HWRECOVERY_TIMEOUT_FREQ;
 #if defined(SUPPORT_ACTIVE_POWER_MANAGEMENT)
-	psTimingInfo->bEnableActivePM = (drm_psb_ospm != 0);
-	/*printk(KERN_ERR "SGX APM is %s\n", (drm_psb_ospm != 0)? "enabled":"disabled"); */
+	/* Note: Enable active PM unconditionally, regardless of runtime PM. */
+	psTimingInfo->bEnableActivePM = IMG_TRUE;
 #else
 	psTimingInfo->bEnableActivePM = IMG_FALSE;
 #endif
