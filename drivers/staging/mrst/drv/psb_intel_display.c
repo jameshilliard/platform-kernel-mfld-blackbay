@@ -1076,21 +1076,6 @@ static void mdfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 
 	PSB_DEBUG_ENTRY("mode = %d, pipe = %d \n", mode, pipe);
 
-	/* Ignore if system is already in DSR and in suspended state. */
-	if ((gbgfxsuspended) && (gbdispstatus == false) && (mode == DRM_MODE_DPMS_OFF)) {
-#if CONFIG_PM_RUNTIME
-		if ((dev_priv->rpm_enabled) && (pipe == 1)){
-			// dev_priv->is_mipi_on = false;
-			pm_request_idle(&gpDrmDevice->pdev->dev);
-		}
-#endif
-		return;
-	} else if (mode == DRM_MODE_DPMS_ON) {
-		//do not need to set gbdispstatus=true in crtc.
-		//this will be set in encoder's DPMS callback.
-		//gbdispstatus = true;
-	}
-
 /* FIXME_JLIU7 MDFLD_PO replaced w/ the following function */
 /* mdfld_dbi_dpms (struct drm_device *dev, int pipe, bool enabled) */
 

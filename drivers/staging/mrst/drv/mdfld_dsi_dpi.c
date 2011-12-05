@@ -633,17 +633,6 @@ shutdown_out:
 	/* 	dev_priv->dpi_panel_on2 = false; */
 	/* else if (pipe == 0) */
 	/* 	dev_priv->dpi_panel_on = false;	 */
-
-#ifdef CONFIG_PM_RUNTIME
-	if (drm_psb_ospm && !enable_gfx_rtpm) {
-//		pm_runtime_allow(&gpDrmDevice->pdev->dev);
-		schedule_delayed_work(&dev_priv->rtpm_work, 30 * 1000);
-	}
-
-	if (enable_gfx_rtpm)
-		pm_schedule_suspend(&dev->pdev->dev, gfxrtdelay);
-#endif
-	return;
 }
 
 static void mdfld_dsi_dpi_set_power(struct drm_encoder * encoder, bool on)
@@ -735,10 +724,6 @@ void mdfld_dsi_dpi_dpms(struct drm_encoder *encoder, int mode)
 	} else {
 		mdfld_dsi_dpi_set_power(encoder, false);
 		gbdispstatus = false;
-#ifdef CONFIG_PM_RUNTIME
-		if (enable_gfx_rtpm)
-			pm_schedule_suspend(&gpDrmDevice->pdev->dev, gfxrtdelay);
-#endif
 	}
 
 	return;

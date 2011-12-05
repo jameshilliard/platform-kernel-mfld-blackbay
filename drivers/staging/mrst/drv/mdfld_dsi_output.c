@@ -631,52 +631,12 @@ static int mdfld_dsi_connector_mode_valid(struct drm_connector * connector, stru
 
 static void mdfld_dsi_connector_dpms(struct drm_connector *connector, int mode)
 {
-#ifdef CONFIG_PM_RUNTIME
-	struct drm_device * dev = connector->dev;
-	struct drm_psb_private * dev_priv = dev->dev_private;
-	bool panel_on, panel_on2;
-#endif
-
 	if (mode == connector->dpms)
 		return;
 
 	/*first, execute dpms*/
 		
 	drm_helper_connector_dpms(connector, mode);
-	
-#ifdef CONFIG_PM_RUNTIME	
-	if(is_panel_vid_or_cmd(dev)) {
-		/*DPI panel*/
-		panel_on = dev_priv->dpi_panel_on;
-		panel_on2 = dev_priv->dpi_panel_on2;
-	} else {
-		/*DBI panel*/
-		panel_on = dev_priv->dbi_panel_on;
-		panel_on2 = dev_priv->dbi_panel_on2;
-	}	
-	
-	/*then check all display panels + monitors status*/
-	/* Make sure that the Display (B) sub-system status isn't i3 when
-	 * R/W the DC register, otherwise "Fabric error" issue would occur
-	 * during S0i3 state. */
-	if(!panel_on && !panel_on2 && !(REG_READ(HDMIB_CONTROL) & HDMIB_PORT_EN)) {
-		/*request rpm idle*/
-		if(dev_priv->rpm_enabled) {
-			pm_request_idle(&dev->pdev->dev);
-		}
-	} 
-	
-	/**
-	 * if rpm wasn't enabled yet, try to allow it
-	 * FIXME: won't enable rpm for DPI since DPI
-	 * CRTC setting is a little messy now. 
-	 * Enable it later!
-	 */
-#if 0
-	if(!dev_priv->rpm_enabled && !is_panel_vid_or_cmd(dev))
-		ospm_runtime_pm_allow(dev);
-#endif
-#endif
 }
 
 static struct drm_encoder * mdfld_dsi_connector_best_encoder(struct drm_connector * connector) 

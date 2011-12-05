@@ -682,12 +682,6 @@ struct drm_psb_private {
 	struct mdfld_dsi_dbi_output * dbi_output2;
 /* MDFLD_DSI private date end */
 
-#ifdef CONFIG_PM_RUNTIME
-	/*runtime PM state*/
-	int rpm_enabled;
-	struct delayed_work rtpm_work;
-#endif
-
 	/*
 	 *Register state
 	 */

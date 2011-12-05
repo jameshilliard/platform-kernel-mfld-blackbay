@@ -248,12 +248,8 @@ void mdfld_dsi_dbi_enter_dsr (struct mdfld_dsi_dbi_output * dbi_output, int pipe
 	/*update mode state to IN_DSR*/
 	dbi_output->mode_flags |= MODE_SETTING_IN_DSR;
 
-	if(pipe == 2){
+	if (pipe == 2)
 		enter_dsr = 1;
-#ifdef CONFIG_PM_RUNTIME
-		pm_schedule_suspend(&dev->pdev->dev, gfxrtdelay);
-#endif
-	}
 }
 
 #ifndef CONFIG_MDFLD_DSI_DPU
@@ -348,13 +344,6 @@ void mdfld_dsi_dbi_exit_dsr(struct drm_device *dev, u32 update_src)
 	PSB_DEBUG_ENTRY("\n");
 
 	dbi_output = dsr_info->dbi_outputs;
-
-#ifdef CONFIG_PM_RUNTIME
-	 if(drm_psb_ospm && !enable_gfx_rtpm) {
-//                pm_runtime_allow(&gpDrmDevice->pdev->dev);
-		schedule_delayed_work(&dev_priv->rtpm_work, 30 * 1000);
-        }
-#endif
 
 	/*for each output, exit dsr*/
 	for(i=0; i<dsr_info->dbi_output_num; i++) {
@@ -456,14 +445,6 @@ void mdfld_dbi_update_panel (struct drm_device *dev, int pipe)
 #endif
 			}
 		}
-	/*schedule rpm suspend after gfxrtdelay*/
-#ifdef CONFIG_PM_RUNTIME
-		if(!dev_priv->rpm_enabled
-			|| !enter_dsr
-	//		|| (REG_READ(HDMIB_CONTROL) & HDMIB_PORT_EN)
-			|| pm_schedule_suspend(&dev->pdev->dev, gfxrtdelay))
-			PSB_DEBUG_ENTRY("Runtime PM schedule suspend failed, rpm %d\n", dev_priv->rpm_enabled);
-#endif		
 	}
 }
 

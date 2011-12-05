@@ -58,32 +58,7 @@ static atomic_t g_videodec_access_count;
 void ospm_power_island_up(int hw_islands);
 void ospm_power_island_down(int hw_islands);
 static bool gbSuspended = false;
-bool gbgfxsuspended = false;
 bool gbdispstatus = true;
-
-
-#ifdef CONFIG_PM_RUNTIME
-int enable_gfx_rtpm = 0;
-
-void psb_runtimepm_wq_handler(struct work_struct *work)
-{
-	struct drm_psb_private * dev_priv =  gpDrmDevice->dev_private;
-
-	if(drm_psb_ospm && !enable_gfx_rtpm) {
-		printk(KERN_ALERT "Enable GFX runtime_pm \n");
-
-		dev_priv->rpm_enabled = 1;
-
-		enable_gfx_rtpm = 1;
-
-		pm_runtime_enable(&gpDrmDevice->pdev->dev);
-		pm_runtime_set_active(&gpDrmDevice->pdev->dev);
-
-	        pm_runtime_allow(&gpDrmDevice->pdev->dev);
-	}
-}
-#endif
-
 
 #if 1
 static int ospm_runtime_check_msvdx_hw_busy(struct drm_device *dev)
@@ -403,12 +378,6 @@ void ospm_power_init(struct drm_device *dev)
 #endif
 
 	spin_lock_init(&dev_priv->ospm_lock);
-
-#ifdef CONFIG_PM_RUNTIME
-	INIT_DELAYED_WORK(&dev_priv->rtpm_work, psb_runtimepm_wq_handler);
-#endif
-
-	return;
 }
 
 /*
@@ -1207,7 +1176,6 @@ static void ospm_suspend_pci(struct pci_dev *pdev)
 	pci_set_power_state(pdev, PCI_D3hot);
 
 	gbSuspended = true;
-	gbgfxsuspended = true;
 }
 
 /*
@@ -1756,52 +1724,6 @@ void ospm_power_using_hw_end(int hw_island)
 	WARN_ON(atomic_read(&g_videoenc_access_count) < 0);
 	WARN_ON(atomic_read(&g_videodec_access_count) < 0);
 	WARN_ON(atomic_read(&g_display_access_count) < 0);
-}
-
-int ospm_runtime_pm_allow(struct drm_device * dev)
-{
-	struct drm_psb_private * dev_priv = dev->dev_private;
-	bool panel_on, panel_on2;
-
-	PSB_DEBUG_ENTRY("%s\n", __FUNCTION__);
-
-#ifdef OSPM_GFX_DPK
-	printk(KERN_ALERT "OSPM_GFX_DPK: %s  \n", __func__);
-#endif
-	if (dev_priv->rpm_enabled)
-		return 0;
-
-	if (is_panel_vid_or_cmd(dev)) {
-		/*DPI panel*/
-		panel_on = dev_priv->dpi_panel_on;
-		panel_on2 = dev_priv->dpi_panel_on2;
-	} else {
-		/*DBI panel*/
-		panel_on = dev_priv->dbi_panel_on;
-		panel_on2 = dev_priv->dbi_panel_on2;
-	}
-
-	if (panel_on && panel_on2) {
-		pm_runtime_allow(&dev->pdev->dev);
-		dev_priv->rpm_enabled = 1;
-		DRM_INFO("Runtime PM enabled\n");
-	}
-
-	return 0;
-}
-
-void ospm_runtime_pm_forbid(struct drm_device * dev)
-{
-	struct drm_psb_private * dev_priv = dev->dev_private;
-
-	DRM_INFO("%s\n", __FUNCTION__);
-
-#ifdef OSPM_GFX_DPK
-	printk(KERN_ALERT "OSPM_GFX_DPK: %s  \n", __func__);
-#endif
-
-	pm_runtime_forbid(&dev->pdev->dev);
-	dev_priv->rpm_enabled = 0;
 }
 
 int psb_runtime_suspend(struct device *dev)

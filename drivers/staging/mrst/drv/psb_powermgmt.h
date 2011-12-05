@@ -96,18 +96,8 @@ void ospm_power_island_up(int hw_islands);
 int psb_runtime_suspend(struct device *dev);
 int psb_runtime_resume(struct device *dev);
 int psb_runtime_idle(struct device *dev);
-int ospm_runtime_pm_allow(struct drm_device * dev);
-void ospm_runtime_pm_forbid(struct drm_device * dev);
-
-#ifdef CONFIG_PM_RUNTIME
-void psb_runtimepm_wq_handler(struct work_struct *work);
-#endif
 
 extern struct drm_device *gpDrmDevice;
-extern bool gbgfxsuspended;
 extern bool gbdispstatus;
-#ifdef CONFIG_PM_RUNTIME
-extern int enable_gfx_rtpm;
-#endif
 
 #endif /*_PSB_POWERMGMT_H_*/
