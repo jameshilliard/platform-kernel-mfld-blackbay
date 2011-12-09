@@ -195,6 +195,7 @@ static void mdfld_dsi_configure_down(struct mdfld_dsi_encoder * dsi_encoder, int
 		printk(KERN_ALERT "[DISPLAY] %s: DPI Panel is Already Off\n", __func__);
 		return;
 	}
+	tc35876x_toshiba_bridge_panel_off();
 	tc35876x_set_bridge_reset_state(1);
 	dsi_set_pipe_plane_enable_state(dev, 0, pipe);  //Disable pipe and plane
 
