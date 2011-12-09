@@ -159,6 +159,21 @@ static void dsi_set_pipe_plane_enable_state(struct drm_device *dev, int state, i
 		/*Set up display plane */
 		REG_WRITE(dspcntr_reg, dspcntr);
 	} else {
+		u32 val;
+
+		/* Put DSI lanes to ULPS to disable pipe */
+		val = REG_READ(MIPI_DEVICE_READY_REG(pipe));
+		val &= ~ULPS_MASK;
+		val |= ENTERING_ULPS;
+		REG_WRITE(MIPI_DEVICE_READY_REG(pipe), val);
+		val = REG_READ(MIPI_DEVICE_READY_REG(pipe));
+
+		/* LP Hold */
+		val = REG_READ(MIPI_PORT_CONTROL(pipe));
+		val &= ~LP_OUTPUT_HOLD;
+		REG_WRITE(MIPI_PORT_CONTROL(pipe), val);
+		val = REG_READ(MIPI_PORT_CONTROL(pipe));
+
 		/*Disable PIPE */
 		REG_WRITE(pipeconf_reg, 0);
 		mdfld_wait_for_PIPEA_DISABLE(dev, pipe);
