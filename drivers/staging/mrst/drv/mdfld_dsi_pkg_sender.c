@@ -31,12 +31,6 @@
 #include "mdfld_dsi_dbi.h"
 #include "mdfld_dsi_dpi.h"
 
-#define FLD_MASK(start, end)	(((1 << ((start) - (end) + 1)) - 1) << (end))
-#define FLD_VAL(val, start, end) (((val) << (end)) & FLD_MASK(start, end))
-#define FLD_GET(val, start, end) (((val) & FLD_MASK(start, end)) >> (end))
-#define FLD_MOD(orig, val, start, end) \
-	(((orig) & ~FLD_MASK(start, end)) | FLD_VAL(val, start, end))
-
 #define MDFLD_DSI_DBI_FIFO_TIMEOUT		100
 #define MDFLD_DSI_READ_MAX_COUNT		5000
 

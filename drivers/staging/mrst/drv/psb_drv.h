@@ -1263,6 +1263,34 @@ static inline void REGISTER_WRITE(struct drm_device *dev, uint32_t reg,
 
 #define REG_WRITE(reg, val)	REGISTER_WRITE(dev, (reg), (val))
 
+#define FLD_MASK(start, end)	(((1 << ((start) - (end) + 1)) - 1) << (end))
+#define FLD_VAL(val, start, end) (((val) << (end)) & FLD_MASK(start, end))
+#define FLD_GET(val, start, end) (((val) & FLD_MASK(start, end)) >> (end))
+#define FLD_MOD(orig, val, start, end) \
+	(((orig) & ~FLD_MASK(start, end)) | FLD_VAL(val, start, end))
+
+#define REG_FLD_MOD(reg, val, start, end) \
+	REG_WRITE(reg, FLD_MOD(REG_READ(reg), val, start, end))
+
+static inline int REGISTER_FLD_WAIT(struct drm_device *dev, u32 reg,
+				    u32 val, int start, int end)
+{
+	int t = 100000;
+
+	while (FLD_GET(REG_READ(reg), start, end) != val) {
+		if (--t == 0)
+			return 1;
+	}
+
+	return 0;
+}
+
+#define REG_FLD_WAIT(reg, val, start, end) \
+	REGISTER_FLD_WAIT(dev, reg, val, start, end)
+
+#define REG_BIT_WAIT(reg, val, bitnum) \
+	REGISTER_FLD_WAIT(dev, reg, val, bitnum, bitnum)
+
 static inline void REGISTER_WRITE16(struct drm_device *dev,
 					uint32_t reg, uint32_t val)
 {
