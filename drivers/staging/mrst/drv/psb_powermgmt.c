@@ -346,6 +346,60 @@ out:
 	return;
 }
 #endif
+
+#ifdef CONFIG_EARLYSUSPEND
+/*
+ * REVISIT: The early suspend and late resume handlers should not call
+ * pm_runtime_put() and pm_runtime_get_sync() directly, but rather the DPMS
+ * handlers should do it.
+ */
+static void gfx_early_suspend(struct early_suspend *es)
+{
+	struct drm_psb_private *dev_priv =
+		container_of(es, struct drm_psb_private, early_suspend);
+	struct drm_device *dev = dev_priv->dev;
+	struct drm_encoder *encoder;
+
+	dev_dbg(&dev->pdev->dev, "%s\n", __func__);
+
+	mutex_lock(&dev->mode_config.mutex);
+	list_for_each_entry(encoder, &dev->mode_config.encoder_list, head) {
+		struct drm_encoder_helper_funcs *ehf = encoder->helper_private;
+
+		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->dpms)
+			ehf->dpms(encoder, DRM_MODE_DPMS_OFF);
+	}
+	mutex_unlock(&dev->mode_config.mutex);
+
+	pm_runtime_put(&dev->pdev->dev);
+}
+
+static void gfx_late_resume(struct early_suspend *es)
+{
+	struct drm_psb_private *dev_priv =
+		container_of(es, struct drm_psb_private, early_suspend);
+	struct drm_device *dev = dev_priv->dev;
+	struct drm_encoder *encoder;
+
+	dev_dbg(&dev->pdev->dev, "%s\n", __func__);
+
+	pm_runtime_get_sync(&dev->pdev->dev);
+
+	mutex_lock(&dev->mode_config.mutex);
+	list_for_each_entry(encoder, &dev->mode_config.encoder_list, head) {
+		struct drm_encoder_helper_funcs *ehf = encoder->helper_private;
+
+		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->dpms) {
+			struct drm_crtc *crtc = encoder->crtc;
+
+			ehf->mode_set(encoder, &crtc->mode, &crtc->hwmode);
+			ehf->dpms(encoder, DRM_MODE_DPMS_ON);
+		}
+	}
+	mutex_unlock(&dev->mode_config.mutex);
+}
+#endif
+
 /*
  * ospm_power_init
  *
@@ -378,6 +432,13 @@ void ospm_power_init(struct drm_device *dev)
 #endif
 
 	spin_lock_init(&dev_priv->ospm_lock);
+
+#ifdef CONFIG_EARLYSUSPEND
+	dev_priv->early_suspend.suspend = gfx_early_suspend;
+	dev_priv->early_suspend.resume = gfx_late_resume;
+	dev_priv->early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING;
+	register_early_suspend(&dev_priv->early_suspend);
+#endif
 
 	/* Runtime PM for PCI drivers. */
 	pm_runtime_put_noidle(&dev->pdev->dev);

@@ -40,6 +40,10 @@
 #include "ttm/ttm_lock.h"
 #include "psb_irq.h"
 
+#ifdef CONFIG_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+#endif
+
 /*IMG headers*/
 #include "private_data.h"
 #include "pvr_drm.h"
@@ -681,6 +685,10 @@ struct drm_psb_private {
 	struct mdfld_dsi_dbi_output * dbi_output;
 	struct mdfld_dsi_dbi_output * dbi_output2;
 /* MDFLD_DSI private date end */
+
+#ifdef CONFIG_EARLYSUSPEND
+	struct early_suspend early_suspend;
+#endif
 
 	/*
 	 *Register state
