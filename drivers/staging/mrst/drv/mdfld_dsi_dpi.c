@@ -599,8 +599,10 @@ void mdfld_dsi_dpi_turn_on(struct mdfld_dsi_dpi_output * output, int pipe)
 	
 	PSB_DEBUG_ENTRY("pipe %d panel state %d\n", pipe, output->panel_on);
 	
+#if 0 /* what the hell, just do it */
 	if(output->panel_on) 
 		return;
+#endif
 		
 	/* clear special packet sent bit */
 	if (REG_READ(MIPI_INTR_STAT_REG(pipe)) & DSI_INTR_STATE_SPL_PKG_SENT)
