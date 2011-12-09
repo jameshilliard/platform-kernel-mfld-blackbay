@@ -368,6 +368,9 @@ void tc35876x_configure_lvds_bridge(struct drm_device *dev)
 	/* Set above HTIM1, HTIM2, VTIM1, and VTIM2 at next VSYNC. */
 	tc35876x_regw(i2c, VFUEN, BIT(0));
 
+	/* Soft reset LCD controller. */
+	tc35876x_regw(i2c, SYSRST, BIT(2));
+
 	/* LVDS-TX input muxing */
 	tc35876x_regw(i2c, LVMX0003,
 		INPUT_MUX(INPUT_R5, INPUT_R4, INPUT_R3, INPUT_R2));
