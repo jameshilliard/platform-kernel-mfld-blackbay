@@ -154,31 +154,43 @@ static void dsi_set_pipe_plane_enable_state(struct drm_device *dev, int state, i
 	if (state) {
 
 		/*Set up pipe */
-		REG_WRITE(pipeconf_reg, pipeconf);
+		REG_WRITE(pipeconf_reg, BIT(31));
+
+		if (REG_BIT_WAIT(pipeconf_reg, 1, 30))
+			dev_err(&dev->pdev->dev, "%s: Pipe enable timeout\n",
+				__func__);
 
 		/*Set up display plane */
 		REG_WRITE(dspcntr_reg, dspcntr);
 	} else {
 		u32 val;
+		u32 dspbase_reg = pipe ? MDFLD_DSPCBASE : MRST_DSPABASE;
 
 		/* Put DSI lanes to ULPS to disable pipe */
-		val = REG_READ(MIPI_DEVICE_READY_REG(pipe));
-		val &= ~ULPS_MASK;
-		val |= ENTERING_ULPS;
-		REG_WRITE(MIPI_DEVICE_READY_REG(pipe), val);
-		val = REG_READ(MIPI_DEVICE_READY_REG(pipe));
+		REG_FLD_MOD(MIPI_DEVICE_READY_REG(pipe), 2, 2, 1);
+		REG_READ(MIPI_DEVICE_READY_REG(pipe)); /* posted write? */
 
 		/* LP Hold */
-		val = REG_READ(MIPI_PORT_CONTROL(pipe));
-		val &= ~LP_OUTPUT_HOLD;
-		REG_WRITE(MIPI_PORT_CONTROL(pipe), val);
-		val = REG_READ(MIPI_PORT_CONTROL(pipe));
+		REG_FLD_MOD(MIPI_PORT_CONTROL(pipe), 0, 16, 16);
+		REG_READ(MIPI_PORT_CONTROL(pipe)); /* posted write? */
 
-		/*Disable PIPE */
-		REG_WRITE(pipeconf_reg, 0);
-		mdfld_wait_for_PIPEA_DISABLE(dev, pipe);
-		mdfld_wait_for_DPI_CTRL_FIFO(dev, pipe);
+		/* Disable display plane */
+		REG_FLD_MOD(dspcntr_reg, 0, 31, 31);
 
+		/* Flush the plane changes ??? posted write? */
+		REG_WRITE(dspbase_reg, REG_READ(dspbase_reg));
+		REG_READ(dspbase_reg);
+
+		/* Disable PIPE */
+		REG_FLD_MOD(pipeconf_reg, 0, 31, 31);
+
+		if (REG_BIT_WAIT(pipeconf_reg, 0, 30))
+			dev_err(&dev->pdev->dev, "%s: Pipe disable timeout\n",
+				__func__);
+
+		if (REG_BIT_WAIT(MIPI_GEN_FIFO_STAT_REG(pipe), 1, 28))
+			dev_err(&dev->pdev->dev, "%s: FIFO not empty\n",
+				__func__);
 	}
 }
 
