@@ -129,7 +129,7 @@ static void dsi_set_device_ready_state(struct drm_device *dev, int state,
 {
 	printk(KERN_ALERT "[DISPLAY TRK] %s: state = %d, pipe = %d\n", __func__, state, pipe);
 
-	REG_WRITE(MIPI_DEVICE_READY_REG(pipe), state ? BIT(0) : 0);
+	REG_FLD_MOD(MIPI_DEVICE_READY_REG(pipe), !!state, 0, 0);
 }
 
 static void dsi_set_pipe_plane_enable_state(struct drm_device *dev, int state, int pipe)
@@ -501,7 +501,7 @@ void mdfld_dsi_dpi_controller_init(struct mdfld_dsi_config * dsi_config, int pip
 	PSB_DEBUG_ENTRY("Init DPI interface on pipe %d...\n", pipe);
 
 	/*un-ready device*/
-	REG_WRITE(MIPI_DEVICE_READY_REG(pipe), 0x00000000);
+	REG_FLD_MOD(MIPI_DEVICE_READY_REG(pipe), 0, 0, 0);
 	
 	/*init dsi adapter before kicking off*/
 	REG_WRITE(MIPI_CTRL_REG(pipe), 0x00000018);
@@ -577,7 +577,7 @@ void mdfld_dsi_dpi_controller_init(struct mdfld_dsi_config * dsi_config, int pip
 		tc35876x_set_bridge_reset_state(0);  /*Pull High Reset */
 
 	/*set device ready*/
-	REG_WRITE(MIPI_DEVICE_READY_REG(pipe), 0x00000001);
+	REG_FLD_MOD(MIPI_DEVICE_READY_REG(pipe), 1, 0, 0);
 }
 
 void mdfld_dsi_dpi_turn_on(struct mdfld_dsi_dpi_output * output, int pipe)
