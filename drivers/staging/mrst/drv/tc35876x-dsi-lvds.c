@@ -29,6 +29,7 @@
 #include <linux/i2c/tc35876x.h>
 
 static struct i2c_client *tc35876x_client;
+static struct i2c_client *cmi_lcd_i2c_client;
 
 #define FLD_MASK(start, end)	(((1 << ((start) - (end) + 1)) - 1) << (end))
 #define FLD_VAL(val, start, end) (((val) << (end)) & FLD_MASK(start, end))
@@ -426,6 +427,17 @@ void tc35876x_toshiba_bridge_panel_on(void)
 		msleep(50);
 	}
 
+	if (cmi_lcd_i2c_client) {
+		int r;
+
+		dev_dbg(&cmi_lcd_i2c_client->dev, "bypass panel PWM\n");
+
+		r = i2c_smbus_write_byte_data(cmi_lcd_i2c_client, 0x9b, 0x40);
+		if (r < 0)
+			dev_err(&cmi_lcd_i2c_client->dev,
+				"i2c write failed (%d)\n", r);
+	}
+
 	if (pdata->gpio_panel_bl_en != -1)
 		gpio_set_value_cansleep(pdata->gpio_panel_bl_en, 1);
 }
@@ -549,9 +561,57 @@ static struct i2c_driver tc35876x_bridge_i2c_driver = {
 	.remove = __devexit_p(tc35876x_bridge_remove),
 };
 
+/* LCD panel I2C */
+static int cmi_lcd_i2c_probe(struct i2c_client *client,
+			     const struct i2c_device_id *id)
+{
+	dev_info(&client->dev, "%s\n", __func__);
+
+	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
+		dev_err(&client->dev, "%s: i2c_check_functionality() failed\n",
+			__func__);
+		return -ENODEV;
+	}
+
+	cmi_lcd_i2c_client = client;
+
+	return 0;
+}
+
+static int cmi_lcd_i2c_remove(struct i2c_client *client)
+{
+	dev_dbg(&client->dev, "%s\n", __func__);
+
+	cmi_lcd_i2c_client = NULL;
+
+	return 0;
+}
+
+static const struct i2c_device_id cmi_lcd_i2c_id[] = {
+	{ "cmi-lcd", 0 },
+	{ }
+};
+MODULE_DEVICE_TABLE(i2c, cmi_lcd_i2c_id);
+
+static struct i2c_driver cmi_lcd_i2c_driver = {
+	.driver = {
+		.name = "cmi-lcd",
+	},
+	.id_table = cmi_lcd_i2c_id,
+	.probe = cmi_lcd_i2c_probe,
+	.remove = __devexit_p(cmi_lcd_i2c_remove),
+};
+
 int tc35876x_bridge_init(void)
 {
+	int r;
+
 	pr_debug("%s\n", __func__);
+
+	r = i2c_add_driver(&cmi_lcd_i2c_driver);
+	if (r < 0)
+		pr_err("%s: i2c_add_driver() for %s failed (%d)\n",
+		       __func__, cmi_lcd_i2c_driver.driver.name, r);
 
 	return i2c_add_driver(&tc35876x_bridge_i2c_driver);
 }
@@ -561,4 +621,7 @@ void tc35876x_bridge_exit(void)
 	pr_debug("%s\n", __func__);
 
 	i2c_del_driver(&tc35876x_bridge_i2c_driver);
+
+	if (cmi_lcd_i2c_client)
+		i2c_del_driver(&cmi_lcd_i2c_driver);
 }
