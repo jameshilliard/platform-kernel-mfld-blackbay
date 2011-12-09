@@ -972,10 +972,10 @@ void mdfld_dsi_dpi_mode_set(struct drm_encoder * encoder,
 		REG_WRITE(DEVICE_READY_REG, 0x00000001);
 
 		REG_WRITE(MIPI_PORT_CONTROL(pipe), 0x80810000);
+	} else {
+		/*set up mipi port FIXME: do at init time */
+		REG_WRITE(MIPI_PORT_CONTROL(pipe), mipi);
 	}
-
-	/*set up mipi port FIXME: do at init time */
-	REG_WRITE(MIPI_PORT_CONTROL(pipe), mipi);
 	REG_READ(MIPI_PORT_CONTROL(pipe));
 
 	if (get_panel_type(dev, pipe) == TMD_VID) {
