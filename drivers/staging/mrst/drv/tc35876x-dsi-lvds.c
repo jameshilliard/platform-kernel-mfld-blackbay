@@ -602,11 +602,45 @@ static struct i2c_driver cmi_lcd_i2c_driver = {
 	.remove = __devexit_p(cmi_lcd_i2c_remove),
 };
 
+/* HACK to create I2C device while it's not created by platform code */
+#define CMI_LCD_I2C_ADAPTER	2
+#define CMI_LCD_I2C_ADDR	0x60
+
+static int cmi_lcd_hack_create_device(void)
+{
+	struct i2c_adapter *adapter;
+	struct i2c_client *client;
+	struct i2c_board_info info = {
+		.type = "cmi-lcd",
+		.addr = CMI_LCD_I2C_ADDR,
+	};
+
+	pr_debug("%s\n", __func__);
+
+	adapter = i2c_get_adapter(CMI_LCD_I2C_ADAPTER);
+	if (!adapter) {
+		pr_err("%s: i2c_get_adapter(%d) failed\n", __func__,
+			CMI_LCD_I2C_ADAPTER);
+		return -EINVAL;
+	}
+
+	client = i2c_new_device(adapter, &info);
+	if (!client) {
+		pr_err("%s: i2c_new_device() failed\n", __func__);
+		i2c_put_adapter(adapter);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 int tc35876x_bridge_init(void)
 {
 	int r;
 
 	pr_debug("%s\n", __func__);
+
+	cmi_lcd_hack_create_device();
 
 	r = i2c_add_driver(&cmi_lcd_i2c_driver);
 	if (r < 0)
