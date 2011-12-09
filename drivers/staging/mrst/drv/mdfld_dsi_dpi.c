@@ -949,13 +949,11 @@ void mdfld_dsi_dpi_mode_set(struct drm_encoder * encoder,
 		REG_WRITE(MRST_DPLL_A, 0x00800000);
 		udelay(500);
 		REG_WRITE(MRST_DPLL_A, 0x80800000);
-		/*Wait for DSI PLL to lock */
-		while ((timeout < 20000) && !(REG_READ(pipeconf_reg) & PIPECONF_DSIPLL_LOCK)) {
-			udelay(150);
-			timeout++;
-		}
-		if (timeout == 20000)
-			printk(KERN_ALERT "[DISPLAY] DSI PLL Locked timeout\n");
+
+		if (REG_BIT_WAIT(pipeconf_reg, 1, 29))
+			dev_err(&dev->pdev->dev, "%s: DSI PLL lock timeout\n",
+				__func__);
+
 		REG_WRITE(MIPI_DPHY_PARAM_REG(pipe), 0x2A0c6008);
 
 		mipi_set_properties(dsi_config, pipe);
