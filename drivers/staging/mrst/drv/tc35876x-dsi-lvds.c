@@ -427,7 +427,7 @@ void tc35876x_toshiba_bridge_panel_on(void)
 	if (pdata->gpio_panel_vadd != -1) {
 		gpio_set_value_cansleep(pdata->gpio_panel_vadd, 1);
 		/* FIXME: check sleep from panel spec */
-		msleep(50);
+		msleep(100);
 	}
 
 	if (cmi_lcd_i2c_client) {
