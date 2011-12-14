@@ -2066,6 +2066,118 @@ out:
 	return ret;
 }
 
+
+static void swap_planes(struct drm_mode_fb_cmd2 *r, int a, int b)
+{
+	swap(r->handles[a], r->handles[b]);
+	swap(r->offsets[a], r->offsets[b]);
+	swap(r->pitches[a], r->pitches[b]);
+}
+
+static void format_sanitize(struct drm_mode_fb_cmd2 *r)
+{
+	switch (r->pixel_format) {
+	/* fourcc.org YUV formats */
+	case fourcc_code('Y', 'U', 'Y', '2'):
+	case fourcc_code('Y', 'U', 'N', 'V'):
+		r->pixel_format = DRM_FORMAT_YUYV;
+		break;
+	case fourcc_code('Y', 'V', 'U', '9'):
+		swap_planes(r, 1, 2);
+		r->pixel_format = DRM_FORMAT_YUV410;
+		break;
+	case fourcc_code('Y', 'V', '1', '2'):
+	case fourcc_code('I', 'M', 'C', '1'):
+		swap_planes(r, 1, 2);
+		/* fall through */
+	case fourcc_code('I', '4', '2', '0'):
+	case fourcc_code('I', 'Y', 'U', 'V'):
+	case fourcc_code('I', 'M', 'C', '3'):
+		r->pixel_format = DRM_FORMAT_YUV420;
+		break;
+	case fourcc_code('Y', 'V', '1', '6'):
+		swap_planes(r, 1, 2);
+		r->pixel_format = DRM_FORMAT_YUV422;
+		break;
+
+	/* videodev2.h YUV formats */
+	case fourcc_code('Y', 'M', '1', '2'):
+		r->pixel_format = DRM_FORMAT_YUV420;
+		break;
+	case fourcc_code('N', 'M', '1', '2'):
+		r->pixel_format = DRM_FORMAT_NV12;
+		break;
+	case fourcc_code('Y', 'U', 'V', '4'):
+		r->pixel_format = DRM_FORMAT_AYUV | DRM_FORMAT_BIG_ENDIAN;
+		break;
+	case fourcc_code('4', '1', '1', 'P'):
+		swap_planes(r, 1, 2);
+		r->pixel_format = DRM_FORMAT_YUV411;
+		break;
+	case fourcc_code('4', '2', '2', 'P'):
+		swap_planes(r, 1, 2);
+		r->pixel_format = DRM_FORMAT_YUV422;
+		break;
+
+	/* videodev2.h RGB formats */
+	case fourcc_code('P', 'A', 'L', '8'):
+		r->pixel_format = DRM_FORMAT_C8;
+		break;
+	case fourcc_code('R', '4', '4', '4'):
+		r->pixel_format = DRM_FORMAT_ARGB4444;
+		break;
+	case fourcc_code('B', 'G', 'R', '4'):
+		r->pixel_format = DRM_FORMAT_ARGB8888;
+		break;
+	case fourcc_code('R', 'G', 'B', '3'):
+		r->pixel_format = DRM_FORMAT_BGR888;
+		break;
+	case fourcc_code('B', 'G', 'R', '3'):
+		r->pixel_format = DRM_FORMAT_RGB888;
+		break;
+#if 1
+	case fourcc_code('R', 'G', 'B', '1'):
+		r->pixel_format = DRM_FORMAT_BGR233;
+		break;
+	case fourcc_code('R', 'G', 'B', 'O'):
+		r->pixel_format = DRM_FORMAT_ABGR1555;
+		break;
+	case fourcc_code('R', 'G', 'B', 'P'):
+		r->pixel_format = DRM_FORMAT_BGR565;
+		break;
+	case fourcc_code('R', 'G', 'B', 'Q'):
+		r->pixel_format = DRM_FORMAT_ABGR1555 | DRM_FORMAT_BIG_ENDIAN;
+		break;
+	case fourcc_code('R', 'G', 'B', 'R'):
+		r->pixel_format = DRM_FORMAT_BGR565 | DRM_FORMAT_BIG_ENDIAN;
+		break;
+	case fourcc_code('R', 'G', 'B', '4'):
+		r->pixel_format = DRM_FORMAT_ABGR8888;
+		break;
+	}
+#else
+	case fourcc_code('R', 'G', 'B', '1'):
+		r->pixel_format = DRM_FORMAT_RGB332;
+		break;
+	case fourcc_code('R', 'G', 'B', 'O'):
+		r->pixel_format = DRM_FORMAT_ARGB1555;
+		break;
+	case fourcc_code('R', 'G', 'B', 'P'):
+		r->pixel_format = DRM_FORMAT_RGB565;
+		break;
+	case fourcc_code('R', 'G', 'B', 'Q'):
+		r->pixel_format = DRM_FORMAT_ARGB1555 | DRM_FORMAT_BIG_ENDIAN;
+		break;
+	case fourcc_code('R', 'G', 'B', 'R'):
+		r->pixel_format = DRM_FORMAT_RGB565 | DRM_FORMAT_BIG_ENDIAN;
+		break;
+	case fourcc_code('R', 'G', 'B', '4'):
+		r->pixel_format = DRM_FORMAT_BGRA8888;
+		break;
+	}
+#endif
+}
+
 /**
  * drm_mode_addfb2 - add an FB to the graphics configuration
  * @inode: inode from the ioctl
@@ -2104,6 +2216,8 @@ int drm_mode_addfb2(struct drm_device *dev,
 			  r->height, config->min_height, config->max_height);
 		return -EINVAL;
 	}
+
+	format_sanitize(r);
 
 	mutex_lock(&dev->mode_config.mutex);
 
