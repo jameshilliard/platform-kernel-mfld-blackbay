@@ -1161,3 +1161,88 @@ int drm_format_vert_chroma_subsampling(uint32_t format)
 	}
 }
 EXPORT_SYMBOL(drm_format_vert_chroma_subsampling);
+
+/**
+ * drm_framebuffer_check - check the framebuffer layout
+ * @r: cmd from ioctl
+ * @sizes: sizes of the used BOs
+ *
+ * For each handle in the handles[] array of @r, the size of the
+ * corresponding BO must be passed in @sizes using the same index.
+ *
+ * RETURNS:
+ * Zero on success, error code on failure.
+ */
+int drm_framebuffer_check(const struct drm_mode_fb_cmd2 *r, const uint64_t sizes[4])
+{
+	struct {
+		unsigned int start, end;
+	} ranges[4];
+	unsigned int req_sizes[4] = {};
+	int hsub = drm_format_horz_chroma_subsampling(r->pixel_format);
+	int vsub = drm_format_vert_chroma_subsampling(r->pixel_format);
+	int num_planes = drm_format_num_planes(r->pixel_format);
+	int i, j;
+
+	if (r->width == 0 || r->height == 0)
+		return -EINVAL;
+
+	/* Keep things safe for s15.16 fixed point math. */
+	if (r->width > 0x7fff || r->height > 0x7fff)
+		return -ERANGE;
+
+	if (r->width % hsub || r->height % vsub)
+		return -EINVAL;
+
+	for (i = 0; i < num_planes; i++) {
+		unsigned int height = r->height / (i != 0 ? vsub : 1);
+		unsigned int width = r->width / (i != 0 ? hsub : 1);
+		unsigned int size = r->pitches[i] * height;
+		unsigned int cpp = drm_format_plane_cpp(r->pixel_format, i);
+		unsigned int min_pitch = cpp * width;
+
+		if (!r->handles[i])
+			return -EINVAL;
+
+		if (size < r->pitches[i] || size < height)
+			return -ERANGE;
+
+		if (min_pitch < width || min_pitch < cpp)
+			return -ERANGE;
+
+		if (r->pitches[i] < min_pitch)
+			return -EINVAL;
+
+		ranges[i].start = r->offsets[i];
+		ranges[i].end = ranges[i].start + size;
+
+		if (ranges[i].end < ranges[i].start)
+			return -ERANGE;
+
+		/* update all indexes of req_sizes that match this handle */
+		for (j = 0; j < num_planes; j++) {
+			if (r->handles[i] == r->handles[j])
+				req_sizes[j] = max(req_sizes[j], ranges[i].end);
+		}
+	}
+
+	/* Check that the passed BO sizes are sufficient */
+	for (i = 0; i < num_planes; i++) {
+		if (sizes[i] < req_sizes[i])
+			return -ENOSPC;
+	}
+
+	/* Check for overlapping ranges within the same BO */
+	/* FIXME what about formats with interleaved planes (eg. IMC2/IMC4)? */
+	for (i = 0; i < num_planes; i++) {
+		for (j = i + 1; j < num_planes; j++) {
+			if (r->handles[i] == r->handles[j] &&
+			    ranges[i].start < ranges[j].end &&
+			    ranges[j].start < ranges[i].end)
+				return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(drm_framebuffer_check);

@@ -151,5 +151,7 @@ extern int drm_format_num_planes(uint32_t format);
 extern int drm_format_plane_cpp(uint32_t format, int plane);
 extern int drm_format_horz_chroma_subsampling(uint32_t format);
 extern int drm_format_vert_chroma_subsampling(uint32_t format);
+extern int drm_framebuffer_check(const struct drm_mode_fb_cmd2 *r,
+				 const uint64_t sizes[4]);
 
 #endif
