@@ -181,5 +181,6 @@ extern int drm_calc_hscale(struct drm_region *src, struct drm_region *dst,
 			   int min_hscale, int max_hscale);
 extern int drm_calc_vscale(struct drm_region *src, struct drm_region *dst,
 			   int min_vscale, int max_vscale);
+extern void drm_plane_opts_defaults(struct drm_plane_opts *opts);
 
 #endif

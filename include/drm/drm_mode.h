@@ -157,6 +157,117 @@ struct drm_mode_get_plane_res {
 	__u32 count_planes;
 };
 
+/* Valid YCbCr range */
+#define DRM_CSC_RANGE_UNKNOWN		0x0 /* not specified, implementation defined result */
+#define DRM_CSC_RANGE_MPEG		0x1 /* "MPEG" range (16-235 for Y, 16-240 for Cb/Cr) */
+#define DRM_CSC_RANGE_JPEG		0x2 /* "JPEG" or full range (0-255 for Y/Cb/Cr) */
+
+/* Color space conversion transfer matrix */
+#define DRM_CSC_MATRIX_UNKNOWN		0x0 /* not specified, implementation defined result */
+#define DRM_CSC_MATRIX_BT601		0x1 /* ITU-R BT.601 */
+#define DRM_CSC_MATRIX_BT709		0x2 /* ITU-R BT.709 */
+
+/* Chroma siting information */
+#define DRM_CHROMA_SITING_UNKNOWN		0x0 /* not specified, implementation defined result */
+#define DRM_CHROMA_SITING_HORZ_LEFT		0x1 /* horizontally co-sited with the first luma sample */
+#define DRM_CHROMA_SITING_HORZ_CENTER		0x2 /* horizontally interstitially sited with luma samples */
+#define DRM_CHROMA_SITING_VERT_TOP		0x4 /* vertically co-sited with the first luma sample */
+#define DRM_CHROMA_SITING_VERT_CENTER		0x8 /* vertically interstitially sited with luma samples */
+#define DRM_CHROMA_SITING_MISALIGNED_PLANES	0x10 /* chroma planes out of phase with each other by 0.5 lines */
+/* Typical chroma siting configurations */
+#define DRM_CHROMA_SITING_MPEG1			(DRM_CHROMA_SITING_HORZ_CENTER |\
+						 DRM_CHROMA_SITING_VERT_CENTER)
+#define DRM_CHROMA_SITING_MPEG2			(DRM_CHROMA_SITING_HORZ_LEFT |\
+						 DRM_CHROMA_SITING_VERT_CENTER)
+#define DRM_CHROMA_SITING_DV			(DRM_CHROMA_SITING_HORZ_LEFT |\
+						 DRM_CHROMA_SITING_VERT_TOP |\
+						 DRM_CHROMA_SITING_MISALIGNED_PLANES)
+
+/*
+ * Plane option flags.
+ * If a flag is set the corresponding value is valid
+ */
+#define DRM_MODE_PLANE_BRIGHTNESS	(1<<0)
+#define DRM_MODE_PLANE_CONTRAST		(1<<1)
+#define	DRM_MODE_PLANE_HUE		(1<<2)
+#define DRM_MODE_PLANE_SATURATION	(1<<3)
+#define DRM_MODE_PLANE_SRC_KEY		(1<<4)
+#define DRM_MODE_PLANE_DST_KEY		(1<<5)
+#define DRM_MODE_PLANE_CONST_ALPHA	(1<<6)
+#define DRM_MODE_PLANE_ZORDER		(1<<7)
+#define DRM_MODE_PLANE_CSC_MATRIX	(1<<8)
+#define DRM_MODE_PLANE_CSC_RANGE	(1<<9)
+#define	DRM_MODE_PLANE_CHROMA_SITING	(1<<10)
+#define	DRM_MODE_PLANE_VC1_RANGE_MAPY	(1<<11)
+#define	DRM_MODE_PLANE_VC1_RANGE_MAPUV	(1<<12)
+
+struct drm_mode_plane_opts_cmd {
+	__u32 plane_id;
+
+	__u32 flags;
+
+	/*
+	 * 0x0000 - 0x7fff = decrease
+	 * 0x8000          = no change
+	 * 0x8001 - 0xffff = increase
+	 */
+	__u16 brightness;
+	__u16 contrast;
+	__u16 hue;
+	__u16 saturation;
+
+	/*
+	 * [47:32] R [31:16] G [15:0] B or [47:32] Y [31:16] Cb [15:0] Cr
+	 * The size and color space of the components depends on the
+	 * used pixel format. If the actual component size is less than
+	 * 16 bits, the most significat bits of of each component are
+	 * used.
+	 * The plane is invisible when the following equation evaluates
+	 * to true (for each component):
+	 * src_pixel >= src_key_low && src_pixel <= src_key_high
+	 *
+	 * To disable source color keying set src_key_high < src_key_low
+	 * for each compnent.
+	 */
+	__u64 src_key_low;
+	__u64 src_key_high;
+
+	/* See src_key_low/src_key_high */
+	__u64 dst_key_value;
+	/*
+	 * Layout matches that of dst_key_value. The plane is visible
+	 * if the following equation evaluates to true:
+	 * (dst_pixel & dst_key_mask) == (dst_key_value & dst_key_mask)
+	 *
+	 * To disable destination color keying set dst_key_mask to 0.
+	 */
+	__u64 dst_key_mask;
+
+	/* If the hardware uses less bits, the most significat bits are used. */
+	__u16 const_alpha;
+
+	/*
+	 * CRTC is at 0, < 0 is below it, > 0 is above it
+	 * If two planes are configured with the same zorder
+	 * on the same CRTC, the plane with the lower plane_id
+	 * will be stacked closer to the CRTC.
+	 */
+	__s8 zorder;
+
+	/* DRM_CSC_MATRIX_* */
+	__u8 csc_matrix;
+
+	/* DRM_CSC_RANGE_* */
+	__u8 csc_range;
+
+	/* DRM_CHROMA_SITING_* */
+	__u8 chroma_siting;
+
+	/* as defined by VC-1 */
+	__u8 vc1_range_mapy;
+	__u8 vc1_range_mapuv;
+};
+
 #define DRM_MODE_ENCODER_NONE	0
 #define DRM_MODE_ENCODER_DAC	1
 #define DRM_MODE_ENCODER_TMDS	2

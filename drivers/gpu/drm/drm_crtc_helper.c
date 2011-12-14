@@ -1504,3 +1504,22 @@ int drm_calc_vscale(struct drm_region *src, struct drm_region *dst,
 	return vscale;
 }
 EXPORT_SYMBOL(drm_calc_vscale);
+
+/**
+ * drm_plane_opts_defaults - fill the plane opts with default values
+ */
+void drm_plane_opts_defaults(struct drm_plane_opts *opts)
+{
+	memset(opts, 0, sizeof *opts);
+
+	opts->brightness = 0x8000;
+	opts->contrast = 0x8000;
+	opts->hue = 0x8000;
+	opts->saturation = 0x8000;
+
+	/* disable source color keying */
+	opts->src_key_low = ~0ULL;
+
+	opts->const_alpha = 0xffff;
+}
+EXPORT_SYMBOL(drm_plane_opts_defaults);

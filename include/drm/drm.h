@@ -718,6 +718,8 @@ struct drm_get_cap {
 #define DRM_IOCTL_MODE_GETPLANE	DRM_IOWR(0xB6, struct drm_mode_get_plane)
 #define DRM_IOCTL_MODE_SETPLANE	DRM_IOWR(0xB7, struct drm_mode_set_plane)
 #define DRM_IOCTL_MODE_ADDFB2		DRM_IOWR(0xB8, struct drm_mode_fb_cmd2)
+#define DRM_IOCTL_MODE_PLANE_OPTS	DRM_IOWR(0xB9, struct drm_mode_plane_opts_cmd)
+
 
 /**
  * Device specific ioctls should only be in their respective headers

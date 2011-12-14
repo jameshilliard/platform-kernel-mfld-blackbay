@@ -1770,6 +1770,174 @@ out:
 }
 
 /**
+ * drm_mode_plane_opts - set and get plane options
+ * @dev: DRM device
+ * @data: ioctl data*
+ * @file_prive: DRM file info
+ *
+ */
+int drm_mode_plane_opts(struct drm_device *dev, void *data,
+			struct drm_file *file_priv)
+{
+	struct drm_mode_plane_opts_cmd *req = data;
+	struct drm_mode_object *obj;
+	struct drm_plane *plane;
+	int ret = 0;
+
+	if (!drm_core_check_feature(dev, DRIVER_MODESET))
+		return -EINVAL;
+
+	mutex_lock(&dev->mode_config.mutex);
+
+	/*
+	 * First, find the plane object.  If not available,
+	 * we don't bother to call the driver.
+	 */
+	obj = drm_mode_object_find(dev, req->plane_id,
+				   DRM_MODE_OBJECT_PLANE);
+	if (!obj) {
+		DRM_DEBUG_KMS("Unknown plane ID %d\n",
+			      req->plane_id);
+		ret = -ENOENT;
+		goto out;
+	}
+	plane = obj_to_plane(obj);
+
+	if (req->flags & ~plane->opts_flags) {
+		ret = -ENOTSUPP;
+		goto out;
+	}
+
+	if (req->flags) {
+		/* Start with the current values. */
+		struct drm_plane_opts opts = plane->opts;
+		uint32_t flags = 0;
+
+		/* Overwrite with user provided values. */
+		if (req->flags & DRM_MODE_PLANE_BRIGHTNESS &&
+		    opts.brightness != req->brightness) {
+			flags |= DRM_MODE_PLANE_BRIGHTNESS;
+			opts.brightness = req->brightness;
+		}
+		if (req->flags & DRM_MODE_PLANE_CONTRAST &&
+		    opts.contrast != req->contrast) {
+			flags |= DRM_MODE_PLANE_CONTRAST;
+			opts.contrast = req->contrast;
+		}
+		if (req->flags & DRM_MODE_PLANE_HUE &&
+		    opts.hue != req->hue) {
+			flags |= DRM_MODE_PLANE_HUE;
+			opts.hue = req->hue;
+		}
+		if (req->flags & DRM_MODE_PLANE_SATURATION &&
+		    opts.saturation != req->saturation) {
+			flags |= DRM_MODE_PLANE_SATURATION;
+			opts.saturation = req->saturation;
+		}
+		if (req->flags & DRM_MODE_PLANE_SRC_KEY &&
+		    (opts.src_key_low != req->src_key_low ||
+		     opts.src_key_high != req->src_key_high)) {
+			flags |= DRM_MODE_PLANE_SRC_KEY;
+			opts.src_key_low = req->src_key_low;
+			opts.src_key_high = req->src_key_high;
+		}
+		if (req->flags & DRM_MODE_PLANE_DST_KEY &&
+		    (opts.dst_key_value != req->dst_key_value ||
+		     opts.dst_key_mask != req->dst_key_mask)) {
+			flags |= DRM_MODE_PLANE_DST_KEY;
+			opts.dst_key_value = req->dst_key_value;
+			opts.dst_key_mask = req->dst_key_mask;
+		}
+		if (req->flags & DRM_MODE_PLANE_CONST_ALPHA &&
+		    opts.const_alpha != req->const_alpha) {
+			flags |= DRM_MODE_PLANE_CONST_ALPHA;
+			opts.const_alpha = req->const_alpha;
+		}
+		if (req->flags & DRM_MODE_PLANE_ZORDER &&
+		    opts.zorder != req->zorder) {
+			if (req->zorder == 0) {
+				ret = -EINVAL;
+				goto out;
+			}
+			flags |= DRM_MODE_PLANE_ZORDER;
+			opts.zorder = req->zorder;
+		}
+		if (req->flags & DRM_MODE_PLANE_CSC_MATRIX &&
+		    opts.csc_matrix != req->csc_matrix) {
+			flags |= DRM_MODE_PLANE_CSC_MATRIX;
+			opts.csc_matrix = req->csc_matrix;
+		}
+		if (req->flags & DRM_MODE_PLANE_CSC_RANGE &&
+		    opts.csc_range != req->csc_range) {
+			flags |= DRM_MODE_PLANE_CSC_RANGE;
+			opts.csc_range = req->csc_range;
+		}
+		if (req->flags & DRM_MODE_PLANE_CHROMA_SITING &&
+		    opts.chroma_siting != req->chroma_siting) {
+			flags |= DRM_MODE_PLANE_CHROMA_SITING;
+			opts.chroma_siting = req->chroma_siting;
+		}
+		if (req->flags & DRM_MODE_PLANE_VC1_RANGE_MAPY &&
+		    opts.vc1_range_mapy != req->vc1_range_mapy) {
+			flags |= DRM_MODE_PLANE_VC1_RANGE_MAPY;
+			opts.vc1_range_mapy = req->vc1_range_mapy;
+		}
+		if (req->flags & DRM_MODE_PLANE_VC1_RANGE_MAPUV &&
+		    opts.vc1_range_mapuv != req->vc1_range_mapuv) {
+			flags |= DRM_MODE_PLANE_VC1_RANGE_MAPUV;
+			opts.vc1_range_mapuv = req->vc1_range_mapuv;
+		}
+
+		if (flags) {
+			ret = plane->funcs->set_plane_opts(plane, flags, &opts);
+			if (ret)
+				goto out;
+
+			plane->opts = opts;
+		}
+	}
+
+	/* Copy the current values back to the user. */
+	req->flags = plane->opts_flags;
+
+	if (req->flags & DRM_MODE_PLANE_BRIGHTNESS)
+		req->brightness = plane->opts.brightness;
+	if (req->flags & DRM_MODE_PLANE_CONTRAST)
+		req->contrast = plane->opts.contrast;
+	if (req->flags & DRM_MODE_PLANE_HUE)
+		req->hue = plane->opts.hue;
+	if (req->flags & DRM_MODE_PLANE_SATURATION)
+		req->saturation = plane->opts.saturation;
+	if (req->flags & DRM_MODE_PLANE_SRC_KEY) {
+		req->src_key_low = plane->opts.src_key_low;
+		req->src_key_high = plane->opts.src_key_high;
+	}
+	if (req->flags & DRM_MODE_PLANE_DST_KEY) {
+		req->dst_key_value = plane->opts.dst_key_value;
+		req->dst_key_mask = plane->opts.dst_key_mask;
+	}
+	if (req->flags & DRM_MODE_PLANE_CONST_ALPHA)
+		req->const_alpha = plane->opts.const_alpha;
+	if (req->flags & DRM_MODE_PLANE_ZORDER)
+		req->zorder = plane->opts.zorder;
+	if (req->flags & DRM_MODE_PLANE_CSC_MATRIX)
+		req->csc_matrix = plane->opts.csc_matrix;
+	if (req->flags & DRM_MODE_PLANE_CSC_RANGE)
+		req->csc_range = plane->opts.csc_range;
+	if (req->flags & DRM_MODE_PLANE_CHROMA_SITING)
+		req->chroma_siting = plane->opts.chroma_siting;
+	if (req->flags & DRM_MODE_PLANE_VC1_RANGE_MAPY)
+		req->vc1_range_mapy = plane->opts.vc1_range_mapy;
+	if (req->flags & DRM_MODE_PLANE_VC1_RANGE_MAPUV)
+		req->vc1_range_mapuv = plane->opts.vc1_range_mapuv;
+
+ out:
+	mutex_unlock(&dev->mode_config.mutex);
+
+	return ret;
+}
+
+/**
  * drm_mode_setcrtc - set CRTC configuration
  * @inode: inode from the ioctl
  * @filp: file * from the ioctl

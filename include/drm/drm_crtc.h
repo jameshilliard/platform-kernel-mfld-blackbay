@@ -276,6 +276,56 @@ struct drm_property {
 	struct list_head enum_blob_list;
 };
 
+/**
+ * drm_plane_opts - plane options
+ * @brightness: brightness value
+ * @contrast: contrast value
+ * @hue: hue value
+ * @saturation: saturation value
+ * @src_key_low: minimum source color key value
+ * @src_key_high: maximum source color key value
+ * @dst_key_value: destination color key value
+ * @dst_key_mask: destination color key mask
+ * @const_alpha: constant alpha blending factor
+ * @zorder: plane Z order
+ * @csc_matrix: transfer matrix
+ * @csc_range: Y/Cb/Cb range information
+ * @chroma_siting: chroma siting information
+ * @vc1_range_mapy: VC-1 range mapping for Y
+ * @vc1_range_mapuv: VC-1 range mapping for Cb/Cr
+ *
+ * @brightness, @contrast, @hue and @saturation have a range of 0x0000 to
+ * 0xffff. Values of 0x0000 to 0x7fff indicate a decrease, a value of
+ * 0x8000 indicates a default level, and values from 0x8001 to 0xffff
+ * indicate an increase.
+ *
+ * The actual change in the level per a change in the value is implementation
+ * defined, as is the exact meaning of the default level. The only strict
+ * requirement is that the mapping between the value and the actual level is
+ * a monotonically non-decreasing function.
+ *
+ * It is recommended that the full range of values be utilized eg. by
+ * using coarsers step size, piecewise functions, etc. This helps to
+ * isolate the user from the hardware details as much as possible.
+ */
+struct drm_plane_opts {
+	uint16_t brightness;
+	uint16_t contrast;
+	uint16_t hue;
+	uint16_t saturation;
+	uint64_t src_key_low;
+	uint64_t src_key_high;
+	uint64_t dst_key_value;
+	uint64_t dst_key_mask;
+	uint16_t const_alpha;
+	int8_t zorder;
+	uint8_t csc_matrix;
+	uint8_t csc_range;
+	uint8_t chroma_siting;
+	uint8_t vc1_range_mapy;
+	uint8_t vc1_range_mapuv;
+};
+
 struct drm_crtc;
 struct drm_connector;
 struct drm_encoder;
@@ -534,6 +584,7 @@ struct drm_connector {
  * @update_plane: update the plane configuration
  * @disable_plane: shut down the plane
  * @destroy: clean up plane resources
+ * @set_plane_opts: set plane options
  */
 struct drm_plane_funcs {
 	int (*update_plane)(struct drm_plane *plane,
@@ -544,6 +595,8 @@ struct drm_plane_funcs {
 			    uint32_t src_w, uint32_t src_h);
 	int (*disable_plane)(struct drm_plane *plane);
 	void (*destroy)(struct drm_plane *plane);
+	int (*set_plane_opts)(struct drm_plane *plane, uint32_t flags,
+			      struct drm_plane_opts *opts);
 };
 
 /**
@@ -583,6 +636,9 @@ struct drm_plane {
 
 	const struct drm_plane_funcs *funcs;
 	void *helper_private;
+
+	uint32_t opts_flags;
+	struct drm_plane_opts opts;
 };
 
 /**
@@ -892,4 +948,8 @@ extern int drm_mode_mmap_dumb_ioctl(struct drm_device *dev,
 				    void *data, struct drm_file *file_priv);
 extern int drm_mode_destroy_dumb_ioctl(struct drm_device *dev,
 				      void *data, struct drm_file *file_priv);
+
+extern int drm_mode_plane_opts(struct drm_device *dev, void *data,
+			       struct drm_file *file_priv);
+
 #endif /* __DRM_CRTC_H__ */
