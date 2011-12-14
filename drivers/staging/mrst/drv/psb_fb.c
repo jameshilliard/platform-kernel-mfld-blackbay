@@ -340,7 +340,7 @@ static int psbfb_create(struct psb_fbdev * fbdev, struct drm_fb_helper_surface_s
 	mode_cmd.width = sizes->surface_width;
 	mode_cmd.height = sizes->surface_height;
 
-	mode_cmd.pixel_format = DRM_FOURCC_RGB24;
+	mode_cmd.pixel_format = DRM_FORMAT_XRGB8888;
 	drm_helper_get_fb_bpp_depth(mode_cmd.pixel_format, &depth, &bpp);
 
 	/* HW requires pitch to be 64 byte aligned */

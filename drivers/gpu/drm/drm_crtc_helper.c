@@ -809,27 +809,54 @@ void drm_helper_get_fb_bpp_depth(uint32_t format, unsigned int *depth,
 				 int *bpp)
 {
 	switch (format) {
-	case DRM_FOURCC_RGB332:
+	case DRM_FORMAT_RGB332:
+	case DRM_FORMAT_BGR233:
 		*depth = 8;
 		*bpp = 8;
 		break;
-	case DRM_FOURCC_RGB555:
+	case DRM_FORMAT_XRGB1555:
+	case DRM_FORMAT_XBGR1555:
+	case DRM_FORMAT_RGBX5551:
+	case DRM_FORMAT_BGRX5551:
+	case DRM_FORMAT_ARGB1555:
+	case DRM_FORMAT_ABGR1555:
+	case DRM_FORMAT_RGBA5551:
+	case DRM_FORMAT_BGRA5551:
 		*depth = 15;
 		*bpp = 16;
 		break;
-	case DRM_FOURCC_RGB565:
+	case DRM_FORMAT_RGB565:
+	case DRM_FORMAT_BGR565:
 		*depth = 16;
 		*bpp = 16;
 		break;
-	case DRM_FOURCC_RGB24:
+	case DRM_FORMAT_RGB888:
+	case DRM_FORMAT_BGR888:
+		*depth = 24;
+		*bpp = 24;
+		break;
+	case DRM_FORMAT_XRGB8888:
+	case DRM_FORMAT_XBGR8888:
+	case DRM_FORMAT_RGBX8888:
+	case DRM_FORMAT_BGRX8888:
 		*depth = 24;
 		*bpp = 32;
 		break;
-	case DRM_INTEL_RGB30:
+	case DRM_FORMAT_XRGB2101010:
+	case DRM_FORMAT_XBGR2101010:
+	case DRM_FORMAT_RGBX1010102:
+	case DRM_FORMAT_BGRX1010102:
+	case DRM_FORMAT_ARGB2101010:
+	case DRM_FORMAT_ABGR2101010:
+	case DRM_FORMAT_RGBA1010102:
+	case DRM_FORMAT_BGRA1010102:
 		*depth = 30;
 		*bpp = 32;
 		break;
-	case DRM_FOURCC_RGB32:
+	case DRM_FORMAT_ARGB8888:
+	case DRM_FORMAT_ABGR8888:
+	case DRM_FORMAT_RGBA8888:
+	case DRM_FORMAT_BGRA8888:
 		*depth = 32;
 		*bpp = 32;
 		break;

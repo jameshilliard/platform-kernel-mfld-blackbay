@@ -1922,28 +1922,28 @@ uint32_t drm_mode_legacy_fb_format(uint32_t bpp, uint32_t depth)
 
 	switch (bpp) {
 	case 8:
-		fmt = DRM_FOURCC_RGB332;
+		fmt = DRM_FORMAT_RGB332;
 		break;
 	case 16:
 		if (depth == 15)
-			fmt = DRM_FOURCC_RGB555;
+			fmt = DRM_FORMAT_XRGB1555;
 		else
-			fmt = DRM_FOURCC_RGB565;
+			fmt = DRM_FORMAT_RGB565;
 		break;
 	case 24:
-		fmt = DRM_FOURCC_RGB24;
+		fmt = DRM_FORMAT_RGB888;
 		break;
 	case 32:
 		if (depth == 24)
-			fmt = DRM_FOURCC_RGB24;
+			fmt = DRM_FORMAT_XRGB8888;
 		else if (depth == 30)
-			fmt = DRM_INTEL_RGB30;
+			fmt = DRM_FORMAT_XRGB2101010;
 		else
-			fmt = DRM_FOURCC_RGB32;
+			fmt = DRM_FORMAT_ARGB8888;
 		break;
 	default:
-		DRM_ERROR("bad bpp, assuming RGB24 pixel format\n");
-		fmt = DRM_FOURCC_RGB24;
+		DRM_ERROR("bad bpp, assuming x8r8g8b8 pixel format\n");
+		fmt = DRM_FORMAT_XRGB8888;
 		break;
 	}
 
