@@ -148,5 +148,6 @@ extern void drm_kms_helper_poll_disable(struct drm_device *dev);
 extern void drm_kms_helper_poll_enable(struct drm_device *dev);
 
 extern int drm_format_num_planes(uint32_t format);
+extern int drm_format_plane_cpp(uint32_t format, int plane);
 
 #endif

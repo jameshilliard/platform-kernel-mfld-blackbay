@@ -1067,3 +1067,43 @@ int drm_format_num_planes(uint32_t format)
 	}
 }
 EXPORT_SYMBOL(drm_format_num_planes);
+
+/**
+ * drm_format_plane_cpp - determine the bytes per pixel value
+ * @format: pixel format (DRM_FORMAT_*)
+ * @plane: plane index
+ *
+ * RETURNS:
+ * The bytes per pixel value for the specified plane.
+ */
+int drm_format_plane_cpp(uint32_t format, int plane)
+{
+	unsigned int depth;
+	int bpp;
+
+	if (plane >= drm_format_num_planes(format))
+		return 0;
+
+	switch (format) {
+	case DRM_FORMAT_YUYV:
+	case DRM_FORMAT_YVYU:
+	case DRM_FORMAT_UYVY:
+	case DRM_FORMAT_VYUY:
+		return 2;
+	case DRM_FORMAT_NV12:
+	case DRM_FORMAT_NV21:
+	case DRM_FORMAT_NV16:
+	case DRM_FORMAT_NV61:
+		return plane ? 2 : 1;
+	case DRM_FORMAT_YUV410:
+	case DRM_FORMAT_YUV411:
+	case DRM_FORMAT_YUV420:
+	case DRM_FORMAT_YUV422:
+	case DRM_FORMAT_YUV444:
+		return 1;
+	default:
+		drm_helper_get_fb_bpp_depth(format, &depth, &bpp);
+		return bpp >> 3;
+	}
+}
+EXPORT_SYMBOL(drm_format_plane_cpp);
