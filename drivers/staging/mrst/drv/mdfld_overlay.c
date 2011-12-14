@@ -1142,11 +1142,16 @@ static int
 mfld_overlay_set_plane_opts(struct drm_plane *plane, uint32_t flags, struct drm_plane_opts *opts)
 {
 	struct mfld_overlay *ovl = to_mfld_overlay(plane);
+	int r;
 
 	if (flags & DRM_MODE_PLANE_ZORDER) {
 		if (opts->zorder < 0)
 			return -EINVAL;
 	}
+
+	r = ovl_wait(ovl);
+	if (r)
+		return r;
 
 	/* Constant alpha bits live in color key registers */
 	if (flags & DRM_MODE_PLANE_CONST_ALPHA)
