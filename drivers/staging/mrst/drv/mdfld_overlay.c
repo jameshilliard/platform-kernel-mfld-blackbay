@@ -545,10 +545,6 @@ static void ovl_setup_regs(struct mfld_overlay *ovl)
 
 	regs->OCONFIG = OVL_OCONFIG_IEP_BYPASS;
 
-	regs->DCLRKM = OVL_DCLRKM_KEY | 0xffffff;
-
-	regs->SCHRKEN = 0xff;
-
 	ovl->dirty |= OVL_DIRTY_REGS;
 }
 
@@ -1038,10 +1034,75 @@ static void ovl_set_csc_matrix(struct mfld_overlay *ovl, struct drm_plane_opts *
 	ovl->dirty |= OVL_DIRTY_REGS;
 }
 
+/* Take the 8 msbs of each component */
+static uint32_t color_64_to_32(uint64_t color)
+{
+	return ((color >> 24) & 0xff0000) |
+	       ((color >> 16) & 0x00ff00) |
+	       ((color >>  8) & 0x0000ff);
+}
+
+static void ovl_set_src_key(struct mfld_overlay *ovl, const struct drm_plane_opts *opts)
+{
+	struct mfld_overlay_regs *regs = ovl->regs.virt;
+	uint32_t src_key_low = color_64_to_32(opts->src_key_low);
+	uint32_t src_key_high = color_64_to_32(opts->src_key_high);
+
+	if ((src_key_high & 0xff0000) >= (src_key_low & 0xff0000))
+		regs->SCHRKEN |= 1 << 26;
+	else {
+		regs->SCHRKEN &= ~(1 << 26);
+		src_key_low &= ~0xff0000;
+		src_key_high &= ~0xff0000;
+	}
+
+	if ((src_key_high & 0x00ff00) >= (src_key_low & 0x00ff00))
+		regs->SCHRKEN |= 1 << 25;
+	else {
+		regs->SCHRKEN &= ~(1 << 25);
+		src_key_low &= ~0x00ff00;
+		src_key_high &= ~0x00ff00;
+	}
+
+	if ((src_key_high & 0x0000ff) >= (src_key_low & 0x0000ff))
+		regs->SCHRKEN |= 1 << 24;
+	else {
+		regs->SCHRKEN &= ~(1 << 24);
+		src_key_low &= ~0x0000ff;
+		src_key_high &= ~0x0000ff;
+	}
+
+	regs->SCHRKEN |= opts->const_alpha >> 8;
+
+	regs->SCHRKVL = src_key_low;
+	regs->SCHRKVH = src_key_high;
+
+	ovl->dirty |= OVL_DIRTY_REGS;
+}
+
+static void ovl_set_dst_key(struct mfld_overlay *ovl, const struct drm_plane_opts *opts)
+{
+	struct mfld_overlay_regs *regs = ovl->regs.virt;
+	uint32_t dst_key_value = color_64_to_32(opts->dst_key_value);
+	uint32_t dst_key_mask = ~color_64_to_32(opts->dst_key_mask) & 0xffffff;
+
+	regs->DCLRKV = dst_key_value;
+	/* Need to always enable DST_KEY to maintain the overlay above the CRTC */
+	regs->DCLRKM = OVL_DCLRKM_KEY |
+		((opts->const_alpha != 0xffff) << 30) |
+		dst_key_mask;
+
+	ovl->dirty |= OVL_DIRTY_REGS;
+}
+
 static int
 mfld_overlay_set_plane_opts(struct drm_plane *plane, uint32_t flags, struct drm_plane_opts *opts)
 {
 	struct mfld_overlay *ovl = to_mfld_overlay(plane);
+
+	/* Constant alpha bits live in color key registers */
+	if (flags & DRM_MODE_PLANE_CONST_ALPHA)
+		flags |= DRM_MODE_PLANE_SRC_KEY | DRM_MODE_PLANE_DST_KEY;
 
 	if (flags & DRM_MODE_PLANE_CSC_RANGE) {
 		switch (opts->csc_range) {
@@ -1081,6 +1142,12 @@ mfld_overlay_set_plane_opts(struct drm_plane *plane, uint32_t flags, struct drm_
 
 	if (flags & (DRM_MODE_PLANE_HUE | DRM_MODE_PLANE_SATURATION))
 		ovl_set_hue_saturation(ovl, opts);
+
+	if (flags & DRM_MODE_PLANE_SRC_KEY)
+		ovl_set_src_key(ovl, opts);
+
+	if (flags & DRM_MODE_PLANE_DST_KEY)
+		ovl_set_dst_key(ovl, opts);
 
 	ovl_commit(ovl);
 
@@ -1333,7 +1400,6 @@ int mdfld_overlay_init(struct drm_device *dev, int id)
 
 	ovl_debugfs_init(dev, ovl);
 
-	/* FIXME move */
 	ovl_setup_regs(ovl);
 
 	/* fill in some defaults */
@@ -1343,12 +1409,16 @@ int mdfld_overlay_init(struct drm_device *dev, int id)
 	ovl->base.opts.chroma_siting = DRM_CHROMA_SITING_MPEG2;
 	ovl->base.opts_flags = DRM_MODE_PLANE_BRIGHTNESS | DRM_MODE_PLANE_CONTRAST |
 			       DRM_MODE_PLANE_HUE | DRM_MODE_PLANE_SATURATION |
+			       DRM_MODE_PLANE_SRC_KEY | DRM_MODE_PLANE_DST_KEY |
+			       DRM_MODE_PLANE_CONST_ALPHA |
 			       DRM_MODE_PLANE_CSC_RANGE | DRM_MODE_PLANE_CSC_MATRIX |
 			       DRM_MODE_PLANE_CHROMA_SITING;
 
 	ovl_set_brightness_contrast(ovl, &ovl->base.opts);
 	ovl_set_hue_saturation(ovl, &ovl->base.opts);
 	ovl_set_csc_matrix(ovl, &ovl->base.opts);
+	ovl_set_src_key(ovl, &ovl->base.opts);
+	ovl_set_dst_key(ovl, &ovl->base.opts);
 
 	drm_plane_init(dev, &ovl->base, possible_crtcs, &mfld_overlay_funcs,
 		       mfld_overlay_formats, ARRAY_SIZE(mfld_overlay_formats));
