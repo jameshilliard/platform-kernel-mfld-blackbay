@@ -1095,10 +1095,58 @@ static void ovl_set_dst_key(struct mfld_overlay *ovl, const struct drm_plane_opt
 	ovl->dirty |= OVL_DIRTY_REGS;
 }
 
+static void ovl_set_zorder(struct mfld_overlay *ovl)
+{
+	struct drm_psb_private *dev_priv = ovl->dev->dev_private;
+	struct drm_plane *plane_a = dev_priv->overlays[0];
+	struct drm_plane *plane_c = dev_priv->overlays[1];
+	struct mfld_overlay *ovl_a;
+	struct mfld_overlay *ovl_c;
+	struct mfld_overlay_regs *regs_a;
+	struct mfld_overlay_regs *regs_c;
+	bool zorder;
+
+	/* just in case something went wrong during the other plane init */
+	if (!plane_a || !plane_c)
+		return;
+
+	ovl_a = to_mfld_overlay(plane_a);
+	ovl_c = to_mfld_overlay(plane_c);
+	regs_a = ovl_a->regs.virt;
+	regs_c = ovl_c->regs.virt;
+
+	if (plane_a->opts.zorder == plane_c->opts.zorder)
+		zorder = plane_a->base.id < plane_c->base.id;
+	else
+		zorder = plane_c->opts.zorder > plane_a->opts.zorder;
+
+	if (zorder) {
+		regs_a->OCONFIG |= OVL_OCONFIG_ZORDER;
+		regs_c->OCONFIG |= OVL_OCONFIG_ZORDER;
+	} else {
+		regs_a->OCONFIG &= ~OVL_OCONFIG_ZORDER;
+		regs_c->OCONFIG &= ~OVL_OCONFIG_ZORDER;
+	}
+
+	ovl_a->dirty |= OVL_DIRTY_REGS;
+	ovl_c->dirty |= OVL_DIRTY_REGS;
+
+	/* commit the other overlay */
+	if (ovl == ovl_a)
+		ovl_commit(ovl_c);
+	else
+		ovl_commit(ovl_a);
+}
+
 static int
 mfld_overlay_set_plane_opts(struct drm_plane *plane, uint32_t flags, struct drm_plane_opts *opts)
 {
 	struct mfld_overlay *ovl = to_mfld_overlay(plane);
+
+	if (flags & DRM_MODE_PLANE_ZORDER) {
+		if (opts->zorder < 0)
+			return -EINVAL;
+	}
 
 	/* Constant alpha bits live in color key registers */
 	if (flags & DRM_MODE_PLANE_CONST_ALPHA)
@@ -1148,6 +1196,11 @@ mfld_overlay_set_plane_opts(struct drm_plane *plane, uint32_t flags, struct drm_
 
 	if (flags & DRM_MODE_PLANE_DST_KEY)
 		ovl_set_dst_key(ovl, opts);
+
+	if (flags & DRM_MODE_PLANE_ZORDER) {
+		plane->opts.zorder = opts->zorder;
+		ovl_set_zorder(ovl);
+	}
 
 	ovl_commit(ovl);
 
@@ -1373,6 +1426,7 @@ static void ovl_debugfs_fini(struct mfld_overlay *ovl) {}
 
 int mdfld_overlay_init(struct drm_device *dev, int id)
 {
+	struct drm_psb_private *dev_priv = dev->dev_private;
 	unsigned long possible_crtcs = 0x7;
 	struct mfld_overlay *ovl;
 	int r;
@@ -1404,13 +1458,14 @@ int mdfld_overlay_init(struct drm_device *dev, int id)
 
 	/* fill in some defaults */
 	drm_plane_opts_defaults(&ovl->base.opts);
+	ovl->base.opts.zorder = 2 - id;
 	ovl->base.opts.csc_range = DRM_CSC_RANGE_MPEG;
 	ovl->base.opts.csc_matrix = DRM_CSC_MATRIX_BT709;
 	ovl->base.opts.chroma_siting = DRM_CHROMA_SITING_MPEG2;
 	ovl->base.opts_flags = DRM_MODE_PLANE_BRIGHTNESS | DRM_MODE_PLANE_CONTRAST |
 			       DRM_MODE_PLANE_HUE | DRM_MODE_PLANE_SATURATION |
 			       DRM_MODE_PLANE_SRC_KEY | DRM_MODE_PLANE_DST_KEY |
-			       DRM_MODE_PLANE_CONST_ALPHA |
+			       DRM_MODE_PLANE_CONST_ALPHA | DRM_MODE_PLANE_ZORDER |
 			       DRM_MODE_PLANE_CSC_RANGE | DRM_MODE_PLANE_CSC_MATRIX |
 			       DRM_MODE_PLANE_CHROMA_SITING;
 
@@ -1422,6 +1477,8 @@ int mdfld_overlay_init(struct drm_device *dev, int id)
 
 	drm_plane_init(dev, &ovl->base, possible_crtcs, &mfld_overlay_funcs,
 		       mfld_overlay_formats, ARRAY_SIZE(mfld_overlay_formats));
+
+	dev_priv->overlays[id] = &ovl->base;
 
 	return 0;
 

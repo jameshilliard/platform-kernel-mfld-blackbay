@@ -976,6 +976,8 @@ struct drm_psb_private {
 	uint8_t saveBKLTCNT;
 	uint8_t saveBKLTREQ;
 	uint8_t saveBKLTBRTL;
+
+	struct drm_plane *overlays[2];
 };
 
 struct psb_fpriv {
