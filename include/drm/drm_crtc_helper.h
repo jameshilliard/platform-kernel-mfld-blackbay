@@ -149,5 +149,7 @@ extern void drm_kms_helper_poll_enable(struct drm_device *dev);
 
 extern int drm_format_num_planes(uint32_t format);
 extern int drm_format_plane_cpp(uint32_t format, int plane);
+extern int drm_format_horz_chroma_subsampling(uint32_t format);
+extern int drm_format_vert_chroma_subsampling(uint32_t format);
 
 #endif
