@@ -114,7 +114,7 @@ static int vmw_ldu_commit_list(struct vmw_private *dev_priv)
 			return 0;
 		fb = entry->base.crtc.fb;
 
-		vmw_kms_write_svga(dev_priv, w, h, fb->pitch,
+		vmw_kms_write_svga(dev_priv, w, h, fb->pitches[0],
 				   fb->bits_per_pixel, fb->depth);
 
 		return 0;
@@ -124,7 +124,7 @@ static int vmw_ldu_commit_list(struct vmw_private *dev_priv)
 		entry = list_entry(lds->active.next, typeof(*entry), active);
 		fb = entry->base.crtc.fb;
 
-		vmw_kms_write_svga(dev_priv, fb->width, fb->height, fb->pitch,
+		vmw_kms_write_svga(dev_priv, fb->width, fb->height, fb->pitches[0],
 				   fb->bits_per_pixel, fb->depth);
 	}
 

@@ -1323,7 +1323,7 @@ int MRSTLFBHandleChangeFB(struct drm_device* dev, struct psb_framebuffer *psbfb)
 
 	psDevInfo->sDisplayFormat.pixelformat = (psbfb->base.depth == 16) ? PVRSRV_PIXEL_FORMAT_RGB565 : PVRSRV_PIXEL_FORMAT_ARGB8888;
 
-	psDevInfo->sDisplayDim.ui32ByteStride = psbfb->base.pitch;
+	psDevInfo->sDisplayDim.ui32ByteStride = psbfb->base.pitches[0];
 	psDevInfo->sDisplayDim.ui32Width = psbfb->base.width;
 	psDevInfo->sDisplayDim.ui32Height = psbfb->base.height;
 
@@ -1383,7 +1383,7 @@ int MRSTLFBHandleChangeFB(struct drm_device* dev, struct psb_framebuffer *psbfb)
 
 	psDevInfo->sDisplayFormat.pixelformat = (psbfb->base.depth == 16) ? PVRSRV_PIXEL_FORMAT_RGB565 : PVRSRV_PIXEL_FORMAT_ARGB8888;
 
-	psDevInfo->sDisplayDim.ui32ByteStride = psbfb->base.pitch;
+	psDevInfo->sDisplayDim.ui32ByteStride = psbfb->base.pitches[0];
 	psDevInfo->sDisplayDim.ui32Width = psbfb->base.width;
 	psDevInfo->sDisplayDim.ui32Height = psbfb->base.height;
 
@@ -1514,7 +1514,7 @@ static MRST_ERROR InitDev(MRSTLFB_DEVINFO *psDevInfo)
 
 	hdisplay = psDrmFB->width;
 	vdisplay = psDrmFB->height;
-	FBSize = psDrmFB->pitch * psDrmFB->height;
+	FBSize = psDrmFB->pitches[0] * psDrmFB->height;
 
 	psLINFBInfo = (struct fb_info*)psPsbFBDev->psb_fb_helper.fbdev;
 

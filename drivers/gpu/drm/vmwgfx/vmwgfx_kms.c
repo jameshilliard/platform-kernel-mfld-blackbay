@@ -595,7 +595,7 @@ static int vmw_kms_new_framebuffer_surface(struct vmw_private *dev_priv,
 
 	/* XXX get the first 3 from the surface info */
 	vfbs->base.base.bits_per_pixel = mode_cmd->bpp;
-	vfbs->base.base.pitch = mode_cmd->pitch;
+	vfbs->base.base.pitches[0] = mode_cmd->pitch;
 	vfbs->base.base.depth = mode_cmd->depth;
 	vfbs->base.base.width = mode_cmd->width;
 	vfbs->base.base.height = mode_cmd->height;
@@ -708,7 +708,7 @@ static int vmw_surface_dmabuf_pin(struct vmw_framebuffer *vfb)
 	struct vmw_private *dev_priv = vmw_priv(vfb->base.dev);
 	struct vmw_framebuffer_surface *vfbs =
 		vmw_framebuffer_to_vfbs(&vfb->base);
-	unsigned long size = vfbs->base.base.pitch * vfbs->base.base.height;
+	unsigned long size = vfbs->base.base.pitches[0] * vfbs->base.base.height;
 	int ret;
 
 	vfbs->buffer = kzalloc(sizeof(*vfbs->buffer), GFP_KERNEL);
@@ -811,7 +811,7 @@ static int vmw_kms_new_framebuffer_dmabuf(struct vmw_private *dev_priv,
 	}
 
 	vfbd->base.base.bits_per_pixel = mode_cmd->bpp;
-	vfbd->base.base.pitch = mode_cmd->pitch;
+	vfbd->base.base.pitches[0] = mode_cmd->pitch;
 	vfbd->base.base.depth = mode_cmd->depth;
 	vfbd->base.base.width = mode_cmd->width;
 	vfbd->base.base.height = mode_cmd->height;

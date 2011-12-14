@@ -300,7 +300,7 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 	info->screen_base = psKernelMemInfo->pvLinAddrKM;
 	info->screen_size = size;
 
-	drm_fb_helper_fill_fix(info, fb->pitch, fb->depth);
+	drm_fb_helper_fill_fix(info, fb->pitches[0], fb->depth);
 	drm_fb_helper_fill_var(info, &fbdev->psb_fb_helper, fb->width, fb->height);
 
 	info->fix.mmio_start = pci_resource_start(dev->pdev, 0);
@@ -383,7 +383,7 @@ static int psbfb_create(struct psb_fbdev * fbdev, struct drm_fb_helper_surface_s
 	info->screen_size = size;
 	memset(info->screen_base, 0, size);
 
-	drm_fb_helper_fill_fix(info, fb->pitch, fb->depth);
+	drm_fb_helper_fill_fix(info, fb->pitches[0], fb->depth);
 	drm_fb_helper_fill_var(info, &fbdev->psb_fb_helper, sizes->fb_width, sizes->fb_height);
 
 	info->fix.mmio_start = pci_resource_start(dev->pdev, 0);
@@ -396,7 +396,7 @@ static int psbfb_create(struct psb_fbdev * fbdev, struct drm_fb_helper_surface_s
 	info->pixmap.scan_align = 1;
 
 	DRM_DEBUG("fb depth is %d\n", fb->depth);
-	DRM_DEBUG("   pitch is %d\n", fb->pitch);
+	DRM_DEBUG("   pitch is %d\n", fb->pitches[0]);
 
 	printk(KERN_INFO"allocated %dx%d fb\n", psbfb->base.width, psbfb->base.height);	
 
