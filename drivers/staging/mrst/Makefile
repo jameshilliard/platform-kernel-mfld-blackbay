@@ -160,6 +160,7 @@ medfield_gfx-y += \
 	$(FBDEVDIR)/mrstlfb_linux.o
 
 medfield_gfx-y += \
+	$(DRMDRVDIR)/fp_trig.o \
 	$(DRMDRVDIR)/mdfld_dsi_dbi.o \
 	$(DRMDRVDIR)/mdfld_dsi_dpi.o \
 	$(DRMDRVDIR)/mdfld_dsi_output.o \

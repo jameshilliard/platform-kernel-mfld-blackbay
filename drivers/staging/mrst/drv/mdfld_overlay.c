@@ -31,6 +31,8 @@
 #include "psb_gtt.h"
 #include "psb_fb.h"
 
+#include "fp_trig.h"
+
 enum {
 	OVL_DIRTY_REGS  = 0x1,
 	OVL_DIRTY_COEFS = 0x2,
@@ -542,9 +544,6 @@ static void ovl_setup_regs(struct mfld_overlay *ovl)
 
 	regs->OCONFIG = OVL_OCONFIG_IEP_BYPASS | OVL_OCONFIG_CSC_MODE;
 
-	regs->OCLRC0 = 0x40 << 18;
-	regs->OCLRC1 = 0x80 << 0;
-
 	regs->DCLRKM = OVL_DCLRKM_KEY | 0xffffff;
 
 	regs->SCHRKEN = 0xff;
@@ -934,12 +933,120 @@ mfld_overlay_disable_plane(struct drm_plane *plane)
 	return 0;
 }
 
+static void ovl_set_brightness_contrast(struct mfld_overlay *ovl, const struct drm_plane_opts *opts)
+{
+	struct mfld_overlay_regs *regs = ovl->regs.virt;
+	int bri, con;
+
+	if (opts->csc_range == DRM_CSC_RANGE_MPEG) {
+		if (opts->contrast >= 0x8000)
+			/* 255/219 <= contrast <= 7.53125 */
+			con = (((opts->contrast - 0x8000) * 815) >> 16) + 75;
+		else
+			/* 0.0 <= contrast < 255/219 */
+			con = opts->contrast / 440;
+	} else {
+		if (opts->contrast >= 0x8000)
+			/* 1.0 <= contrast <= 7.53125 */
+			con = (((opts->contrast - 0x8000) * 837) >> 16) + 64;
+		else
+			/* 0.0 <= contrast < 1.0 */
+			con = opts->contrast >> 9;
+	}
+
+	if (opts->csc_range == DRM_CSC_RANGE_MPEG) {
+		/* 16 * 255/219 = ~19 */
+		if (opts->brightness >= 0x8000)
+			/* -19 <= bri <= 127 */
+			bri = ((opts->brightness - 0x8000) / 224 - 19);
+		else
+			/* -128 <= bri < -19 */
+			bri = (opts->brightness / 300 - 128);
+	} else {
+		/* -128 <= bri <= 127 */
+		bri = (opts->brightness >> 8) - 128;
+	}
+
+	/* Scare anyone who touches this code w/o thinking. */
+	WARN_ON(con < 0 || con > 482);
+	WARN_ON(bri < -128 || bri > 127);
+
+	regs->OCLRC0 = ((con & 0x1ff) << 18) | ((bri & 0xff) << 0);
+
+	ovl->dirty |= OVL_DIRTY_REGS;
+}
+
+static void ovl_set_hue_saturation(struct mfld_overlay *ovl, const struct drm_plane_opts *opts)
+{
+	struct mfld_overlay_regs *regs = ovl->regs.virt;
+	int sat;
+	/* [0:0xffff] -> [-FP_PI/2:FP_PI/2] shifted by 2*FP_PI */
+	unsigned int deg = ((opts->hue + 2) >> 2) + 3 * FP_PI / 2;
+	int sh_sin = fp_sin(deg);
+	int sh_cos = fp_cos(deg);
+
+	if (opts->csc_range == DRM_CSC_RANGE_MPEG) {
+		if (opts->saturation >= 0x8000)
+			/*
+			 * abs(sh_sin) + abs(sh_cos) < 8.0, therefore
+			 * 255/224 <= saturation <= 8/(2*sin(PI/4))
+			 */
+			sat = (((opts->saturation - 0x8000) * 1157) >> 16) + 146;
+		else
+			/* 0.0 <= saturation < 255/224 */
+			sat = opts->saturation / 225;
+	} else {
+		if (opts->saturation >= 0x8000)
+			/*
+			 * abs(sh_sin) + abs(sh_cos) < 8.0, therefore
+			 * 1.0 <= saturation <= 8/(2*sin(PI/4))
+			 */
+			sat = (((opts->saturation - 0x8000) * 1193) >> 16) + 128;
+		else
+			/* 0.0 <= saturation < 1.0 */
+			sat = opts->saturation >> 8;
+	}
+	sh_sin = (sh_sin * sat) / (1 << FP_FRAC_BITS);
+	sh_cos = (sh_cos * sat) / (1 << FP_FRAC_BITS);
+
+	/* Scare anyone who touches this code w/o thinking. */
+	WARN_ON(abs(sh_sin) > 724);
+	WARN_ON(sh_cos < 0 || sh_cos > 724);
+	WARN_ON(abs(sh_sin) + sh_cos >= 8 << 7);
+
+	regs->OCLRC1 = ((sh_sin & 0x7ff) << 16) | ((sh_cos & 0x3ff) << 0);
+
+	ovl->dirty |= OVL_DIRTY_REGS;
+}
+
+static int
+mfld_overlay_set_plane_opts(struct drm_plane *plane, uint32_t flags, struct drm_plane_opts *opts)
+{
+	struct mfld_overlay *ovl = to_mfld_overlay(plane);
+
+	/* Must re-compute color correction if YCbCr range is changed */
+	if (flags & DRM_MODE_PLANE_CSC_RANGE)
+		flags |= DRM_MODE_PLANE_BRIGHTNESS | DRM_MODE_PLANE_CONTRAST |
+			 DRM_MODE_PLANE_HUE | DRM_MODE_PLANE_SATURATION;
+
+	if (flags & (DRM_MODE_PLANE_BRIGHTNESS | DRM_MODE_PLANE_CONTRAST))
+		ovl_set_brightness_contrast(ovl, opts);
+
+	if (flags & (DRM_MODE_PLANE_HUE | DRM_MODE_PLANE_SATURATION))
+		ovl_set_hue_saturation(ovl, opts);
+
+	ovl_commit(ovl);
+
+	return 0;
+}
+
 static void mfld_overlay_destroy(struct drm_plane *plane);
 
 static const struct drm_plane_funcs mfld_overlay_funcs = {
 	.update_plane = mfld_overlay_update_plane,
 	.disable_plane = mfld_overlay_disable_plane,
 	.destroy = mfld_overlay_destroy,
+	.set_plane_opts = mfld_overlay_set_plane_opts,
 };
 
 static const uint32_t mfld_overlay_formats[] = {
@@ -1181,6 +1288,16 @@ int mdfld_overlay_init(struct drm_device *dev, int id)
 
 	/* FIXME move */
 	ovl_setup_regs(ovl);
+
+	/* fill in some defaults */
+	drm_plane_opts_defaults(&ovl->base.opts);
+	ovl->base.opts.csc_range = DRM_CSC_RANGE_MPEG;
+	ovl->base.opts_flags = DRM_MODE_PLANE_BRIGHTNESS | DRM_MODE_PLANE_CONTRAST |
+			       DRM_MODE_PLANE_HUE | DRM_MODE_PLANE_SATURATION |
+			       DRM_MODE_PLANE_CSC_RANGE;
+
+	ovl_set_brightness_contrast(ovl, &ovl->base.opts);
+	ovl_set_hue_saturation(ovl, &ovl->base.opts);
 
 	drm_plane_init(dev, &ovl->base, possible_crtcs, &mfld_overlay_funcs,
 		       mfld_overlay_formats, ARRAY_SIZE(mfld_overlay_formats));
