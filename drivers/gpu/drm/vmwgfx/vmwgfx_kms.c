@@ -836,15 +836,24 @@ out_err1:
 
 static struct drm_framebuffer *vmw_kms_fb_create(struct drm_device *dev,
 						 struct drm_file *file_priv,
-						 struct drm_mode_fb_cmd *mode_cmd)
+						 struct drm_mode_fb_cmd2 *mode_cmd2)
 {
 	struct vmw_private *dev_priv = vmw_priv(dev);
 	struct ttm_object_file *tfile = vmw_fpriv(file_priv)->tfile;
 	struct vmw_framebuffer *vfb = NULL;
 	struct vmw_surface *surface = NULL;
 	struct vmw_dma_buffer *bo = NULL;
+	struct ttm_base_object *user_obj;
+	struct drm_mode_fb_cmd mode_cmd;
 	u64 required_size;
 	int ret;
+
+	mode_cmd.width = mode_cmd2->width;
+	mode_cmd.height = mode_cmd2->height;
+	mode_cmd.pitch = mode_cmd2->pitches[0];
+	mode_cmd.handle = mode_cmd2->handles[0];
+	drm_helper_get_fb_bpp_depth(mode_cmd2->pixel_format, &mode_cmd.depth,
+				    &mode_cmd.bpp);
 
 	/**
 	 * This code should be conditioned on Screen Objects not being used.
@@ -852,10 +861,25 @@ static struct drm_framebuffer *vmw_kms_fb_create(struct drm_device *dev,
 	 * requested framebuffer.
 	 */
 
-	required_size = mode_cmd->pitch * mode_cmd->height;
+	required_size = mode_cmd.pitch * mode_cmd.height;
 	if (unlikely(required_size > (u64) dev_priv->vram_size)) {
 		DRM_ERROR("VRAM size is too small for requested mode.\n");
 		return NULL;
+	}
+
+	/*
+	 * Take a reference on the user object of the resource
+	 * backing the kms fb. This ensures that user-space handle
+	 * lookups on that resource will always work as long as
+	 * it's registered with a kms framebuffer. This is important,
+	 * since vmw_execbuf_process identifies resources in the
+	 * command stream using user-space handles.
+	 */
+
+	user_obj = ttm_base_object_lookup(tfile, mode_cmd.handle);
+	if (unlikely(user_obj == NULL)) {
+		DRM_ERROR("Could not locate requested kms frame buffer.\n");
+		return ERR_PTR(-ENOENT);
 	}
 
 	/**
@@ -863,7 +887,7 @@ static struct drm_framebuffer *vmw_kms_fb_create(struct drm_device *dev,
 	 */
 
 	ret = vmw_user_surface_lookup_handle(dev_priv, tfile,
-					     mode_cmd->handle, &surface);
+					     mode_cmd.handle, &surface);
 	if (ret)
 		goto try_dmabuf;
 
@@ -871,7 +895,7 @@ static struct drm_framebuffer *vmw_kms_fb_create(struct drm_device *dev,
 		goto err_not_scanout;
 
 	ret = vmw_kms_new_framebuffer_surface(dev_priv, file_priv, surface,
-					      &vfb, mode_cmd);
+					      &vfb, &mode_cmd);
 
 	/* vmw_user_surface_lookup takes one ref so does new_fb */
 	vmw_surface_unreference(&surface);
@@ -885,14 +909,14 @@ static struct drm_framebuffer *vmw_kms_fb_create(struct drm_device *dev,
 try_dmabuf:
 	DRM_INFO("%s: trying buffer\n", __func__);
 
-	ret = vmw_user_dmabuf_lookup(tfile, mode_cmd->handle, &bo);
+	ret = vmw_user_dmabuf_lookup(tfile, mode_cmd.handle, &bo);
 	if (ret) {
 		DRM_ERROR("failed to find buffer: %i\n", ret);
 		return ERR_PTR(-ENOENT);
 	}
 
 	ret = vmw_kms_new_framebuffer_dmabuf(dev_priv, bo, &vfb,
-					     mode_cmd);
+					     &mode_cmd);
 
 	/* vmw_user_dmabuf_lookup takes one ref so does new_fb */
 	vmw_dmabuf_unreference(&bo);

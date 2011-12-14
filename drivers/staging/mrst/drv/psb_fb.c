@@ -200,7 +200,7 @@ static struct fb_ops psbfb_ops = {
 };
 
 static struct drm_framebuffer *psb_framebuffer_create
-			(struct drm_device *dev, struct drm_mode_fb_cmd *r,
+			(struct drm_device *dev, struct drm_mode_fb_cmd2 *r,
 			 void *mm_private)
 {
 	struct psb_framebuffer *fb;
@@ -228,13 +228,13 @@ err:
 
 static struct drm_framebuffer *psb_user_framebuffer_create
 			(struct drm_device *dev, struct drm_file *filp,
-			 struct drm_mode_fb_cmd *r)
+			 struct drm_mode_fb_cmd2 *r)
 {
 	struct psb_framebuffer *psbfb;
 	struct drm_framebuffer *fb;
 	struct fb_info *info;
 	PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo = IMG_NULL;
-	IMG_HANDLE hKernelMemInfo = (IMG_HANDLE)r->handle;
+	IMG_HANDLE hKernelMemInfo = (IMG_HANDLE)r->handles[0];
 	struct drm_psb_private *dev_priv
 		= (struct drm_psb_private *) dev->dev_private;
 	struct psb_fbdev * fbdev = dev_priv->fbdev;
@@ -255,7 +255,7 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 
 	/* JB: TODO not drop, make smarter */
 	size = psKernelMemInfo->ui32AllocSize;
-	if (size < r->height * r->pitch)
+	if (size < r->height * r->pitches[0])
 		return ERR_PTR(-ENOSPC);
 
 	/* JB: TODO not drop, refcount buffer */
@@ -330,20 +330,23 @@ static int psbfb_create(struct psb_fbdev * fbdev, struct drm_fb_helper_surface_s
 	struct fb_info * info;
 	struct drm_framebuffer *fb;
 	struct psb_framebuffer * psbfb;
-	struct drm_mode_fb_cmd mode_cmd;
+	struct drm_mode_fb_cmd2 mode_cmd = {};
 	struct device * device = &dev->pdev->dev;
 	int size, aligned_size;
 	int ret;
+	unsigned int depth;
+	int bpp;
 
 	mode_cmd.width = sizes->surface_width;
 	mode_cmd.height = sizes->surface_height;
 
-	mode_cmd.bpp = 32;
-        //HW requires pitch to be 64 byte aligned
-        mode_cmd.pitch =  ALIGN(mode_cmd.width * ((mode_cmd.bpp + 1) / 8), 64);
-        mode_cmd.depth = 24;
+	mode_cmd.pixel_format = DRM_FOURCC_RGB24;
+	drm_helper_get_fb_bpp_depth(mode_cmd.pixel_format, &depth, &bpp);
 
-	size = mode_cmd.pitch * mode_cmd.height;
+	/* HW requires pitch to be 64 byte aligned */
+	mode_cmd.pitches[0] = ALIGN(mode_cmd.width * bpp / 8, 64);
+
+	size = mode_cmd.pitches[0] * mode_cmd.height;
 	aligned_size = ALIGN(size, PAGE_SIZE);
 
 	mutex_lock(&dev->struct_mutex);
