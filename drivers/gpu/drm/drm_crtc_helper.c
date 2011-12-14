@@ -1523,3 +1523,50 @@ void drm_plane_opts_defaults(struct drm_plane_opts *opts)
 	opts->const_alpha = 0xffff;
 }
 EXPORT_SYMBOL(drm_plane_opts_defaults);
+
+/**
+ * drm_chroma_phase_offsets - calculate the chroma phase offsets
+ * @ret_xoff: returned horizontal offset (16.16)
+ * @ret_yoff: returned vertical offset (16.16)
+ * @hsub: horizontal chroma subsampling factor
+ * @vsub: vertical chroma subsampling factor
+ * @chroma: chroma siting information
+ * @second_chroma_plane: first or second chroma plane?
+ *
+ * Calculates the phase offset between chroma and luma pixel centers,
+ * based on infromation provided in @chroma, @hsub, @vsub, and
+ * @second_chroma_plane.
+ *
+ * RETURNS:
+ * The chroma phase offsets in 16.16 format. The returned
+ * phase offsets are in chroma (ie. subsampled) coordinate space.
+ */
+void drm_chroma_phase_offsets(int *ret_xoff, int *ret_yoff,
+			      int hsub, int vsub, uint8_t chroma_siting,
+			      bool second_chroma_plane)
+{
+	*ret_xoff = 0;
+	*ret_yoff = 0;
+
+	switch (chroma_siting & 0x3) {
+	case DRM_CHROMA_SITING_HORZ_LEFT:
+		break;
+	case DRM_CHROMA_SITING_HORZ_CENTER:
+		*ret_xoff -= (hsub - 1) * 0x8000 / hsub;
+		break;
+	}
+
+	switch (chroma_siting & 0xc0) {
+	case DRM_CHROMA_SITING_VERT_TOP:
+		break;
+	case DRM_CHROMA_SITING_VERT_CENTER:
+		*ret_yoff -= (vsub - 1) * 0x8000 / vsub;
+		break;
+	}
+
+	/* Chroma planes out of phase by 0.5 chroma lines? */
+	if (second_chroma_plane &&
+	    (chroma_siting & DRM_CHROMA_SITING_MISALIGNED_PLANES))
+		*ret_yoff -= 0x8000;
+}
+EXPORT_SYMBOL(drm_chroma_phase_offsets);

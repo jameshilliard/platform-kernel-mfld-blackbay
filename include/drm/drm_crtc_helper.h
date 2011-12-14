@@ -182,5 +182,8 @@ extern int drm_calc_hscale(struct drm_region *src, struct drm_region *dst,
 extern int drm_calc_vscale(struct drm_region *src, struct drm_region *dst,
 			   int min_vscale, int max_vscale);
 extern void drm_plane_opts_defaults(struct drm_plane_opts *opts);
+extern void drm_chroma_phase_offsets(int *ret_xoff, int *ret_yoff,
+				     int hsub, int vsub, uint8_t chroma_siting,
+				     bool second_chroma_plane);
 
 #endif
