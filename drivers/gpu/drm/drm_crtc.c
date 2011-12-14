@@ -1660,6 +1660,7 @@ int drm_mode_setplane(struct drm_device *dev, void *data,
 	struct drm_framebuffer *fb;
 	int ret = 0;
 	unsigned int fb_width, fb_height;
+	int i;
 
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
 		return -EINVAL;
@@ -1707,6 +1708,16 @@ int drm_mode_setplane(struct drm_device *dev, void *data,
 		goto out;
 	}
 	fb = obj_to_fb(obj);
+
+	/* Check whether this plane supports the fb pixel format. */
+	for (i = 0; i < plane->format_count; i++)
+		if (fb->pixel_format == plane->format_types[i])
+			break;
+	if (i == plane->format_count) {
+		DRM_DEBUG_KMS("Invalid pixel format %x\n", fb->pixel_format);
+		ret = -EINVAL;
+		goto out;
+	}
 
 	fb_width = fb->width << 16;
 	fb_height = fb->height << 16;
