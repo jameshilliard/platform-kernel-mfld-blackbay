@@ -1095,11 +1095,8 @@ static void ovl_set_dst_key(struct mfld_overlay *ovl, const struct drm_plane_opt
 	ovl->dirty |= OVL_DIRTY_REGS;
 }
 
-static void ovl_set_zorder(struct mfld_overlay *ovl)
+static void ovl_set_zorder(struct drm_plane *plane_a, struct drm_plane *plane_c)
 {
-	struct drm_psb_private *dev_priv = ovl->dev->dev_private;
-	struct drm_plane *plane_a = dev_priv->overlays[0];
-	struct drm_plane *plane_c = dev_priv->overlays[1];
 	struct mfld_overlay *ovl_a;
 	struct mfld_overlay *ovl_c;
 	struct mfld_overlay_regs *regs_a;
@@ -1130,28 +1127,36 @@ static void ovl_set_zorder(struct mfld_overlay *ovl)
 
 	ovl_a->dirty |= OVL_DIRTY_REGS;
 	ovl_c->dirty |= OVL_DIRTY_REGS;
-
-	/* commit the other overlay */
-	if (ovl == ovl_a)
-		ovl_commit(ovl_c);
-	else
-		ovl_commit(ovl_a);
 }
 
 static int
 mfld_overlay_set_plane_opts(struct drm_plane *plane, uint32_t flags, struct drm_plane_opts *opts)
 {
 	struct mfld_overlay *ovl = to_mfld_overlay(plane);
+	struct drm_plane *other_plane = NULL;
+	struct mfld_overlay *other_ovl = NULL;
 	int r;
 
 	if (flags & DRM_MODE_PLANE_ZORDER) {
+		struct drm_psb_private *dev_priv = ovl->dev->dev_private;
+
 		if (opts->zorder < 0)
 			return -EINVAL;
+
+		other_plane = dev_priv->overlays[!ovl->id];
+		if (other_plane)
+			other_ovl = to_mfld_overlay(other_plane);
 	}
 
 	r = ovl_wait(ovl);
 	if (r)
 		return r;
+
+	if (other_ovl) {
+		r = ovl_wait(other_ovl);
+		if (r)
+			return r;
+	}
 
 	/* Constant alpha bits live in color key registers */
 	if (flags & DRM_MODE_PLANE_CONST_ALPHA)
@@ -1204,10 +1209,13 @@ mfld_overlay_set_plane_opts(struct drm_plane *plane, uint32_t flags, struct drm_
 
 	if (flags & DRM_MODE_PLANE_ZORDER) {
 		plane->opts.zorder = opts->zorder;
-		ovl_set_zorder(ovl);
+		ovl_set_zorder(ovl->id == 0 ? plane : other_plane,
+			       ovl->id == 0 ? other_plane : plane);
 	}
 
 	ovl_commit(ovl);
+	if (other_ovl)
+		ovl_commit(other_ovl);
 
 	return 0;
 }
