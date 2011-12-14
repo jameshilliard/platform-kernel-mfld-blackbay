@@ -241,7 +241,8 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 	struct psb_gtt *pg = dev_priv->pg;
 	int ret;
 	uint32_t offset;
-	uint64_t size;
+	uint64_t sizes[4] = {};
+	int i;
 
 	ret = psb_get_meminfo_by_handle(hKernelMemInfo, &psKernelMemInfo);
 	if (ret) {
@@ -253,10 +254,23 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 
 	DRM_DEBUG("Got Kernel MemInfo for handle %p\n", hKernelMemInfo);
 
-	/* JB: TODO not drop, make smarter */
-	size = psKernelMemInfo->ui32AllocSize;
-	if (size < r->height * r->pitches[0])
-		return ERR_PTR(-ENOSPC);
+	sizes[0] = psKernelMemInfo->ui32AllocSize;
+
+	for (i = 1; i < drm_format_num_planes(r->pixel_format); i++) {
+		/* support only one handle per fb for now */
+		if (r->handles[i] != r->handles[0]) {
+			DRM_ERROR("bad handle 0x%x (expected 0x%x).\n",
+				  r->handles[i], r->handles[0]);
+			return ERR_PTR(-EINVAL);
+		}
+		sizes[i] = sizes[0];
+	}
+
+	ret = drm_framebuffer_check(r, sizes);
+	if (ret) {
+		DRM_ERROR("framebuffer layout check failed.\n");
+		return ERR_PTR(ret);
+	}
 
 	/* JB: TODO not drop, refcount buffer */
 	/* return psb_framebuffer_create(dev, r, bo); */
@@ -268,7 +282,7 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 	}
 
 	psbfb = to_psb_fb(fb);
-	psbfb->size = size;
+	psbfb->size = sizes[0];
 	psbfb->hKernelMemInfo = hKernelMemInfo;
 
 	DRM_DEBUG("Mapping to gtt..., KernelMemInfo %p\n", psKernelMemInfo);
@@ -295,10 +309,10 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 	info->fbops = &psbfb_ops;
 
 	info->fix.smem_start = dev->mode_config.fb_base;
-	info->fix.smem_len = size;
+	info->fix.smem_len = sizes[0];
 
 	info->screen_base = psKernelMemInfo->pvLinAddrKM;
-	info->screen_size = size;
+	info->screen_size = sizes[0];
 
 	drm_fb_helper_fill_fix(info, fb->pitches[0], fb->depth);
 	drm_fb_helper_fill_var(info, &fbdev->psb_fb_helper, fb->width, fb->height);
