@@ -248,4 +248,6 @@ extern void mdfld_dsi_dbi_CB_ready (struct drm_device *dev, u32 mipi_command_add
 extern void mdfldWaitForPipeDisable(struct drm_device *dev, int pipe);
 extern void mdfldWaitForPipeEnable(struct drm_device *dev, int pipe);
 
+extern int mdfld_overlay_init(struct drm_device *dev, int id);
+
 #endif				/* __INTEL_DRV_H__ */

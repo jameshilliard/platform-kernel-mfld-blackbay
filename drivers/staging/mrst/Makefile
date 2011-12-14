@@ -168,6 +168,7 @@ medfield_gfx-y += \
 	$(DRMDRVDIR)/mdfld_intel_hdcp.o \
 	$(DRMDRVDIR)/mdfld_msic.o \
 	$(DRMDRVDIR)/mdfld_output.o \
+	$(DRMDRVDIR)/mdfld_overlay.o \
 	$(DRMDRVDIR)/psb_bl.o \
 	$(DRMDRVDIR)/psb_dpst.o \
 	$(DRMDRVDIR)/psb_drv.o \

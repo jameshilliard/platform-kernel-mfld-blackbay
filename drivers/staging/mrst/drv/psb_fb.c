@@ -724,6 +724,9 @@ void psb_modeset_init(struct drm_device *dev)
 	for (i = 0; i < dev_priv->num_pipe; i++)
 		psb_intel_crtc_init(dev, i, mode_dev);
 
+	for (i = 0; i < 2; i++)
+		mdfld_overlay_init(dev, i);
+
 	dev->mode_config.max_width = dev->mode_config.num_crtc * MDFLD_PLANE_MAX_WIDTH;
 	dev->mode_config.max_height = dev->mode_config.num_crtc * MDFLD_PLANE_MAX_HEIGHT;
 
