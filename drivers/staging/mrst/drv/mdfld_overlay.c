@@ -426,6 +426,7 @@ static int ovl_config_init(struct mfld_overlay_config *c,
 			   unsigned int src_w, unsigned int src_h,
 			   unsigned int clip_x, unsigned int clip_y,
 			   unsigned int clip_w, unsigned int clip_h,
+			   uint8_t chroma_siting,
 			   struct drm_framebuffer *fb)
 {
 	int num_planes = drm_format_num_planes(fb->pixel_format);
@@ -508,7 +509,7 @@ static int ovl_config_init(struct mfld_overlay_config *c,
 	c->clip.x2 = clip_x + clip_w;
 	c->clip.y2 = clip_y + clip_h;
 
-	c->chroma_siting = DRM_CHROMA_SITING_MPEG1;
+	c->chroma_siting = chroma_siting;
 
 	return 0;
 }
@@ -542,7 +543,7 @@ static void ovl_setup_regs(struct mfld_overlay *ovl)
 {
 	struct mfld_overlay_regs *regs = ovl->regs.virt;
 
-	regs->OCONFIG = OVL_OCONFIG_IEP_BYPASS | OVL_OCONFIG_CSC_MODE;
+	regs->OCONFIG = OVL_OCONFIG_IEP_BYPASS;
 
 	regs->DCLRKM = OVL_DCLRKM_KEY | 0xffffff;
 
@@ -782,7 +783,8 @@ mfld_overlay_update_plane(struct drm_plane *plane, struct drm_crtc *crtc, struct
 	r = ovl_config_init(&c, crtc_x, crtc_y, crtc_w, crtc_h,
 			    src_x, src_y, src_w, src_h,
 			    0, 0, crtc->hwmode.crtc_hdisplay,
-			    crtc->hwmode.crtc_vdisplay, fb);
+			    crtc->hwmode.crtc_vdisplay,
+			    plane->opts.chroma_siting, fb);
 	if (r)
 		return r;
 
@@ -1019,15 +1021,60 @@ static void ovl_set_hue_saturation(struct mfld_overlay *ovl, const struct drm_pl
 	ovl->dirty |= OVL_DIRTY_REGS;
 }
 
+static void ovl_set_csc_matrix(struct mfld_overlay *ovl, struct drm_plane_opts *opts)
+{
+	struct mfld_overlay_regs *regs = ovl->regs.virt;
+
+	switch (opts->csc_matrix) {
+	case DRM_CSC_MATRIX_BT601:
+		regs->OCONFIG &= ~OVL_OCONFIG_CSC_MODE;
+		break;
+	default:
+		opts->csc_matrix = DRM_CSC_MATRIX_BT709;
+		regs->OCONFIG |= OVL_OCONFIG_CSC_MODE;
+		break;
+	}
+
+	ovl->dirty |= OVL_DIRTY_REGS;
+}
+
 static int
 mfld_overlay_set_plane_opts(struct drm_plane *plane, uint32_t flags, struct drm_plane_opts *opts)
 {
 	struct mfld_overlay *ovl = to_mfld_overlay(plane);
 
-	/* Must re-compute color correction if YCbCr range is changed */
-	if (flags & DRM_MODE_PLANE_CSC_RANGE)
+	if (flags & DRM_MODE_PLANE_CSC_RANGE) {
+		switch (opts->csc_range) {
+		case DRM_CSC_RANGE_JPEG:
+			break;
+		default:
+			opts->csc_range = DRM_CSC_RANGE_MPEG;
+			break;
+		}
+
+		/* Must re-compute color correction if YCbCr range is changed */
 		flags |= DRM_MODE_PLANE_BRIGHTNESS | DRM_MODE_PLANE_CONTRAST |
 			 DRM_MODE_PLANE_HUE | DRM_MODE_PLANE_SATURATION;
+	}
+
+	if (flags & DRM_MODE_PLANE_CSC_MATRIX) {
+		switch (opts->csc_matrix) {
+		case DRM_CSC_MATRIX_BT601:
+			break;
+		default:
+			opts->csc_matrix = DRM_CSC_MATRIX_BT709;
+			break;
+		}
+
+		ovl_set_csc_matrix(ovl, opts);
+	}
+
+	if (flags & DRM_MODE_PLANE_CHROMA_SITING) {
+		/* hardware can't handle misaligned chroma planes, ignore it */
+		opts->chroma_siting &= ~DRM_CHROMA_SITING_MISALIGNED_PLANES;
+
+		/* FIXME should recompute scaling etc. in case chroma phase changed. */
+	}
 
 	if (flags & (DRM_MODE_PLANE_BRIGHTNESS | DRM_MODE_PLANE_CONTRAST))
 		ovl_set_brightness_contrast(ovl, opts);
@@ -1292,12 +1339,16 @@ int mdfld_overlay_init(struct drm_device *dev, int id)
 	/* fill in some defaults */
 	drm_plane_opts_defaults(&ovl->base.opts);
 	ovl->base.opts.csc_range = DRM_CSC_RANGE_MPEG;
+	ovl->base.opts.csc_matrix = DRM_CSC_MATRIX_BT709;
+	ovl->base.opts.chroma_siting = DRM_CHROMA_SITING_MPEG2;
 	ovl->base.opts_flags = DRM_MODE_PLANE_BRIGHTNESS | DRM_MODE_PLANE_CONTRAST |
 			       DRM_MODE_PLANE_HUE | DRM_MODE_PLANE_SATURATION |
-			       DRM_MODE_PLANE_CSC_RANGE;
+			       DRM_MODE_PLANE_CSC_RANGE | DRM_MODE_PLANE_CSC_MATRIX |
+			       DRM_MODE_PLANE_CHROMA_SITING;
 
 	ovl_set_brightness_contrast(ovl, &ovl->base.opts);
 	ovl_set_hue_saturation(ovl, &ovl->base.opts);
+	ovl_set_csc_matrix(ovl, &ovl->base.opts);
 
 	drm_plane_init(dev, &ovl->base, possible_crtcs, &mfld_overlay_funcs,
 		       mfld_overlay_formats, ARRAY_SIZE(mfld_overlay_formats));
