@@ -573,7 +573,6 @@ static MRST_ERROR MRSTLFBDisableSwapChains(MRSTLFB_DEVINFO *psDevInfo)
 }
 #endif
 
-
 static PVRSRV_ERROR CreateDCSwapChain(IMG_HANDLE hDevice,
                                       IMG_UINT32 ui32Flags,
                                       DISPLAY_SURF_ATTRIBUTES *psDstSurfAttrib,
@@ -1823,7 +1822,7 @@ MRST_ERROR MRSTLFBAllocBuffer(struct MRSTLFB_DEVINFO_TAG *psDevInfo, IMG_UINT32 
 							(*ppBuffer)->ui32OwnerTaskID,
 							(IMG_CPU_PHYADDR*) (*ppBuffer)->uSysAddr.psNonCont,
 							ulPagesNumber,
-							&(*ppBuffer)->sDevVAddr.uiAddr );
+							&(*ppBuffer)->sDevVAddr.uiAddr, 1);
 
 	(*ppBuffer)->sDevVAddr.uiAddr <<= PAGE_SHIFT;
 

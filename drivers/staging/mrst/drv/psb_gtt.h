@@ -103,7 +103,8 @@ extern int psb_gtt_map_pvr_memory(struct drm_device *dev,
                                                                   unsigned int ui32TaskId,
                                                                   IMG_CPU_PHYADDR *pPages,
                                                                   unsigned int ui32PagesNum,
-                                                                  unsigned int *ui32Offset);
+								  unsigned int *ui32Offset,
+								  unsigned int ui32Align);
 
 extern int psb_gtt_unmap_pvr_memory(struct drm_device *dev,
                                                                         unsigned int hHandle,

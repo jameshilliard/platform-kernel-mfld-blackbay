@@ -955,7 +955,8 @@ int psb_gtt_map_pvr_memory(struct drm_device *dev,
 			   unsigned int ui32TaskId,
 			   IMG_CPU_PHYADDR *pPages,
 			   unsigned int ui32PagesNum,
-			   unsigned int *ui32Offset)
+			   unsigned int *ui32Offset,
+			   unsigned int ui32Align)
 {
 	struct drm_psb_private * dev_priv = (struct drm_psb_private *)dev->dev_private;
 	struct psb_gtt_mm * mm = dev_priv->gtt_mm;
@@ -970,7 +971,7 @@ int psb_gtt_map_pvr_memory(struct drm_device *dev,
 	pages = 0;
 
 	/*alloc memory in TT apeture*/
-	ret = psb_gtt_mm_alloc_mem(mm, ui32PagesNum, 0, &node);
+	ret = psb_gtt_mm_alloc_mem(mm, ui32PagesNum, ui32Align, &node);
 	if (ret) {
 		DRM_DEBUG("alloc TT memory error\n");
 		goto failed_pages_alloc;
