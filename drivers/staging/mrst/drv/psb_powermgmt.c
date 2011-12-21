@@ -738,6 +738,7 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 static int mdfld_save_cursor_overlay_registers(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv = dev->dev_private;
+	int i;
 
 	/*save cursor regs*/
 	dev_priv->saveDSPACURSOR_CTRL = PSB_RVDC32(CURACNTR);
@@ -753,21 +754,8 @@ static int mdfld_save_cursor_overlay_registers(struct drm_device *dev)
 	dev_priv->saveDSPCCURSOR_POS = PSB_RVDC32(CURCPOS);
 
 	/* HW overlay */
-	dev_priv->saveOV_OVADD = PSB_RVDC32(OV_OVADD);
-	dev_priv->saveOV_OGAMC0 = PSB_RVDC32(OV_OGAMC0);
-	dev_priv->saveOV_OGAMC1 = PSB_RVDC32(OV_OGAMC1);
-	dev_priv->saveOV_OGAMC2 = PSB_RVDC32(OV_OGAMC2);
-	dev_priv->saveOV_OGAMC3 = PSB_RVDC32(OV_OGAMC3);
-	dev_priv->saveOV_OGAMC4 = PSB_RVDC32(OV_OGAMC4);
-	dev_priv->saveOV_OGAMC5 = PSB_RVDC32(OV_OGAMC5);
-
-	dev_priv->saveOV_OVADD_C = PSB_RVDC32(OV_OVADD + OV_C_OFFSET);
-	dev_priv->saveOV_OGAMC0_C = PSB_RVDC32(OV_OGAMC0 + OV_C_OFFSET);
-	dev_priv->saveOV_OGAMC1_C = PSB_RVDC32(OV_OGAMC1 + OV_C_OFFSET);
-	dev_priv->saveOV_OGAMC2_C = PSB_RVDC32(OV_OGAMC2 + OV_C_OFFSET);
-	dev_priv->saveOV_OGAMC3_C = PSB_RVDC32(OV_OGAMC3 + OV_C_OFFSET);
-	dev_priv->saveOV_OGAMC4_C = PSB_RVDC32(OV_OGAMC4 + OV_C_OFFSET);
-	dev_priv->saveOV_OGAMC5_C = PSB_RVDC32(OV_OGAMC5 + OV_C_OFFSET);
+	for (i = 0; i < ARRAY_SIZE(dev_priv->overlays); i++)
+		mdfld_overlay_suspend(dev_priv->overlays[i]);
 
 	return 0;
 }
@@ -1072,6 +1060,7 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 static int mdfld_restore_cursor_overlay_registers(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv = dev->dev_private;
+	int i;
 
 	/*Enable Cursor A*/
 	PSB_WVDC32(dev_priv->saveDSPACURSOR_CTRL, CURACNTR);
@@ -1086,22 +1075,8 @@ static int mdfld_restore_cursor_overlay_registers(struct drm_device *dev)
 	PSB_WVDC32(dev_priv->saveDSPCCURSOR_POS, CURCPOS);
 	PSB_WVDC32(dev_priv->saveDSPCCURSOR_BASE, CURCBASE);
 
-	/* restore HW overlay */
-	PSB_WVDC32(dev_priv->saveOV_OVADD, OV_OVADD);
-	PSB_WVDC32(dev_priv->saveOV_OGAMC0, OV_OGAMC0);
-	PSB_WVDC32(dev_priv->saveOV_OGAMC1, OV_OGAMC1);
-	PSB_WVDC32(dev_priv->saveOV_OGAMC2, OV_OGAMC2);
-	PSB_WVDC32(dev_priv->saveOV_OGAMC3, OV_OGAMC3);
-	PSB_WVDC32(dev_priv->saveOV_OGAMC4, OV_OGAMC4);
-	PSB_WVDC32(dev_priv->saveOV_OGAMC5, OV_OGAMC5);
-
-	PSB_WVDC32(dev_priv->saveOV_OVADD_C, OV_OVADD + OV_C_OFFSET);
-	PSB_WVDC32(dev_priv->saveOV_OGAMC0_C, OV_OGAMC0 + OV_C_OFFSET);
-	PSB_WVDC32(dev_priv->saveOV_OGAMC1_C, OV_OGAMC1 + OV_C_OFFSET);
-	PSB_WVDC32(dev_priv->saveOV_OGAMC2_C, OV_OGAMC2 + OV_C_OFFSET);
-	PSB_WVDC32(dev_priv->saveOV_OGAMC3_C, OV_OGAMC3 + OV_C_OFFSET);
-	PSB_WVDC32(dev_priv->saveOV_OGAMC4_C, OV_OGAMC4 + OV_C_OFFSET);
-	PSB_WVDC32(dev_priv->saveOV_OGAMC5_C, OV_OGAMC5 + OV_C_OFFSET);
+	for (i = 0; i < ARRAY_SIZE(dev_priv->overlays); i++)
+		mdfld_overlay_resume(dev_priv->overlays[i]);
 
 	return 0;
 }

@@ -105,6 +105,12 @@ struct mfld_overlay_regs {
 	/* FIXME IEP */
 };
 
+struct mfld_overlay_regs_page {
+	void *virt;
+	u32 gtt;
+	u32 ovadd;
+};
+
 struct mfld_overlay {
 	struct drm_plane base;
 
@@ -114,12 +120,12 @@ struct mfld_overlay {
 	unsigned int mmio_offset;
 	int pipe;
 
-	struct {
-		void *virt;
-		u32 gtt;
-	} regs;
+	struct mfld_overlay_regs regs;
 
-	unsigned int dirty;
+	spinlock_t regs_lock;
+	struct mfld_overlay_regs_page page[2]; /* protected by regs_lock */
+	unsigned int curr_page; /* protected by regs_lock */
+	unsigned int dirty; /* protected by regs_lock */
 
 	int y_hscale, y_vscale;
 	int uv_hscale, uv_vscale;
@@ -228,27 +234,22 @@ enum {
 
 static void write_ovadd(struct mfld_overlay *ovl)
 {
+	struct mfld_overlay_regs_page *page = &ovl->page[ovl->curr_page];
 	struct drm_device *dev = ovl->dev;
-	static const u8 pipe_map[] = { 0, 2, 1, };
-	u32 ovadd = ovl->regs.gtt;
+	u32 ovadd = page->ovadd;
 
 	if (ovl->dirty & OVL_DIRTY_COEFS)
 		ovadd |= OVL_OVADD_COEF;
 
-	ovadd |= pipe_map[ovl->pipe] << 6;
-
-	/* Guarantee ordering between shadow register memory and write to OVADD. */
-	wmb();
-
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_FORCE_POWER_ON))
-		return;
-
 	OVL_REG_WRITE(ovl, OVL_OVADD, ovadd);
 	OVL_REG_READ(ovl, OVL_OVADD);
 
-	ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
-
-	ovl->dirty = 0;
+	/*
+	 * Don't clear OVL_DIRTY_COEFS because OVL_OVADD_COEF
+	 * must remain asserted until we're sure the hardware
+	 * actually loaded the coefficients.
+	 */
+	ovl->dirty &= ~OVL_DIRTY_REGS;
 }
 
 enum {
@@ -260,11 +261,9 @@ static int ovl_wait(struct mfld_overlay *ovl)
 	struct drm_device *dev = ovl->dev;
 	unsigned long timeout = jiffies + msecs_to_jiffies(OVL_UPDATE_TIMEOUT);
 
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_FORCE_POWER_ON)) {
-		dev_warn(dev->dev, "Failed to power up display island\n");
-		/* FIXME appropriate error code? */
-		return -ENXIO;
-	}
+	/* No point in waiting if the hardware is powered down */
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON))
+		return 0;
 
 	while (time_is_after_jiffies(timeout) && !(OVL_REG_READ(ovl, OVL_DOVSTA) & OVL_DOVSTA_OVR_UPDT))
 		cpu_relax();
@@ -279,12 +278,63 @@ static int ovl_wait(struct mfld_overlay *ovl)
 	return 0;
 }
 
-static void ovl_commit(struct mfld_overlay *ovl)
+static void ovl_update_regs(struct mfld_overlay *ovl)
 {
-	if (!ovl->dirty)
+	struct mfld_overlay_regs_page *page = &ovl->page[!ovl->curr_page];
+	static const u8 pipe_map[] = { 0, 2, 1, };
+
+	page->ovadd = page->gtt | (pipe_map[ovl->pipe] << 6);
+
+	memcpy(page->virt, &ovl->regs, sizeof ovl->regs);
+
+	/*
+	 * Guarantee ordering between shadow register memory and write to OVADD.
+	 * Also flushes the WC buffers.
+	 */
+	wmb();
+}
+
+static void ovl_commit(struct mfld_overlay *ovl, unsigned int dirty)
+{
+	struct drm_device *dev = ovl->dev;
+
+	if (!dirty)
 		return;
 
-	write_ovadd(ovl);
+	/*
+	 * Can be done safely outside the spinlock since we know
+	 * curr_page will only be modified just below, and ovl_commit()
+	 * won't be called from two threads simultaneosly due to locking
+	 * in upper layers.
+	 */
+	ovl_update_regs(ovl);
+
+	spin_lock_irq(&ovl->regs_lock);
+
+	ovl->curr_page = !ovl->curr_page;
+	ovl->dirty |= dirty;
+
+	spin_unlock_irq(&ovl->regs_lock);
+
+	/* If the hardware is powered down, postpone the OVADD write to resume time. */
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON))
+		return;
+
+	spin_lock_irq(&ovl->regs_lock);
+
+	if (ovl->dirty & OVL_DIRTY_COEFS && !(dirty & OVL_DIRTY_COEFS)) {
+		/* No pending updates, coefficients have been loaded for sure. */
+		if (OVL_REG_READ(ovl, OVL_DOVSTA) & OVL_DOVSTA_OVR_UPDT)
+			ovl->dirty &= ~OVL_DIRTY_COEFS;
+	}
+
+	/* It's possible that mdfld_overlay_resume() already did this for us. */
+	if (ovl->dirty & OVL_DIRTY_REGS)
+		write_ovadd(ovl);
+
+	spin_unlock_irq(&ovl->regs_lock);
+
+	ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 }
 
 static bool ovl_format_is_packed(uint32_t format)
@@ -543,16 +593,14 @@ static void ovl_calc_scale_factors(struct mfld_overlay_config *c)
 
 static void ovl_setup_regs(struct mfld_overlay *ovl)
 {
-	struct mfld_overlay_regs *regs = ovl->regs.virt;
+	struct mfld_overlay_regs *regs = &ovl->regs;
 
 	regs->OCONFIG = OVL_OCONFIG_IEP_BYPASS;
-
-	ovl->dirty |= OVL_DIRTY_REGS;
 }
 
-static void ovl_setup_coefs(struct mfld_overlay *ovl,
-			    struct mfld_overlay_plane *y,
-			    struct mfld_overlay_plane *uv)
+static unsigned int ovl_setup_coefs(struct mfld_overlay *ovl,
+				    struct mfld_overlay_plane *y,
+				    struct mfld_overlay_plane *uv)
 {
 	/* Sinc w/ cutoff=0.25, NUM_TAPS wide Hann window. */
 	static const uint16_t down_y_vert_coefs[OVL_NUM_PHASES][OVL_NUM_TAPS_Y_V] = {
@@ -708,54 +756,51 @@ static void ovl_setup_coefs(struct mfld_overlay *ovl,
 		[15] = { [0] = 0xb060, [1] = 0x1ff0, [2] = 0x30a0, },
 		[16] = { [0] = 0x3000, [1] = 0x0800, [2] = 0x3000, },
 	};
-	struct mfld_overlay_regs *regs = ovl->regs.virt;
+	struct mfld_overlay_regs *regs = &ovl->regs;
+	unsigned int dirty = 0;
 
 	if (ovl->y_vscale == 0 ||
 	    (ovl->y_vscale > 0x10000) != (y->vscale > 0x10000)) {
 		memcpy(regs->Y_VCOEFS, y->vscale > 0x10000 ?
 		       down_y_vert_coefs : up_y_vert_coefs, sizeof(regs->Y_VCOEFS));
-		ovl->dirty |= OVL_DIRTY_COEFS;
 		ovl->y_vscale = y->vscale;
+		dirty |= OVL_DIRTY_COEFS;
 	}
 
 	if (ovl->y_hscale == 0 ||
 	    (ovl->y_hscale > 0x10000) != (y->hscale > 0x10000)) {
 		memcpy(regs->Y_HCOEFS, y->hscale > 0x10000 ?
 		       down_y_horz_coefs : up_y_horz_coefs, sizeof(regs->Y_HCOEFS));
-		ovl->dirty |= OVL_DIRTY_COEFS;
 		ovl->y_hscale = y->hscale;
+		dirty |= OVL_DIRTY_COEFS;
 	}
 
 	if (ovl->uv_vscale == 0 ||
 	    (ovl->uv_vscale > 0x10000) != (uv->vscale > 0x10000)) {
 		memcpy(regs->UV_VCOEFS, uv->vscale > 0x10000 ?
 		       down_uv_vert_coefs : up_uv_vert_coefs, sizeof(regs->UV_VCOEFS));
-		ovl->dirty |= OVL_DIRTY_COEFS;
 		ovl->uv_vscale = uv->vscale;
+		dirty |= OVL_DIRTY_COEFS;
 	}
 
 	if (ovl->uv_hscale == 0 ||
 	    (ovl->uv_hscale > 0x10000) != (uv->hscale > 0x10000)) {
 		memcpy(regs->UV_HCOEFS, uv->hscale > 0x10000 ?
 		       down_uv_horz_coefs : up_uv_horz_coefs, sizeof(regs->UV_HCOEFS));
-		ovl->dirty |= OVL_DIRTY_COEFS;
 		ovl->uv_hscale = uv->hscale;
+		dirty |= OVL_DIRTY_COEFS;
 	}
+
+	return dirty;
 }
 
 static void ovl_disable(struct mfld_overlay *ovl)
 {
-	struct mfld_overlay_regs *regs = ovl->regs.virt;
-
-	/* Wait for previous update to finish before touching the shadow registers */
-	if (ovl_wait(ovl))
-		return;
+	struct mfld_overlay_regs *regs = &ovl->regs;
 
 	regs->OCOMD &= ~OVL_OCOMD_OV_ENBL;
 
-	ovl->dirty |= OVL_DIRTY_REGS;
-
-	ovl_commit(ovl);
+	ovl_commit(ovl, OVL_DIRTY_REGS);
 }
 
 static int
@@ -766,7 +811,7 @@ mfld_overlay_update_plane(struct drm_plane *plane, struct drm_crtc *crtc, struct
 	struct psb_intel_crtc *psbcrtc = to_psb_intel_crtc(crtc);
 	struct psb_framebuffer *psbfb = to_psb_fb(fb);
 	struct mfld_overlay *ovl = to_mfld_overlay(plane);
-	struct mfld_overlay_regs *regs = ovl->regs.virt;
+	struct mfld_overlay_regs *regs = &ovl->regs;
 	struct mfld_overlay_config c = { };
 	struct mfld_overlay_plane y = {
 		.is_chroma = false,
@@ -777,6 +822,7 @@ mfld_overlay_update_plane(struct drm_plane *plane, struct drm_crtc *crtc, struct
 	unsigned int y_off, u_off, v_off;
 	bool visible;
 	int r;
+	unsigned int dirty = OVL_DIRTY_REGS;
 
 	r = ovl_config_init(&c, crtc_x, crtc_y, crtc_w, crtc_h,
 			    src_x, src_y, src_w, src_h,
@@ -817,11 +863,6 @@ mfld_overlay_update_plane(struct drm_plane *plane, struct drm_crtc *crtc, struct
 	} else {
 		ovl_calc_plane(&c, &uv, fb->pitches[1]);
 	}
-
-	/* Wait for previous update to finish before touching the register memory */
-	r = ovl_wait(ovl);
-	if (r)
-		return r;
 
 	regs->YRGBSCALE = ((y.vscale & 0xfff0) << 16) | ((y.hscale & 0x1ffff0) >> 1);
 	regs->UVSCALE = ((uv.vscale & 0xfff0) << 16) | ((uv.hscale & 0x1ffff0) >> 1);
@@ -914,11 +955,9 @@ mfld_overlay_update_plane(struct drm_plane *plane, struct drm_crtc *crtc, struct
 
 	regs->OCOMD |= OVL_OCOMD_OV_ENBL;
 
-	ovl->dirty |= OVL_DIRTY_REGS;
+	dirty |= ovl_setup_coefs(ovl, &y, &uv);
 
-	ovl_setup_coefs(ovl, &y, &uv);
-
-	ovl_commit(ovl);
+	ovl_commit(ovl, dirty);
 
 	return 0;
 }
@@ -935,7 +974,7 @@ mfld_overlay_disable_plane(struct drm_plane *plane)
 
 static void ovl_set_brightness_contrast(struct mfld_overlay *ovl, const struct drm_plane_opts *opts)
 {
-	struct mfld_overlay_regs *regs = ovl->regs.virt;
+	struct mfld_overlay_regs *regs = &ovl->regs;
 	int bri, con;
 
 	if (opts->csc_range == DRM_CSC_RANGE_MPEG) {
@@ -972,13 +1011,11 @@ static void ovl_set_brightness_contrast(struct mfld_overlay *ovl, const struct d
 	WARN_ON(bri < -128 || bri > 127);
 
 	regs->OCLRC0 = ((con & 0x1ff) << 18) | ((bri & 0xff) << 0);
-
-	ovl->dirty |= OVL_DIRTY_REGS;
 }
 
 static void ovl_set_hue_saturation(struct mfld_overlay *ovl, const struct drm_plane_opts *opts)
 {
-	struct mfld_overlay_regs *regs = ovl->regs.virt;
+	struct mfld_overlay_regs *regs = &ovl->regs;
 	int sat;
 	/* [0:0xffff] -> [-FP_PI/2:FP_PI/2] shifted by 2*FP_PI */
 	unsigned int deg = ((opts->hue + 2) >> 2) + 3 * FP_PI / 2;
@@ -1015,13 +1052,11 @@ static void ovl_set_hue_saturation(struct mfld_overlay *ovl, const struct drm_pl
 	WARN_ON(abs(sh_sin) + sh_cos >= 8 << 7);
 
 	regs->OCLRC1 = ((sh_sin & 0x7ff) << 16) | ((sh_cos & 0x3ff) << 0);
-
-	ovl->dirty |= OVL_DIRTY_REGS;
 }
 
 static void ovl_set_csc_matrix(struct mfld_overlay *ovl, struct drm_plane_opts *opts)
 {
-	struct mfld_overlay_regs *regs = ovl->regs.virt;
+	struct mfld_overlay_regs *regs = &ovl->regs;
 
 	switch (opts->csc_matrix) {
 	case DRM_CSC_MATRIX_BT601:
@@ -1032,8 +1067,6 @@ static void ovl_set_csc_matrix(struct mfld_overlay *ovl, struct drm_plane_opts *
 		regs->OCONFIG |= OVL_OCONFIG_CSC_MODE;
 		break;
 	}
-
-	ovl->dirty |= OVL_DIRTY_REGS;
 }
 
 /* Take the 8 msbs of each component */
@@ -1046,7 +1079,7 @@ static uint32_t color_64_to_32(uint64_t color)
 
 static void ovl_set_src_key(struct mfld_overlay *ovl, const struct drm_plane_opts *opts)
 {
-	struct mfld_overlay_regs *regs = ovl->regs.virt;
+	struct mfld_overlay_regs *regs = &ovl->regs;
 	uint32_t src_key_low = color_64_to_32(opts->src_key_low);
 	uint32_t src_key_high = color_64_to_32(opts->src_key_high);
 
@@ -1078,13 +1111,11 @@ static void ovl_set_src_key(struct mfld_overlay *ovl, const struct drm_plane_opt
 
 	regs->SCHRKVL = src_key_low;
 	regs->SCHRKVH = src_key_high;
-
-	ovl->dirty |= OVL_DIRTY_REGS;
 }
 
 static void ovl_set_dst_key(struct mfld_overlay *ovl, const struct drm_plane_opts *opts)
 {
-	struct mfld_overlay_regs *regs = ovl->regs.virt;
+	struct mfld_overlay_regs *regs = &ovl->regs;
 	uint32_t dst_key_value = color_64_to_32(opts->dst_key_value);
 	uint32_t dst_key_mask = ~color_64_to_32(opts->dst_key_mask) & 0xffffff;
 
@@ -1093,8 +1124,6 @@ static void ovl_set_dst_key(struct mfld_overlay *ovl, const struct drm_plane_opt
 	regs->DCLRKM = OVL_DCLRKM_KEY |
 		((opts->const_alpha != 0xffff) << 30) |
 		dst_key_mask;
-
-	ovl->dirty |= OVL_DIRTY_REGS;
 }
 
 static void ovl_set_zorder(struct drm_plane *plane_a, struct drm_plane *plane_c)
@@ -1111,8 +1140,8 @@ static void ovl_set_zorder(struct drm_plane *plane_a, struct drm_plane *plane_c)
 
 	ovl_a = to_mfld_overlay(plane_a);
 	ovl_c = to_mfld_overlay(plane_c);
-	regs_a = ovl_a->regs.virt;
-	regs_c = ovl_c->regs.virt;
+	regs_a = &ovl_a->regs;
+	regs_c = &ovl_c->regs;
 
 	if (plane_a->opts.zorder == plane_c->opts.zorder)
 		zorder = plane_a->base.id < plane_c->base.id;
@@ -1126,9 +1155,6 @@ static void ovl_set_zorder(struct drm_plane *plane_a, struct drm_plane *plane_c)
 		regs_a->OCONFIG &= ~OVL_OCONFIG_ZORDER;
 		regs_c->OCONFIG &= ~OVL_OCONFIG_ZORDER;
 	}
-
-	ovl_a->dirty |= OVL_DIRTY_REGS;
-	ovl_c->dirty |= OVL_DIRTY_REGS;
 }
 
 static int
@@ -1137,7 +1163,8 @@ mfld_overlay_set_plane_opts(struct drm_plane *plane, uint32_t flags, struct drm_
 	struct mfld_overlay *ovl = to_mfld_overlay(plane);
 	struct drm_plane *other_plane = NULL;
 	struct mfld_overlay *other_ovl = NULL;
-	int r;
+	unsigned int dirty = 0;
+	unsigned int other_dirty = 0;
 
 	if (flags & DRM_MODE_PLANE_ZORDER) {
 		struct drm_psb_private *dev_priv = ovl->dev->dev_private;
@@ -1148,16 +1175,6 @@ mfld_overlay_set_plane_opts(struct drm_plane *plane, uint32_t flags, struct drm_
 		other_plane = dev_priv->overlays[!ovl->id];
 		if (other_plane)
 			other_ovl = to_mfld_overlay(other_plane);
-	}
-
-	r = ovl_wait(ovl);
-	if (r)
-		return r;
-
-	if (other_ovl) {
-		r = ovl_wait(other_ovl);
-		if (r)
-			return r;
 	}
 
 	/* Constant alpha bits live in color key registers */
@@ -1188,6 +1205,7 @@ mfld_overlay_set_plane_opts(struct drm_plane *plane, uint32_t flags, struct drm_
 		}
 
 		ovl_set_csc_matrix(ovl, opts);
+		dirty |= OVL_DIRTY_REGS;
 	}
 
 	if (flags & DRM_MODE_PLANE_CHROMA_SITING) {
@@ -1197,27 +1215,37 @@ mfld_overlay_set_plane_opts(struct drm_plane *plane, uint32_t flags, struct drm_
 		/* FIXME should recompute scaling etc. in case chroma phase changed. */
 	}
 
-	if (flags & (DRM_MODE_PLANE_BRIGHTNESS | DRM_MODE_PLANE_CONTRAST))
+	if (flags & (DRM_MODE_PLANE_BRIGHTNESS | DRM_MODE_PLANE_CONTRAST)) {
 		ovl_set_brightness_contrast(ovl, opts);
+		dirty |= OVL_DIRTY_REGS;
+	}
 
-	if (flags & (DRM_MODE_PLANE_HUE | DRM_MODE_PLANE_SATURATION))
+	if (flags & (DRM_MODE_PLANE_HUE | DRM_MODE_PLANE_SATURATION)) {
 		ovl_set_hue_saturation(ovl, opts);
+		dirty |= OVL_DIRTY_REGS;
+	}
 
-	if (flags & DRM_MODE_PLANE_SRC_KEY)
+	if (flags & DRM_MODE_PLANE_SRC_KEY) {
 		ovl_set_src_key(ovl, opts);
+		dirty |= OVL_DIRTY_REGS;
+	}
 
-	if (flags & DRM_MODE_PLANE_DST_KEY)
+	if (flags & DRM_MODE_PLANE_DST_KEY) {
 		ovl_set_dst_key(ovl, opts);
+		dirty |= OVL_DIRTY_REGS;
+	}
 
 	if (flags & DRM_MODE_PLANE_ZORDER) {
 		plane->opts.zorder = opts->zorder;
 		ovl_set_zorder(ovl->id == 0 ? plane : other_plane,
 			       ovl->id == 0 ? other_plane : plane);
+		dirty |= OVL_DIRTY_REGS;
+		other_dirty |= OVL_DIRTY_REGS;
 	}
 
-	ovl_commit(ovl);
+	ovl_commit(ovl, dirty);
 	if (other_ovl)
-		ovl_commit(other_ovl);
+		ovl_commit(other_ovl, other_dirty);
 
 	return 0;
 }
@@ -1243,33 +1271,31 @@ static const uint32_t mfld_overlay_formats[] = {
 	DRM_FORMAT_YUV410,
 };
 
-static int ovl_regs_init(struct drm_device *dev, struct mfld_overlay *ovl)
+static int ovl_regs_init(struct drm_device *dev, struct mfld_overlay_regs_page *page)
 {
 	unsigned long addr;
 	u32 gtt_page_offset;
 	u32 phys;
 	int r;
 
-	/* FIXME allocate two pages to allow new updates w/o waiting for the previous one? */
-
 	addr = get_zeroed_page(GFP_KERNEL);
 	if (!addr)
 		return -ENOMEM;
 
-	ovl->regs.virt = (void *) addr;
+	page->virt = (void *) addr;
 
 	r = set_memory_wc(addr, 1);
 	if (r)
 		goto free;
 
-	phys = virt_to_phys(ovl->regs.virt);
+	phys = virt_to_phys(page->virt);
 
-	r = psb_gtt_map_pvr_memory(dev, (u32)ovl->regs.virt, KERNEL_ID,
+	r = psb_gtt_map_pvr_memory(dev, addr, KERNEL_ID,
 				   (IMG_CPU_PHYADDR *)&phys, 1, &gtt_page_offset, 16);
 	if (r)
 		goto set_wb;
 
-	ovl->regs.gtt = gtt_page_offset << PAGE_SHIFT;
+	page->gtt = gtt_page_offset << PAGE_SHIFT;
 
 	return 0;
 
@@ -1281,11 +1307,11 @@ static int ovl_regs_init(struct drm_device *dev, struct mfld_overlay *ovl)
 	return r;
 }
 
-static void ovl_regs_fini(struct drm_device *dev, struct mfld_overlay *ovl)
+static void ovl_regs_fini(struct drm_device *dev, struct mfld_overlay_regs_page *page)
 {
-	unsigned long addr = (unsigned long) ovl->regs.virt;
+	unsigned long addr = (unsigned long) page->virt;
 
-	psb_gtt_unmap_pvr_memory(dev, ovl->regs.virt, KERNEL_ID);
+	psb_gtt_unmap_pvr_memory(dev, addr, KERNEL_ID);
 	set_memory_wb(addr, 1);
 	free_page(addr);
 }
@@ -1294,7 +1320,7 @@ static void ovl_regs_fini(struct drm_device *dev, struct mfld_overlay *ovl)
 static int ovl_regs_show(struct seq_file *s, void *data)
 {
 	struct mfld_overlay *ovl = s->private;
-	struct mfld_overlay_regs *regs = ovl->regs.virt;
+	struct mfld_overlay_regs *regs = ovl->page[ovl->curr_page].virt;
 	struct drm_device *dev = ovl->base.dev;
 
 #undef OVL_REG_SHOW
@@ -1377,7 +1403,7 @@ static const struct file_operations ovl_regs_fops = {
 static int ovl_coefs_show(struct seq_file *s, void *data)
 {
 	struct mfld_overlay *ovl = s->private;
-	struct mfld_overlay_regs *regs = ovl->regs.virt;
+	struct mfld_overlay_regs *regs = ovl->page[ovl->curr_page].virt;
 	int p, t;
 
 	for (p = 0; p < OVL_NUM_PHASES; p++) {
@@ -1463,9 +1489,15 @@ int mdfld_overlay_init(struct drm_device *dev, int id)
 	if (!ovl)
 		return -ENOMEM;
 
-	r = ovl_regs_init(dev, ovl);
+	r = ovl_regs_init(dev, &ovl->page[0]);
 	if (r)
 		goto free_ovl;
+
+	r = ovl_regs_init(dev, &ovl->page[1]);
+	if (r)
+		goto uninit_page0;
+
+	spin_lock_init(&ovl->regs_lock);
 
 	ovl->dev = dev;
 	ovl->pipe = 0;
@@ -1502,6 +1534,8 @@ int mdfld_overlay_init(struct drm_device *dev, int id)
 
 	return 0;
 
+ uninit_page0:
+	ovl_regs_fini(dev, &ovl->page[0]);
  free_ovl:
 	kfree(ovl);
 
@@ -1516,7 +1550,38 @@ static void mfld_overlay_destroy(struct drm_plane *plane)
 	ovl_debugfs_fini(ovl);
 
 	ovl_wait(ovl);
-	ovl_regs_fini(dev, ovl);
+	ovl_regs_fini(dev, &ovl->page[1]);
+	ovl_regs_fini(dev, &ovl->page[0]);
 
 	kfree(ovl);
+}
+
+void mdfld_overlay_suspend(struct drm_plane *plane)
+{
+	(void)plane;
+}
+
+void mdfld_overlay_resume(struct drm_plane *plane)
+{
+	unsigned long flags;
+	struct mfld_overlay *ovl;
+
+	if (!plane)
+		return;
+
+	ovl = to_mfld_overlay(plane);
+
+	spin_lock_irqsave(&ovl->regs_lock, flags);
+
+	/* Make sure the full state is reloaded to the hardware. */
+	ovl->dirty |= OVL_DIRTY_REGS | OVL_DIRTY_COEFS;
+
+	/*
+	 * Always program OVADD even if the overlay is not enabled.
+	 * Otherwise we can't always detect whether the coefficients
+	 * have been loaded after resuming.
+	 */
+	write_ovadd(ovl);
+
+	spin_unlock_irqrestore(&ovl->regs_lock, flags);
 }

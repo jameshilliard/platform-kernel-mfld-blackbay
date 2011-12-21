@@ -249,5 +249,7 @@ extern void mdfldWaitForPipeDisable(struct drm_device *dev, int pipe);
 extern void mdfldWaitForPipeEnable(struct drm_device *dev, int pipe);
 
 extern int mdfld_overlay_init(struct drm_device *dev, int id);
+extern void mdfld_overlay_suspend(struct drm_plane *plane);
+extern void mdfld_overlay_resume(struct drm_plane *plane);
 
 #endif				/* __INTEL_DRV_H__ */
