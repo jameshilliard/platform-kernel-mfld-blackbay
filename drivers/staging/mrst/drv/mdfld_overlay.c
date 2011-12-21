@@ -244,6 +244,7 @@ static void write_ovadd(struct mfld_overlay *ovl)
 		return;
 
 	OVL_REG_WRITE(ovl, OVL_OVADD, ovadd);
+	OVL_REG_READ(ovl, OVL_OVADD);
 
 	ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 
