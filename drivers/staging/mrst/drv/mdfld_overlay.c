@@ -22,6 +22,8 @@
  */
 
 #include <linux/debugfs.h>
+#include <asm/cacheflush.h>
+#include <asm/page.h>
 
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>
@@ -113,7 +115,6 @@ struct mfld_overlay {
 	int pipe;
 
 	struct {
-		struct page *page;
 		void *virt;
 		u32 gtt;
 	} regs;
@@ -1243,44 +1244,49 @@ static const uint32_t mfld_overlay_formats[] = {
 
 static int ovl_regs_init(struct drm_device *dev, struct mfld_overlay *ovl)
 {
+	unsigned long addr;
 	u32 gtt_page_offset;
 	u32 phys;
 	int r;
 
 	/* FIXME allocate two pages to allow new updates w/o waiting for the previous one? */
 
-	ovl->regs.page = alloc_page(GFP_KERNEL | __GFP_ZERO);
-	if (!ovl->regs.page)
+	addr = get_zeroed_page(GFP_KERNEL);
+	if (!addr)
 		return -ENOMEM;
 
-	phys = page_to_pfn(ovl->regs.page) << PAGE_SHIFT;
+	ovl->regs.virt = (void *) addr;
 
-	r = psb_gtt_map_pvr_memory(dev, (u32)ovl->regs.page, KERNEL_ID,
+	r = set_memory_wc(addr, 1);
+	if (r)
+		goto free;
+
+	phys = virt_to_phys(ovl->regs.virt);
+
+	r = psb_gtt_map_pvr_memory(dev, (u32)ovl->regs.virt, KERNEL_ID,
 				   (IMG_CPU_PHYADDR *)&phys, 1, &gtt_page_offset, 16);
 	if (r)
-		goto free_page;
+		goto set_wb;
 
 	ovl->regs.gtt = gtt_page_offset << PAGE_SHIFT;
 
-	ovl->regs.virt = vmap(&ovl->regs.page, 1, 0, ttm_io_prot(TTM_PL_FLAG_UNCACHED, PAGE_KERNEL));
-	if (!ovl->regs.virt)
-		goto unmap_gtt;
-
 	return 0;
 
- unmap_gtt:
-	psb_gtt_unmap_pvr_memory(dev, (u32)ovl->regs.page, KERNEL_ID);
- free_page:
-	__free_page(ovl->regs.page);
+ set_wb:
+	set_memory_wb(addr, 1);
+ free:
+	free_page(addr);
 
 	return r;
 }
 
 static void ovl_regs_fini(struct drm_device *dev, struct mfld_overlay *ovl)
 {
-	vunmap(ovl->regs.virt);
-	psb_gtt_unmap_pvr_memory(dev, (u32)ovl->regs.page, KERNEL_ID);
-	__free_page(ovl->regs.page);
+	unsigned long addr = (unsigned long) ovl->regs.virt;
+
+	psb_gtt_unmap_pvr_memory(dev, ovl->regs.virt, KERNEL_ID);
+	set_memory_wb(addr, 1);
+	free_page(addr);
 }
 
 #ifdef CONFIG_DEBUG_FS
