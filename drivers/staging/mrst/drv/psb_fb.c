@@ -417,9 +417,9 @@ static int psbfb_create(struct psb_fbdev * fbdev, struct drm_fb_helper_surface_s
 	mutex_unlock(&dev->struct_mutex);
 
 	return 0;
-out_err0:
-	fb->funcs->destroy(fb);
 out_err1:
+	fb->funcs->destroy(fb);
+out_err0:
 	mutex_unlock(&dev->struct_mutex);
 	return ret;
 }
