@@ -251,13 +251,13 @@ static void write_ovadd(struct mfld_overlay *ovl)
 }
 
 enum {
-	OVL_UPDATE_TIMEOUT = 20000,
+	OVL_UPDATE_TIMEOUT = 100, /* ms */
 };
 
 static int ovl_wait(struct mfld_overlay *ovl)
 {
 	struct drm_device *dev = ovl->dev;
-	unsigned int timeout = 0;
+	unsigned long timeout = jiffies + msecs_to_jiffies(OVL_UPDATE_TIMEOUT);
 
 	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_FORCE_POWER_ON)) {
 		dev_warn(dev->dev, "Failed to power up display island\n");
@@ -265,12 +265,12 @@ static int ovl_wait(struct mfld_overlay *ovl)
 		return -ENXIO;
 	}
 
-	while (timeout++ < OVL_UPDATE_TIMEOUT && !(OVL_REG_READ(ovl, OVL_DOVSTA) & OVL_DOVSTA_OVR_UPDT))
+	while (time_is_after_jiffies(timeout) && !(OVL_REG_READ(ovl, OVL_DOVSTA) & OVL_DOVSTA_OVR_UPDT))
 		cpu_relax();
 
 	ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 
-	if (timeout >= OVL_UPDATE_TIMEOUT) {
+	if (time_is_before_eq_jiffies(timeout)) {
 		dev_warn(dev->dev, "Timed out waiting for overlay %c\n", ovl->id == 0 ? 'A' : 'C');
 		return -ETIMEDOUT;
 	}
