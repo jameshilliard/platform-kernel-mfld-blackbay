@@ -42,7 +42,6 @@ struct psb_gtt *psb_gtt_alloc(struct drm_device *dev) {
 	if (!tmp)
 		return NULL;
 
-	init_rwsem(&tmp->sem);
 	tmp->dev = dev;
 
 	return tmp;
@@ -263,7 +262,6 @@ int psb_gtt_insert_pages(struct psb_gtt *pg, struct page **pages,
 	add = desired_tile_stride;
 	row_add = hw_tile_stride;
 
-	down_read(&pg->sem);
 	for (i = 0; i < rows; ++i) {
 		cur_page = pg->gtt_map + offset_pages;
 		for (j = 0; j < desired_tile_stride; ++j) {
@@ -274,7 +272,6 @@ int psb_gtt_insert_pages(struct psb_gtt *pg, struct page **pages,
 		offset_pages += add;
 	}
 	(void) ioread32(cur_page - 1);
-	up_read(&pg->sem);
 
 	return 0;
 }
@@ -287,7 +284,6 @@ static int psb_gtt_insert_phys_addresses(struct psb_gtt *pg, IMG_CPU_PHYADDR *pP
 	uint32_t pte;
 
 	//printk("Allocatng IMG GTT mem at %x (pages %d)\n",offset_pages,num_pages);
-	down_read(&pg->sem);
 
 	cur_page = pg->gtt_map + offset_pages;
 	for (j = 0; j < num_pages; ++j) {
@@ -297,14 +293,12 @@ static int psb_gtt_insert_phys_addresses(struct psb_gtt *pg, IMG_CPU_PHYADDR *pP
 	}
 	(void) ioread32(cur_page - 1);
 
-	up_read(&pg->sem);
-
 	return 0;
 }
 
 int psb_gtt_remove_pages(struct psb_gtt *pg, unsigned offset_pages,
 			 unsigned num_pages, unsigned desired_tile_stride,
-			 unsigned hw_tile_stride, int rc_prot)
+			 unsigned hw_tile_stride)
 {
 	struct drm_psb_private *dev_priv = pg->dev->dev_private;
 	unsigned rows = 1;
@@ -324,8 +318,6 @@ int psb_gtt_remove_pages(struct psb_gtt *pg, unsigned offset_pages,
 	add = desired_tile_stride;
 	row_add = hw_tile_stride;
 
-	if (rc_prot)
-		down_read(&pg->sem);
 	for (i = 0; i < rows; ++i) {
 		cur_page = pg->gtt_map + offset_pages;
 		for (j = 0; j < desired_tile_stride; ++j)
@@ -334,8 +326,6 @@ int psb_gtt_remove_pages(struct psb_gtt *pg, unsigned offset_pages,
 		offset_pages += add;
 	}
 	(void) ioread32(cur_page - 1);
-	if (rc_prot)
-		up_read(&pg->sem);
 
 	return 0;
 }
@@ -917,7 +907,7 @@ int psb_gtt_unmap_meminfo(struct drm_device *dev, IMG_HANDLE hKernelMemInfo)
 	offset_pages = node->start;
 	pages = node->size;
 
-	psb_gtt_remove_pages(pg, offset_pages, pages, 0, 0, 1);
+	psb_gtt_remove_pages(pg, offset_pages, pages, 0, 0);
 
 
 	/*free tt node*/
@@ -1028,7 +1018,7 @@ int psb_gtt_unmap_pvr_memory(struct drm_device *dev, unsigned int hHandle, unsig
 	offset_pages = node->start;
 	pages = node->size;
 
-	psb_gtt_remove_pages(pg, offset_pages, pages, 0, 0, 1);
+	psb_gtt_remove_pages(pg, offset_pages, pages, 0, 0);
 
 	/*free tt node*/
 	psb_gtt_mm_free_mem(mm, node);

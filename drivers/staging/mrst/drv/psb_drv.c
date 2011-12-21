@@ -948,7 +948,6 @@ static int psb_driver_unload(struct drm_device *dev)
 		if (dev_priv->mmu) {
 			struct psb_gtt *pg = dev_priv->pg;
 
-			down_read(&pg->sem);
 			psb_mmu_remove_pfn_sequence(
 				psb_mmu_get_default_pd
 				(dev_priv->mmu),
@@ -966,7 +965,6 @@ static int psb_driver_unload(struct drm_device *dev)
 					(dev_priv->mmu),
 					pg->rar_start,
 					pg->rar_stolen_size >> PAGE_SHIFT);
-			up_read(&pg->sem);
 			psb_mmu_driver_takedown(dev_priv->mmu);
 			dev_priv->mmu = NULL;
 		}
@@ -1184,13 +1182,11 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 	 * Make MSVDX/TOPAZ MMU aware of the CI stolen memory area.
 	 */
 	if (dev_priv->pg->ci_stolen_size != 0) {
-		down_read(&pg->sem);
 		ret = psb_mmu_insert_pfn_sequence(psb_mmu_get_default_pd
 						  (dev_priv->mmu),
 						  dev_priv->ci_region_start >> PAGE_SHIFT,
 						  pg->mmu_gatt_start + pg->ci_start,
 						  pg->ci_stolen_size >> PAGE_SHIFT, 0);
-		up_read(&pg->sem);
 		if (ret)
 			goto out_err;
 	}
@@ -1199,13 +1195,11 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 	 * Make MSVDX/TOPAZ MMU aware of the rar stolen memory area.
 	 */
 	if (dev_priv->pg->rar_stolen_size != 0) {
-		down_read(&pg->sem);
 		ret = psb_mmu_insert_pfn_sequence(
 			      psb_mmu_get_default_pd(dev_priv->mmu),
 			      dev_priv->rar_region_start >> PAGE_SHIFT,
 			      pg->mmu_gatt_start + pg->rar_start,
 			      pg->rar_stolen_size >> PAGE_SHIFT, 0);
-		up_read(&pg->sem);
 		if (ret)
 			goto out_err;
 	}

@@ -250,7 +250,7 @@ static int drm_psb_tbe_unbind(struct ttm_backend *backend)
 		(void) psb_gtt_remove_pages(dev_priv->pg, gatt_p_offset,
 					    psb_be->num_pages,
 					    psb_be->desired_tile_stride,
-					    psb_be->hw_tile_stride, 0);
+					    psb_be->hw_tile_stride);
 	}
 
 	psb_mmu_remove_pages(pd, psb_be->offset,

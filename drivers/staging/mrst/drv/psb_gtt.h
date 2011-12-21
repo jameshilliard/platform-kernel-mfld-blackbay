@@ -44,7 +44,6 @@ struct psb_gtt {
 	unsigned long ci_stolen_size;
 	unsigned long rar_stolen_size;
 	uint32_t __iomem *gtt_map;
-	struct rw_semaphore sem;
 };
 
 struct psb_gtt_mm {
@@ -81,8 +80,7 @@ extern int psb_gtt_insert_pages(struct psb_gtt *pg, struct page **pages,
 extern int psb_gtt_remove_pages(struct psb_gtt *pg, unsigned offset_pages,
 				unsigned num_pages,
 				unsigned desired_tile_stride,
-				unsigned hw_tile_stride,
-				int rc_prot);
+				unsigned hw_tile_stride);
 
 extern struct psb_gtt *psb_gtt_alloc(struct drm_device *dev);
 extern void psb_gtt_takedown(struct psb_gtt *pg, int free);
