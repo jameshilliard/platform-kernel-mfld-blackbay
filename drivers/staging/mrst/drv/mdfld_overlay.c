@@ -265,8 +265,13 @@ static int ovl_wait(struct mfld_overlay *ovl)
 	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON))
 		return 0;
 
+	/*
+	 * The sleep accuracy doesn't matter much since this function is
+	 * only called during driver shutdown. If that changes this code
+	 * should most likely be changed to use something better than msleep().
+	 */
 	while (time_is_after_jiffies(timeout) && !(OVL_REG_READ(ovl, OVL_DOVSTA) & OVL_DOVSTA_OVR_UPDT))
-		cpu_relax();
+		msleep(1);
 
 	ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 
