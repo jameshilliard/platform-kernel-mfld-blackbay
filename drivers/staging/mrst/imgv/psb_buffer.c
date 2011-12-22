@@ -274,6 +274,7 @@ int drm_psb_has_fixed_pages(struct ttm_backend *backend)
 	return psb_be->fixed_pages;
 }
 
+/* May only be called from the object destruction */
 void drm_psb_unset_fixed_pages(struct ttm_backend *backend)
 {
 	struct drm_psb_ttm_backend *psb_be;

@@ -264,6 +264,82 @@ int ttm_buffer_object_create(struct ttm_bo_device *bdev,
 	return ret;
 }
 
+struct create_params {
+	struct ttm_bo_device *bdev;
+	enum ttm_bo_type bo_type;
+	size_t size;
+	off_t align;
+	unsigned long user_address;
+	struct ttm_placement *placement;
+	struct ttm_object_file *tfile;
+	bool shareable;
+};
+
+static int pl_create_buf(struct create_params *p, struct ttm_lock *lock,
+			 struct ttm_pl_rep *rep)
+{
+	struct ttm_buffer_object *bo;
+	struct ttm_buffer_object *tmp;
+	struct ttm_bo_user_object *user_bo;
+	struct ttm_mem_global *mem_glob = p->bdev->glob->mem_glob;
+	size_t acc_size;
+	int pg_cnt;
+	int ret;
+
+	pg_cnt = PAGE_ALIGN(p->size) >> PAGE_SHIFT;
+	acc_size = ttm_pl_size(p->bdev, pg_cnt);
+	ret = ttm_mem_global_alloc(mem_glob, acc_size, false, false);
+	if (ret < 0)
+		return ret;
+
+	user_bo = kzalloc(sizeof(*user_bo), GFP_KERNEL);
+	if (!user_bo) {
+		ret = -ENOMEM;
+		goto err1;
+	}
+
+	bo = &user_bo->bo;
+
+	ret = ttm_read_lock(lock, true);
+	if (ret < 0)
+		goto err2;
+
+	ret = ttm_bo_init(p->bdev, bo, pg_cnt << PAGE_SHIFT, p->bo_type,
+			  p->placement, p->align, p->user_address, true, NULL,
+			  acc_size, &ttm_bo_user_destroy);
+	ttm_read_unlock(lock);
+
+	/*
+	 * Note that the ttm_buffer_object_init function
+	 * would've called the destroy function on failure!!
+	 */
+	if (ret < 0)
+		goto err2;
+
+	tmp = ttm_bo_reference(bo);
+
+	ret = ttm_base_object_init(p->tfile, &user_bo->base, p->shareable,
+				   ttm_buffer_type, &ttm_bo_user_release,
+				   &ttm_bo_user_ref_release);
+	if (ret < 0)
+		goto err3;
+
+	spin_lock(&bo->bdev->fence_lock);
+	ttm_pl_fill_rep(bo, rep);
+	spin_unlock(&bo->bdev->fence_lock);
+
+	ttm_bo_unref(&tmp);
+
+	return 0;
+err3:
+	ttm_bo_unref(&tmp);
+err2:
+	kfree(user_bo);
+err1:
+	ttm_mem_global_free(mem_glob, acc_size);
+
+	return ret;
+}
 
 int ttm_pl_create_ioctl(struct ttm_object_file *tfile,
 			struct ttm_bo_device *bdev,
@@ -272,73 +348,24 @@ int ttm_pl_create_ioctl(struct ttm_object_file *tfile,
 	union ttm_pl_create_arg *arg = data;
 	struct ttm_pl_create_req *req = &arg->req;
 	struct ttm_pl_rep *rep = &arg->rep;
-	struct ttm_buffer_object *bo;
-	struct ttm_buffer_object *tmp;
-	struct ttm_bo_user_object *user_bo;
-	uint32_t flags;
-	int ret = 0;
-	struct ttm_mem_global *mem_glob = bdev->glob->mem_glob;
-	struct ttm_placement placement = default_placement;
-	size_t acc_size =
-		ttm_pl_size(bdev, (req->size + PAGE_SIZE - 1) >> PAGE_SHIFT);
-	ret = ttm_mem_global_alloc(mem_glob, acc_size, false, false);
-	if (unlikely(ret != 0))
-		return ret;
+	struct ttm_placement pl;
+	uint32_t pl_flags;
+	struct create_params cp = {
+		.bdev		= bdev,
+		.bo_type	= ttm_bo_type_device,
+		.size		= req->size,
+		.align		= req->page_alignment,
+		.tfile		= tfile,
+		.shareable	= req->placement & TTM_PL_FLAG_SHARED,
+	};
 
-	flags = req->placement;
-	user_bo = kzalloc(sizeof(*user_bo), GFP_KERNEL);
-	if (unlikely(user_bo == NULL)) {
-		ttm_mem_global_free(mem_glob, acc_size);
-		return -ENOMEM;
-	}
+	pl_flags = normalize_placement_flags(req->placement);
+	pl = default_placement;
+	pl.num_placement = 1;
+	pl.placement = &pl_flags;
+	cp.placement = &pl;
 
-	bo = &user_bo->bo;
-	ret = ttm_read_lock(lock, true);
-	if (unlikely(ret != 0)) {
-		ttm_mem_global_free(mem_glob, acc_size);
-		kfree(user_bo);
-		return ret;
-	}
-
-	placement.num_placement = 1;
-	placement.placement = &flags;
-
-	if ((flags & TTM_PL_MASK_CACHING) == 0)
-		flags |=  TTM_PL_FLAG_WC | TTM_PL_FLAG_UNCACHED;
-
-	ret = ttm_bo_init(bdev, bo, req->size,
-			  ttm_bo_type_device, &placement,
-			  req->page_alignment, 0, true,
-			  NULL, acc_size, &ttm_bo_user_destroy);
-	ttm_read_unlock(lock);
-
-	/*
-	 * Note that the ttm_buffer_object_init function
-	 * would've called the destroy function on failure!!
-	 */
-
-	if (unlikely(ret != 0))
-		goto out;
-
-	tmp = ttm_bo_reference(bo);
-	ret = ttm_base_object_init(tfile, &user_bo->base,
-				   flags & TTM_PL_FLAG_SHARED,
-				   ttm_buffer_type,
-				   &ttm_bo_user_release,
-				   &ttm_bo_user_ref_release);
-	if (unlikely(ret != 0))
-		goto out_err;
-
-	spin_lock(&bo->bdev->fence_lock);
-	ttm_pl_fill_rep(bo, rep);
-	spin_unlock(&bo->bdev->fence_lock);
-	ttm_bo_unref(&bo);
-out:
-	return 0;
-out_err:
-	ttm_bo_unref(&tmp);
-	ttm_bo_unref(&bo);
-	return ret;
+	return pl_create_buf(&cp, lock, rep);
 }
 
 int ttm_pl_ub_create_ioctl(struct ttm_object_file *tfile,
@@ -348,75 +375,25 @@ int ttm_pl_ub_create_ioctl(struct ttm_object_file *tfile,
 	union ttm_pl_create_ub_arg *arg = data;
 	struct ttm_pl_create_ub_req *req = &arg->req;
 	struct ttm_pl_rep *rep = &arg->rep;
-	struct ttm_buffer_object *bo;
-	struct ttm_buffer_object *tmp;
-	struct ttm_bo_user_object *user_bo;
-	uint32_t flags;
-	int ret = 0;
-	struct ttm_mem_global *mem_glob = bdev->glob->mem_glob;
-	struct ttm_placement placement = default_placement;
-	size_t acc_size =
-		ttm_pl_size(bdev, (req->size + PAGE_SIZE - 1) >> PAGE_SHIFT);
-	ret = ttm_mem_global_alloc(mem_glob, acc_size, false, false);
-	if (unlikely(ret != 0))
-		return ret;
+	struct ttm_placement pl = default_placement;
+	uint32_t pl_flags;
+	struct create_params cp = {
+		.bdev		= bdev,
+		.bo_type	= ttm_bo_type_user,
+		.size		= req->size,
+		.user_address	= req->user_address,
+		.align		= req->page_alignment,
+		.tfile		= tfile,
+		.shareable	= req->placement & TTM_PL_FLAG_SHARED,
+	};
 
-	flags = req->placement;
-	user_bo = kzalloc(sizeof(*user_bo), GFP_KERNEL);
-	if (unlikely(user_bo == NULL)) {
-		ttm_mem_global_free(mem_glob, acc_size);
-		return -ENOMEM;
-	}
-	ret = ttm_read_lock(lock, true);
-	if (unlikely(ret != 0)) {
-		ttm_mem_global_free(mem_glob, acc_size);
-		kfree(user_bo);
-		return ret;
-	}
-	bo = &user_bo->bo;
+	pl_flags = normalize_placement_flags(req->placement);
+	pl = default_placement;
+	pl.num_placement = 1;
+	pl.placement = &pl_flags;
+	cp.placement = &pl;
 
-	placement.num_placement = 1;
-	placement.placement = &flags;
-
-	ret = ttm_bo_init(bdev,
-			  bo,
-			  req->size,
-			  ttm_bo_type_user,
-			  &placement,
-			  req->page_alignment,
-			  req->user_address,
-			  true,
-			  NULL,
-			  acc_size,
-			  &ttm_bo_user_destroy);
-
-	/*
-	 * Note that the ttm_buffer_object_init function
-	 * would've called the destroy function on failure!!
-	 */
-	ttm_read_unlock(lock);
-	if (unlikely(ret != 0))
-		goto out;
-
-	tmp = ttm_bo_reference(bo);
-	ret = ttm_base_object_init(tfile, &user_bo->base,
-				   flags & TTM_PL_FLAG_SHARED,
-				   ttm_buffer_type,
-				   &ttm_bo_user_release,
-				   &ttm_bo_user_ref_release);
-	if (unlikely(ret != 0))
-		goto out_err;
-
-	spin_lock(&bo->bdev->fence_lock);
-	ttm_pl_fill_rep(bo, rep);
-	spin_unlock(&bo->bdev->fence_lock);
-	ttm_bo_unref(&bo);
-out:
-	return 0;
-out_err:
-	ttm_bo_unref(&tmp);
-	ttm_bo_unref(&bo);
-	return ret;
+	return pl_create_buf(&cp, lock, rep);
 }
 
 int ttm_pl_reference_ioctl(struct ttm_object_file *tfile, void *data)
