@@ -49,10 +49,12 @@ struct psb_gtt *psb_gtt_alloc(struct drm_device *dev) {
 
 void psb_gtt_takedown(struct psb_gtt *pg, int free)
 {
-	struct drm_psb_private *dev_priv = pg->dev->dev_private;
+	struct drm_psb_private *dev_priv;
 
 	if (!pg)
 		return;
+
+	dev_priv = pg->dev->dev_private;
 
 	if (pg->gtt_map) {
 		iounmap(pg->gtt_map);
@@ -333,7 +335,7 @@ int psb_gtt_remove_pages(struct psb_gtt *pg, unsigned offset_pages,
 int psb_gtt_mm_init(struct psb_gtt *pg)
 {
 	struct psb_gtt_mm *gtt_mm;
-	struct drm_psb_private *dev_priv = pg->dev->dev_private;
+	struct drm_psb_private *dev_priv;
 	struct drm_open_hash *ht;
 	struct drm_mm *mm;
 	int ret;
@@ -344,6 +346,8 @@ int psb_gtt_mm_init(struct psb_gtt *pg)
 		DRM_DEBUG("Invalid gtt struct\n");
 		return -EINVAL;
 	}
+
+	dev_priv = pg->dev->dev_private;
 
 	gtt_mm =  kzalloc(sizeof(struct psb_gtt_mm), GFP_KERNEL);
 	if (!gtt_mm)
