@@ -34,14 +34,32 @@ typedef void (*callback_t)(void *);
 
 struct pending_sync {
 	PVRSRV_KERNEL_SYNC_INFO *sync_info;
-	int pending_read_ops;
-	int pending_write_ops;
+	u32 pending_read_ops;
+	u32 pending_write_ops;
 	int flags;
 	callback_t callback;
 	void *user_data;
 
 	struct list_head list;
 };
+
+#define ops_after(a, b) ((s32)(b) - (s32)(a) < 0)
+
+static bool pending_ops_completed(PVRSRV_KERNEL_SYNC_INFO *sync_info,
+				  int flags,
+				  u32 pending_read_ops,
+				  u32 pending_write_ops)
+{
+	if (flags & PVRSRV_SYNC_READ &&
+	    ops_after(pending_read_ops, sync_info->psSyncData->ui32ReadOpsComplete))
+		return false;
+
+	if (flags & PVRSRV_SYNC_WRITE &&
+	    ops_after(pending_write_ops, sync_info->psSyncData->ui32WriteOpsComplete))
+		return false;
+
+	return true;
+}
 
 /* Returns 0 if the callback was successfully registered.
  * Returns a negative value on error.
@@ -52,14 +70,13 @@ PVRSRVCallbackOnSync(PVRSRV_KERNEL_SYNC_INFO *sync_info, int flags,
 {
 	struct pending_sync *pending_sync;
 	unsigned long lock_flags;
+	u32 pending_read_ops = sync_info->psSyncData->ui32ReadOpsPending;
+	u32 pending_write_ops = sync_info->psSyncData->ui32WriteOpsPending;
 
 	/* If the object is already in sync, don't add it to the list */
-	if ((!(flags & PVRSRV_SYNC_READ)
-	     || (sync_info->psSyncData->ui32ReadOpsPending
-		 <= sync_info->psSyncData->ui32ReadOpsComplete))
-	    && (!(flags & PVRSRV_SYNC_WRITE)
-		|| (sync_info->psSyncData->ui32WriteOpsPending
-		    <= sync_info->psSyncData->ui32WriteOpsComplete))) {
+	if (pending_ops_completed(sync_info, flags,
+				  pending_read_ops,
+				  pending_write_ops)) {
 		callback(user_data);
 		return 0;
 	}
@@ -69,8 +86,8 @@ PVRSRVCallbackOnSync(PVRSRV_KERNEL_SYNC_INFO *sync_info, int flags,
 		return -ENOMEM;
 
 	pending_sync->sync_info = sync_info;
-	pending_sync->pending_read_ops = sync_info->psSyncData->ui32ReadOpsPending;
-	pending_sync->pending_write_ops = sync_info->psSyncData->ui32WriteOpsPending;
+	pending_sync->pending_read_ops = pending_read_ops;
+	pending_sync->pending_write_ops = pending_write_ops;
 	pending_sync->flags = flags;
 	pending_sync->callback = callback;
 	pending_sync->user_data = user_data;
@@ -86,21 +103,14 @@ void
 PVRSRVCheckPendingSyncs()
 {
 	struct pending_sync *ps, *tmp;
-	int read_ops_done, write_ops_done;
-	int sync_read, sync_write;
 	unsigned long flags;
 
 	spin_lock_irqsave(&sync_lock, flags);
 
 	list_for_each_entry_safe(ps, tmp, &sync_list, list) {
-		sync_read = (ps->flags & PVRSRV_SYNC_READ) != 0;
-		read_ops_done = ps->sync_info->psSyncData->ui32ReadOpsComplete;
-
-		sync_write = (ps->flags & PVRSRV_SYNC_WRITE) != 0;
-		write_ops_done = ps->sync_info->psSyncData->ui32WriteOpsComplete;
-
-		if ((!sync_read || ps->pending_read_ops <= read_ops_done)
-		    && (!sync_write || ps->pending_write_ops <= write_ops_done)) {
+		if (pending_ops_completed(ps->sync_info, ps->flags,
+					  ps->pending_read_ops,
+					  ps->pending_write_ops)) {
 			ps->callback(ps->user_data);
 			list_del(&ps->list);
 			kfree(ps);
