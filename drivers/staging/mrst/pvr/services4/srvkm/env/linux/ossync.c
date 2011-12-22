@@ -104,19 +104,25 @@ PVRSRVCheckPendingSyncs()
 {
 	struct pending_sync *ps, *tmp;
 	unsigned long flags;
+	LIST_HEAD(completed_list);
 
+	/* Pull the completed objects from the list. */
 	spin_lock_irqsave(&sync_lock, flags);
 
 	list_for_each_entry_safe(ps, tmp, &sync_list, list) {
 		if (pending_ops_completed(ps->sync_info, ps->flags,
 					  ps->pending_read_ops,
 					  ps->pending_write_ops)) {
-			ps->callback(ps->user_data);
-			list_del(&ps->list);
-			kfree(ps);
+			list_move_tail(&ps->list, &completed_list);
 		}
 	}
 
 	spin_unlock_irqrestore(&sync_lock, flags);
+
+	/* Execute the callbacks */
+	list_for_each_entry_safe(ps, tmp, &completed_list, list) {
+		ps->callback(ps->user_data);
+		kfree(ps);
+	}
 }
 
