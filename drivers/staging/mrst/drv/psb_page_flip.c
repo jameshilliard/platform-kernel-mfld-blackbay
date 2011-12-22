@@ -190,7 +190,6 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 	struct psb_framebuffer *psbfb = to_psb_fb(fb);
 	PVRSRV_KERNEL_MEM_INFO *new_fb_mem_info, *current_fb_mem_info;
 	struct pending_flip *new_pending_flip;
-	int ret;
 
 	if (psb_get_meminfo_by_handle(psbfb->hKernelMemInfo, &new_fb_mem_info))
 		return -EINVAL;
