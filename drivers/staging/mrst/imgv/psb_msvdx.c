@@ -843,7 +843,8 @@ loop: /* just for coding style check */
 					  " - resetting and ignoring error\n",
 					  fence);
 
-		msvdx_priv->msvdx_needs_reset = 1;
+		msvdx_priv->msvdx_needs_reset |= MSVDX_RESET_NEEDS_REUPLOAD_FW |
+				MSVDX_RESET_NEEDS_INIT_FW;
 
 		if (msg_id == VA_MSGID_CMD_HW_PANIC) {
 			diff = msvdx_priv->msvdx_current_sequence
@@ -1418,7 +1419,7 @@ int psb_msvdx_save_context(struct drm_device *dev)
 	struct msvdx_private *msvdx_priv = dev_priv->msvdx_private;
 	int offset = 0;
 
-	msvdx_priv->msvdx_needs_reset = 1;
+	msvdx_priv->msvdx_needs_reset = MSVDX_RESET_NEEDS_INIT_FW;
 
 	for (offset = 0; offset < VEC_LOCAL_MEM_BYTE_SIZE / 4; ++offset)
 		msvdx_priv->vec_local_mem_data[offset] =
