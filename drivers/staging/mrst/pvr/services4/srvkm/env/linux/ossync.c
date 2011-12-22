@@ -30,19 +30,6 @@
 DEFINE_SPINLOCK(sync_lock);
 LIST_HEAD(sync_list);
 
-typedef void (*callback_t)(void *);
-
-struct pending_sync {
-	PVRSRV_KERNEL_SYNC_INFO *sync_info;
-	u32 pending_read_ops;
-	u32 pending_write_ops;
-	unsigned int flags;
-	callback_t callback;
-	void *user_data;
-
-	struct list_head list;
-};
-
 #define ops_after(a, b) ((s32)(b) - (s32)(a) < 0)
 
 static bool pending_ops_completed(PVRSRV_KERNEL_SYNC_INFO *sync_info,
@@ -64,45 +51,40 @@ static bool pending_ops_completed(PVRSRV_KERNEL_SYNC_INFO *sync_info,
 /* Returns 0 if the callback was successfully registered.
  * Returns a negative value on error.
  */
-int
+void
 PVRSRVCallbackOnSync(PVRSRV_KERNEL_SYNC_INFO *sync_info,
 		     unsigned int flags,
-                     callback_t callback, void *user_data)
+		     pvr_sync_callback callback,
+		     struct pvr_pending_sync *pending_sync)
 {
-	struct pending_sync *pending_sync;
 	u32 pending_read_ops = sync_info->psSyncData->ui32ReadOpsPending;
 	u32 pending_write_ops = sync_info->psSyncData->ui32WriteOpsPending;
-
-	/* If the object is already in sync, don't add it to the list */
-	if (pending_ops_completed(sync_info, flags,
-				  pending_read_ops,
-				  pending_write_ops)) {
-		callback(user_data);
-		return 0;
-	}
-
-	pending_sync = kmalloc(sizeof *pending_sync, GFP_KERNEL);
-	if (!pending_sync)
-		return -ENOMEM;
 
 	pending_sync->sync_info = sync_info;
 	pending_sync->pending_read_ops = pending_read_ops;
 	pending_sync->pending_write_ops = pending_write_ops;
 	pending_sync->flags = flags;
 	pending_sync->callback = callback;
-	pending_sync->user_data = user_data;
+
+	/* If the object is already in sync, don't add it to the list */
+	if (pending_ops_completed(sync_info, flags,
+				  pending_read_ops,
+				  pending_write_ops)) {
+		callback(pending_sync);
+		return;
+	}
 
 	spin_lock_irq(&sync_lock);
 	list_add_tail(&pending_sync->list, &sync_list);
 	spin_unlock_irq(&sync_lock);
 
-	return 0;
+	return;
 }
 
 void
-PVRSRVCheckPendingSyncs()
+PVRSRVCheckPendingSyncs(void)
 {
-	struct pending_sync *ps, *tmp;
+	struct pvr_pending_sync *ps, *tmp;
 	unsigned long flags;
 	LIST_HEAD(completed_list);
 
@@ -120,9 +102,7 @@ PVRSRVCheckPendingSyncs()
 	spin_unlock_irqrestore(&sync_lock, flags);
 
 	/* Execute the callbacks */
-	list_for_each_entry_safe(ps, tmp, &completed_list, list) {
-		ps->callback(ps->user_data);
-		kfree(ps);
-	}
+	list_for_each_entry_safe(ps, tmp, &completed_list, list)
+		ps->callback(ps);
 }
 

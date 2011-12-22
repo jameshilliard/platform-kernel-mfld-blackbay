@@ -43,6 +43,7 @@ struct pending_flip {
 	struct drm_pending_vblank_event *event;
 	PVRSRV_KERNEL_MEM_INFO *old_mem_info;
 	uint32_t offset;
+	struct pvr_pending_sync pending_sync;
 };
 
 static void
@@ -161,10 +162,10 @@ psb_intel_crtc_process_vblank(struct drm_crtc *crtc)
 }
 
 static void
-sync_callback(void *data)
+sync_callback(struct pvr_pending_sync *pending_sync)
 {
-	struct pending_flip *pending_flip = data;
-
+	struct pending_flip *pending_flip =
+		container_of(pending_sync, struct pending_flip, pending_sync);
 	struct drm_crtc* crtc = pending_flip->crtc;
 	struct drm_device *dev = crtc->dev;
 	struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(crtc);
@@ -207,11 +208,9 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 
 	increase_read_ops_pending(current_fb_mem_info);
 
-	ret = PVRSRVCallbackOnSync(new_fb_mem_info->psKernelSyncInfo,
-				   PVRSRV_SYNC_WRITE, sync_callback,
-				   new_pending_flip);
-	if (ret < 0)
-		kfree(new_pending_flip);
+	PVRSRVCallbackOnSync(new_fb_mem_info->psKernelSyncInfo,
+			     PVRSRV_SYNC_WRITE, sync_callback,
+			     &new_pending_flip->pending_sync);
 
-	return ret;
+	return 0;
 }

@@ -27,8 +27,22 @@
 #define PVRSRV_SYNC_READ	(1 << 0)
 #define PVRSRV_SYNC_WRITE	(1 << 1)
 
-int PVRSRVCallbackOnSync(PVRSRV_KERNEL_SYNC_INFO *sync_info, unsigned int flags,
-                         void (*callback)(void *), void *user_data);
+struct pvr_pending_sync;
+
+typedef void (*pvr_sync_callback)(struct pvr_pending_sync *pending_sync);
+
+struct pvr_pending_sync {
+	PVRSRV_KERNEL_SYNC_INFO *sync_info;
+	u32 pending_read_ops;
+	u32 pending_write_ops;
+	unsigned int flags;
+	pvr_sync_callback callback;
+	struct list_head list;
+};
+
+void PVRSRVCallbackOnSync(PVRSRV_KERNEL_SYNC_INFO *sync_info, unsigned int flags,
+			  pvr_sync_callback callback,
+			  struct pvr_pending_sync *pending_sync);
 void PVRSRVCheckPendingSyncs(void);
 
 #endif /* _OSSYNC_H_ */
