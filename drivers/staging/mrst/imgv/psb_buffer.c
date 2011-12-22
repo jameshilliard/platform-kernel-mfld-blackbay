@@ -30,11 +30,13 @@
 struct drm_psb_ttm_backend {
 	struct ttm_backend base;
 	struct page **pages;
+	struct ttm_tt *ttm;
 	unsigned int desired_tile_stride;
 	unsigned int hw_tile_stride;
 	int mem_type;
 	unsigned long offset;
 	unsigned long num_pages;
+	bool fixed_pages;
 };
 
 /*
@@ -219,6 +221,70 @@ static int psb_move(struct ttm_buffer_object *bo,
 	return 0;
 }
 
+static void __put_pages(struct ttm_tt *ttm)
+{
+	struct ttm_mem_global *mem_glob = ttm->glob->mem_glob;
+	struct page **pages = ttm->pages;
+	int i;
+
+	for (i = 0; i < ttm->num_pages && pages[i]; i++) {
+		struct page *page = pages[i];
+
+		pages[i] = NULL;
+		put_page(page);
+		ttm_mem_global_free_page(mem_glob, page);
+	}
+}
+
+int drm_psb_set_fixed_pages(struct ttm_tt *ttm, struct page **pages,
+			     int pg_cnt)
+{
+	struct drm_psb_ttm_backend *psb_be;
+	struct ttm_mem_global *mem_glob = ttm->glob->mem_glob;
+	int ret;
+	int i;
+
+	psb_be = container_of(ttm->be, struct drm_psb_ttm_backend, base);
+	psb_be->num_pages = pg_cnt;
+	BUG_ON(ttm->num_pages != pg_cnt);
+
+	for (i = 0; i < pg_cnt; i++) {
+		struct page *page = pages[i];
+
+		ret = ttm_mem_global_alloc_page(mem_glob, page, false, true);
+		if (ret < 0) {
+			__put_pages(ttm);
+			return ret;
+		}
+		get_page(page);
+		ttm->pages[i] = page;
+	}
+	psb_be->ttm = ttm;
+	psb_be->fixed_pages = true;
+
+	return 0;
+}
+
+int drm_psb_has_fixed_pages(struct ttm_backend *backend)
+{
+	struct drm_psb_ttm_backend *psb_be;
+
+	psb_be = container_of(backend, struct drm_psb_ttm_backend, base);
+
+	return psb_be->fixed_pages;
+}
+
+void drm_psb_unset_fixed_pages(struct ttm_backend *backend)
+{
+	struct drm_psb_ttm_backend *psb_be;
+
+	psb_be = container_of(backend, struct drm_psb_ttm_backend, base);
+	if (!psb_be->fixed_pages)
+		return;
+	__put_pages(psb_be->ttm);
+	psb_be->fixed_pages = false;
+}
+
 /* REVISIT: is there a need to use the dma_addrs or other parameters? */
 static int drm_psb_tbe_populate(struct ttm_backend *backend,
 				unsigned long num_pages,
@@ -275,6 +341,8 @@ static int drm_psb_tbe_bind(struct ttm_backend *backend,
 	int ret = 0;
 
 	psb_be->mem_type = bo_mem->mem_type;
+	WARN_ON_ONCE(psb_be->num_pages &&
+		     psb_be->num_pages != bo_mem->num_pages);
 	psb_be->num_pages = bo_mem->num_pages;
 	psb_be->desired_tile_stride = 0;
 	psb_be->hw_tile_stride = 0;
@@ -313,8 +381,13 @@ static void drm_psb_tbe_clear(struct ttm_backend *backend)
 {
 	struct drm_psb_ttm_backend *psb_be =
 		container_of(backend, struct drm_psb_ttm_backend, base);
-
+	/*
+	 * We don't want TTM core to free the fixed pages or put them on
+	 * its page pool, so put/unset them here.
+	 */
+	drm_psb_unset_fixed_pages(backend);
 	psb_be->pages = NULL;
+
 	return;
 }
 
@@ -323,6 +396,7 @@ static void drm_psb_tbe_destroy(struct ttm_backend *backend)
 	struct drm_psb_ttm_backend *psb_be =
 		container_of(backend, struct drm_psb_ttm_backend, base);
 
+	drm_psb_unset_fixed_pages(backend);
 	if (backend)
 		kfree(psb_be);
 }
