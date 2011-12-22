@@ -175,9 +175,9 @@ sync_callback(struct pvr_pending_sync *pending_sync)
 
 	write_scanout_regs(pending_flip, pending_flip->offset);
 
-	pending_flip = xchg(&psb_intel_crtc->pending_flip, pending_flip);
-
 	drm_vblank_get(dev, psb_intel_crtc->pipe);
+
+	pending_flip = xchg(&psb_intel_crtc->pending_flip, pending_flip);
 
 	psb_intel_flip_complete(pending_flip);
 }
