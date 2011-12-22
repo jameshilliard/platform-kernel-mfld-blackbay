@@ -34,6 +34,11 @@ extern "C" {
 #include "pvr_bridge.h"
 #include "perproc.h"
 
+struct pvr_buf_info {
+	size_t		page_cnt;
+	struct page	**pages;
+};
+
 #if defined(__linux__)
 PVRSRV_ERROR LinuxBridgeInit(IMG_VOID);
 IMG_VOID LinuxBridgeDeInit(IMG_VOID);
@@ -277,6 +282,9 @@ PVRSRVFreeSharedSysMemoryKM(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
 
 IMG_IMPORT PVRSRV_ERROR
 PVRSRVDissociateMemFromResmanKM(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
+
+int pvr_lookup_dev_buf(unsigned long id, struct pvr_buf_info *buf);
+void pvr_put_dev_buf(struct pvr_buf_info *buf);
 
 #if defined (__cplusplus)
 }

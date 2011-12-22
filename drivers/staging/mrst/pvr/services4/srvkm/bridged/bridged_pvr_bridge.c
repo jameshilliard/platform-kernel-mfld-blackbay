@@ -69,6 +69,8 @@
 #include "psb_intel_display.h" /* mdfld__intel_plane_set_alpha() */
 
 #include "srvkm.h"
+#include "mutex.h"
+#include "lock.h"
 
 PVRSRV_BRIDGE_DISPATCH_TABLE_ENTRY g_BridgeDispatchTable[BRIDGE_DISPATCH_TABLE_ENTRY_COUNT];
 
@@ -3636,6 +3638,86 @@ PVRSRVFreeSyncInfoBW(IMG_UINT32                                          ui32Bri
 	return 0;
 }
 
+int pvr_lookup_dev_buf(unsigned long id, struct pvr_buf_info *binfo)
+{
+	unsigned pid;
+	PVRSRV_PER_PROCESS_DATA *proc_info;
+	PVRSRV_KERNEL_MEM_INFO *meminfo;
+	PVRSRV_MEMBLK *memblk;
+	off_t page_offset;
+	int page_cnt;
+	PVRSRV_ERROR err;
+	int ret;
+	unsigned i;
+
+	mutex_lock(&gPVRSRVLock);
+
+	pid = OSGetCurrentProcessIDKM();
+	proc_info = PVRSRVPerProcessData(pid);
+	err = PVRSRVLookupHandle(proc_info->psHandleBase, (void **)&meminfo,
+				 (void *)id, PVRSRV_HANDLE_TYPE_MEM_INFO);
+
+	if (err != PVRSRV_OK) {
+		ret = -ENOENT;
+		goto err1;
+	}
+
+	memblk = &meminfo->sMemBlk;
+	page_offset = meminfo->sDevVAddr.uiAddr & ~PAGE_MASK;
+	/* Suballocated buffers may not be shared */
+	BUG_ON(page_offset != 0);
+	page_cnt = PAGE_ALIGN(meminfo->ui32AllocSize) >> PAGE_SHIFT;
+
+	if (!memblk->psIntSysPAddr) {
+		ret = -EINVAL;
+		goto err1;
+	}
+
+	binfo->pages = kmalloc(page_cnt * sizeof(struct page *), GFP_KERNEL);
+	if (!binfo->pages) {
+		ret = -ENOMEM;
+		goto err1;
+	}
+
+	for (i = 0; i < page_cnt; i++) {
+		unsigned long addr = memblk->psIntSysPAddr[i].uiAddr;
+		unsigned long pfn = addr >> PAGE_SHIFT;
+		struct page *page;
+
+		if (!pfn_valid(pfn)) {
+			ret = -EINVAL;
+			goto err2;
+		}
+		page = pfn_to_page(pfn);
+		get_page(page);
+		binfo->pages[i] = page;
+	}
+
+	mutex_unlock(&gPVRSRVLock);
+
+	binfo->page_cnt = page_cnt;
+
+	return 0;
+err2:
+	while (i--)
+		put_page(binfo->pages[i]);
+	kfree(binfo->pages);
+err1:
+	mutex_unlock(&gPVRSRVLock);
+
+	return ret;
+}
+
+void pvr_put_dev_buf(struct pvr_buf_info *binfo)
+{
+	int page_cnt;
+	int i;
+
+	for (i = 0; i < binfo->page_cnt; i++)
+		put_page(binfo->pages[i]);
+
+	kfree(binfo->pages);
+}
 
 PVRSRV_ERROR
 CommonBridgeInit(IMG_VOID)
