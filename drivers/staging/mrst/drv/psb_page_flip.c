@@ -93,6 +93,9 @@ write_scanout_regs(struct pending_flip *pending_flip, uint32_t offset)
 	case 2:
 		reg_offset = DSPCSURF;
 		break;
+	default:
+		WARN_ON(1);
+		return;
 	}
 
 	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND,
