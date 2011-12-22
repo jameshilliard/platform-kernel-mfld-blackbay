@@ -177,6 +177,7 @@ void ttm_bo_add_to_lru(struct ttm_buffer_object *bo)
 	BUG_ON(!atomic_read(&bo->reserved));
 
 	if (!(bo->mem.placement & TTM_PL_FLAG_NO_EVICT)) {
+		bool swappable;
 
 		BUG_ON(!list_empty(&bo->lru));
 
@@ -184,7 +185,8 @@ void ttm_bo_add_to_lru(struct ttm_buffer_object *bo)
 		list_add_tail(&bo->lru, &man->lru);
 		kref_get(&bo->list_kref);
 
-		if (bo->ttm != NULL) {
+		swappable = !(bo->mem.placement & TTM_PL_FLAG_NO_SWAP);
+		if (bo->ttm != NULL && swappable) {
 			list_add_tail(&bo->swap, &bo->glob->swap_lru);
 			kref_get(&bo->list_kref);
 		}

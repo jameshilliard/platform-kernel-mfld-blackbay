@@ -65,6 +65,9 @@
  * reference the buffer.
  * TTM_PL_FLAG_NO_EVICT means that the buffer may never
  * be evicted to make room for other buffers.
+ * TTM_PL_FLAG_NO_SWAP means that the buffer cannot be
+ * swapped. If NO_EVICT is not set the buffer can still
+ * be moved as long as its placement allows it.
  */
 
 #define TTM_PL_FLAG_CACHED      (1 << 16)
@@ -72,6 +75,7 @@
 #define TTM_PL_FLAG_WC          (1 << 18)
 #define TTM_PL_FLAG_SHARED      (1 << 20)
 #define TTM_PL_FLAG_NO_EVICT    (1 << 21)
+#define TTM_PL_FLAG_NO_SWAP     (1 << 22)
 
 #define TTM_PL_MASK_CACHING     (TTM_PL_FLAG_CACHED | \
 				 TTM_PL_FLAG_UNCACHED | \
