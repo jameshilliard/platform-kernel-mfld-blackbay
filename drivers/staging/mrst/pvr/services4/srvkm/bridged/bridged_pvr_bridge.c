@@ -3845,7 +3845,7 @@ IMG_INT BridgedDispatchKM(PVRSRV_PER_PROCESS_DATA * psPerProc,
 	IMG_VOID   * psBridgeIn;
 	IMG_VOID   * psBridgeOut;
 	BridgeWrapperFunction pfBridgeHandler;
-	PVRSRV_BRIDGE_DISPATCH_TABLE_ENTRY *dte;
+	PVRSRV_BRIDGE_DISPATCH_TABLE_ENTRY *dte = NULL;
 	IMG_UINT32   ui32BridgeID = psBridgePackageKM->ui32BridgeID;
 	IMG_INT      err          = -EFAULT;
 	PVRSRV_ERROR pvr_err      = PVRSRV_OK;
@@ -3996,7 +3996,8 @@ return_fault:
 	if (err < 0 || pvr_err)
 		pr_err("pvr: %.*s: ioctl %s (%d) failed (err %d, pvr_err %d)\n",
 			sizeof(psPerProc->name), psPerProc->name,
-			dte->pszIOCName, ui32BridgeID, err, pvr_err);
+			dte ? dte->pszIOCName : "?", ui32BridgeID,
+			err, pvr_err);
 
 	return err;
 }
