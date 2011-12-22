@@ -197,30 +197,39 @@ static int ttm_bo_create_private(struct ttm_bo_device *bdev,
 	return ret;
 }
 
-int psb_ttm_bo_check_placement(struct ttm_buffer_object *bo,
-			       struct ttm_placement *placement)
+static uint32_t normalize_placement_flags(uint32_t flags)
 {
-	int i;
+	if ((flags & TTM_PL_MASK_CACHING) == 0)
+		flags |= TTM_PL_FLAG_WC | TTM_PL_FLAG_UNCACHED;
+	if (flags & TTM_PL_FLAG_NO_SWAP)
+		flags |= TTM_PL_FLAG_NO_EVICT;
 
-	for (i = 0; i < placement->num_placement; i++) {
-		if (!capable(CAP_SYS_ADMIN)) {
-			if (placement->placement[i] & TTM_PL_FLAG_NO_EVICT) {
-				printk(KERN_ERR TTM_PFX "Need to be root to "
-				       "modify NO_EVICT status.\n");
-				return -EINVAL;
-			}
-		}
-	}
-	for (i = 0; i < placement->num_busy_placement; i++) {
-		if (!capable(CAP_SYS_ADMIN)) {
-			if (placement->busy_placement[i] & TTM_PL_FLAG_NO_EVICT) {
-				printk(KERN_ERR TTM_PFX "Need to be root to "
-				       "modify NO_EVICT status.\n");
-				return -EINVAL;
-			}
-		}
-	}
+	return flags;
+}
+
+static int set_clear_placement_flags(struct ttm_buffer_object *bo, uint32_t set,
+				     uint32_t clear, uint32_t *new_ret)
+{
+	uint32_t cur = bo->mem.placement;
+	uint32_t new;
+	bool is_root;
+
+	new = (cur | set) & ~clear;
+	new = normalize_placement_flags(new);
+
+	is_root = capable(CAP_SYS_ADMIN);
+	if (!is_root && (cur ^ new) & TTM_PL_FLAG_NO_EVICT)
+		goto err;
+
+	*new_ret = new;
+
 	return 0;
+err:
+	pr_debug("imgv: Permission denied to set 'no evict' flag: "
+		 "is_root %d cur %08x set %08x clear %08x\n",
+		 is_root, cur, set, clear);
+
+	return -EACCES;
 }
 
 int ttm_buffer_object_create(struct ttm_bo_device *bdev,
@@ -503,7 +512,7 @@ int ttm_pl_setstatus_ioctl(struct ttm_object_file *tfile,
 	struct ttm_buffer_object *bo;
 	struct ttm_bo_device *bdev;
 	struct ttm_placement placement = default_placement;
-	uint32_t flags[2];
+	uint32_t pl_flags;
 	int ret;
 
 	bo = ttm_buffer_object_lookup(tfile, req->handle);
@@ -527,20 +536,14 @@ int ttm_pl_setstatus_ioctl(struct ttm_object_file *tfile,
 	if (unlikely(ret != 0))
 		goto out_err2;
 
-	flags[0] = req->set_placement;
-	flags[1] = req->clr_placement;
-
-	placement.num_placement = 2;
-	placement.placement = flags;
-
 	spin_lock(&bo->bdev->fence_lock);
 
-	ret = psb_ttm_bo_check_placement(bo, &placement);
-	if (unlikely(ret != 0))
-		goto out_err2;
-
 	placement.num_placement = 1;
-	flags[0] = (req->set_placement | bo->mem.placement) & ~req->clr_placement;
+	ret = set_clear_placement_flags(bo, req->set_placement,
+					req->clr_placement, &pl_flags);
+	if (ret < 0)
+		goto out_err2;
+	placement.placement = &pl_flags;
 
 	ret = ttm_bo_validate(bo, &placement, true, false, false);
 	if (unlikely(ret != 0))
