@@ -27,8 +27,8 @@
 #include "ossync.h"
 #include "servicesint.h"
 
-DEFINE_SPINLOCK(sync_lock);
-LIST_HEAD(sync_list);
+static DEFINE_SPINLOCK(sync_lock);
+static LIST_HEAD(sync_list);
 
 #define ops_after(a, b) ((s32)(b) - (s32)(a) < 0)
 
