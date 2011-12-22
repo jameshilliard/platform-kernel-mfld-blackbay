@@ -26,6 +26,8 @@
 #include "ttm/ttm_object.h"
 #include "psb_ttm_userobj_api.h"
 #include "ttm/ttm_lock.h"
+#include "psb_drm.h"
+#include "pvr_bridge_km.h"
 #include <linux/slab.h>
 #include <linux/sched.h>
 
@@ -45,6 +47,17 @@ static uint32_t psb_busy_prios[] = {
 };
 
 static const struct ttm_placement default_placement = {0, 0, 0, NULL, 5, psb_busy_prios};
+
+static uint32_t psb_pvr_busy_prios[] = {
+	TTM_PL_TT,
+	TTM_PL_PRIV1, /* DRM_PSB_MEM_MMU */
+	TTM_PL_SYSTEM
+};
+
+static const struct ttm_placement pvr_default_placement = {
+	.busy_placement		= psb_pvr_busy_prios,
+	.num_busy_placement	= ARRAY_SIZE(psb_pvr_busy_prios),
+};
 
 static size_t ttm_pl_size(struct ttm_bo_device *bdev, unsigned long num_pages)
 {
@@ -197,6 +210,18 @@ static int ttm_bo_create_private(struct ttm_bo_device *bdev,
 	return ret;
 }
 
+static bool fixed_placement_valid(uint32_t pl_flags)
+{
+	if (!(pl_flags & TTM_PL_FLAG_NO_SWAP))
+		return false;
+
+	pl_flags &= TTM_PL_MASK_MEM;
+	pl_flags &= ~(DRM_PSB_FLAG_MEM_MMU | TTM_PL_FLAG_TT |
+		      TTM_PL_FLAG_SYSTEM);
+
+	return !pl_flags;
+}
+
 static uint32_t normalize_placement_flags(uint32_t flags)
 {
 	if ((flags & TTM_PL_MASK_CACHING) == 0)
@@ -213,10 +238,17 @@ static int set_clear_placement_flags(struct ttm_buffer_object *bo, uint32_t set,
 	uint32_t cur = bo->mem.placement;
 	uint32_t new;
 	bool is_root;
+	bool has_fixed_pages;
+	char *flag_name = "no swap";
 
 	new = (cur | set) & ~clear;
 	new = normalize_placement_flags(new);
 
+	has_fixed_pages = drm_psb_has_fixed_pages(bo->ttm->be);
+	if (has_fixed_pages && !fixed_placement_valid(new))
+		goto err;
+
+	flag_name = "no evict";
 	is_root = capable(CAP_SYS_ADMIN);
 	if (!is_root && (cur ^ new) & TTM_PL_FLAG_NO_EVICT)
 		goto err;
@@ -225,9 +257,9 @@ static int set_clear_placement_flags(struct ttm_buffer_object *bo, uint32_t set,
 
 	return 0;
 err:
-	pr_debug("imgv: Permission denied to set 'no evict' flag: "
+	pr_debug("imgv: Permission denied to set '%s' flag: "
 		 "is_root %d cur %08x set %08x clear %08x\n",
-		 is_root, cur, set, clear);
+		 flag_name, is_root, cur, set, clear);
 
 	return -EACCES;
 }
@@ -270,6 +302,7 @@ struct create_params {
 	size_t size;
 	off_t align;
 	unsigned long user_address;
+	struct page **pages;
 	struct ttm_placement *placement;
 	struct ttm_object_file *tfile;
 	bool shareable;
@@ -307,14 +340,24 @@ static int pl_create_buf(struct create_params *p, struct ttm_lock *lock,
 	ret = ttm_bo_init(p->bdev, bo, pg_cnt << PAGE_SHIFT, p->bo_type,
 			  p->placement, p->align, p->user_address, true, NULL,
 			  acc_size, &ttm_bo_user_destroy);
-	ttm_read_unlock(lock);
 
 	/*
 	 * Note that the ttm_buffer_object_init function
 	 * would've called the destroy function on failure!!
 	 */
-	if (ret < 0)
+	if (ret < 0) {
+		ttm_read_unlock(lock);
 		goto err2;
+	}
+
+	if (p->pages)
+		drm_psb_set_fixed_pages(bo->ttm, p->pages, pg_cnt);
+
+	ttm_read_unlock(lock);
+
+	/* ttm_bo_unref->destroy will unset the fixed pages on failure */
+	if (ret < 0)
+		goto err3;
 
 	tmp = ttm_bo_reference(bo);
 
@@ -348,22 +391,20 @@ int ttm_pl_create_ioctl(struct ttm_object_file *tfile,
 	union ttm_pl_create_arg *arg = data;
 	struct ttm_pl_create_req *req = &arg->req;
 	struct ttm_pl_rep *rep = &arg->rep;
-	struct ttm_placement pl;
-	uint32_t pl_flags;
+	struct ttm_placement pl = default_placement;
+	uint32_t pl_flags = normalize_placement_flags(req->placement);
 	struct create_params cp = {
 		.bdev		= bdev,
 		.bo_type	= ttm_bo_type_device,
 		.size		= req->size,
 		.align		= req->page_alignment,
+		.placement	= &pl,
 		.tfile		= tfile,
 		.shareable	= req->placement & TTM_PL_FLAG_SHARED,
 	};
 
-	pl_flags = normalize_placement_flags(req->placement);
-	pl = default_placement;
 	pl.num_placement = 1;
 	pl.placement = &pl_flags;
-	cp.placement = &pl;
 
 	return pl_create_buf(&cp, lock, rep);
 }
@@ -376,24 +417,68 @@ int ttm_pl_ub_create_ioctl(struct ttm_object_file *tfile,
 	struct ttm_pl_create_ub_req *req = &arg->req;
 	struct ttm_pl_rep *rep = &arg->rep;
 	struct ttm_placement pl = default_placement;
-	uint32_t pl_flags;
+	uint32_t pl_flags = normalize_placement_flags(req->placement);
 	struct create_params cp = {
 		.bdev		= bdev,
 		.bo_type	= ttm_bo_type_user,
 		.size		= req->size,
 		.user_address	= req->user_address,
 		.align		= req->page_alignment,
+		.placement	= &pl,
 		.tfile		= tfile,
 		.shareable	= req->placement & TTM_PL_FLAG_SHARED,
 	};
 
-	pl_flags = normalize_placement_flags(req->placement);
-	pl = default_placement;
 	pl.num_placement = 1;
 	pl.placement = &pl_flags;
-	cp.placement = &pl;
 
 	return pl_create_buf(&cp, lock, rep);
+}
+
+int ttm_pl_wrap_pvr_buf_ioctl(struct ttm_object_file *tfile,
+			struct ttm_bo_device *bdev,
+			struct ttm_lock *lock, void *data)
+{
+	union ttm_pl_wrap_pvr_buf_arg *arg = data;
+	struct ttm_pl_wrap_pvr_buf_req *req = &arg->req;
+	struct ttm_pl_rep *rep = &arg->rep;
+	struct ttm_placement pl = pvr_default_placement;
+	struct pvr_buf_info buf_info;
+	uint32_t pl_flags = normalize_placement_flags(req->placement);
+	int ret;
+	struct create_params cp = {
+		.bdev		= bdev,
+		.bo_type	= ttm_bo_type_device,
+		.align		= req->page_alignment,
+		.placement	= &pl,
+		.tfile		= tfile,
+		.shareable	= req->placement & TTM_PL_FLAG_SHARED,
+	};
+
+	if (!fixed_placement_valid(pl_flags))
+		return -EINVAL;
+
+	pl.num_placement = 1;
+	pl.placement = &pl_flags;
+
+	ret = pvr_lookup_dev_buf(req->handle, &buf_info);
+	if (ret < 0)
+		return ret;
+	/*
+	 * We set here the ttm pages to point to the fixed pages from the
+	 * pvr buffer. Due to TTM_PL_FLAG_NO_SWAP set above and the
+	 * busy_placement settings, these will never be swapped or moved to
+	 * an IO region and thus never be freed before the buffer itself is
+	 * destroyed.
+	 */
+	cp.pages = buf_info.pages;
+	cp.size = buf_info.page_cnt;
+
+	ret = pl_create_buf(&cp, lock, rep);
+
+	pvr_put_dev_buf(&buf_info);
+
+	return ret;
 }
 
 int ttm_pl_reference_ioctl(struct ttm_object_file *tfile, void *data)

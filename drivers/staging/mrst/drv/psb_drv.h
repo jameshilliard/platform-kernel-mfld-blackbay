@@ -1037,6 +1037,8 @@ extern int psb_pl_create_ioctl(struct drm_device *dev, void *data,
 			       struct drm_file *file_priv);
 extern int psb_pl_ub_create_ioctl(struct drm_device *dev, void *data,
 			       struct drm_file *file_priv);
+extern int psb_pl_wrap_pvr_buf_ioctl(struct drm_device *dev, void *data,
+				struct drm_file *file_priv);
 extern int psb_extension_ioctl(struct drm_device *dev, void *data,
 			       struct drm_file *file_priv);
 extern int psb_ttm_global_init(struct drm_psb_private *dev_priv);

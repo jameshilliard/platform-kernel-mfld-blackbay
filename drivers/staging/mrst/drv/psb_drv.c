@@ -254,6 +254,8 @@ MODULE_DEVICE_TABLE(pci, pciidlist);
 #define DRM_PSB_TTM_PL_WAITIDLE  (TTM_PL_WAITIDLE + DRM_PSB_PLACEMENT_OFFSET)
 #define DRM_PSB_TTM_PL_SETSTATUS (TTM_PL_SETSTATUS + DRM_PSB_PLACEMENT_OFFSET)
 #define DRM_PSB_TTM_PL_CREATE_UB (TTM_PL_CREATE_UB + DRM_PSB_PLACEMENT_OFFSET)
+#define DRM_PSB_TTM_PL_WRAP_PVR_BUF   \
+				(TTM_PL_WRAP_PVR_BUF + DRM_PSB_PLACEMENT_OFFSET)
 
 /*
  * TTM fence extension.
@@ -312,6 +314,10 @@ MODULE_DEVICE_TABLE(pci, pciidlist);
 #define DRM_IOCTL_BUFFER_CLASS_VIDEO \
         DRM_IOWR(DRM_COMMAND_BASE + DRM_BUFFER_CLASS_VIDEO, \
              BC_Video_ioctl_package)
+
+#define DRM_IOCTL_PSB_TTM_PL_WRAP_PVR_BUF \
+	DRM_IOWR(DRM_COMMAND_BASE + DRM_PSB_TTM_PL_WRAP_PVR_BUF, \
+		 union ttm_pl_create_arg)
 
 static int psb_vt_leave_ioctl(struct drm_device *dev, void *data,
 			      struct drm_file *file_priv);
@@ -425,6 +431,8 @@ static struct drm_ioctl_desc psb_ioctls[] = {
 	DRM_AUTH),
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_TTM_PL_CREATE_UB, psb_pl_ub_create_ioctl,
 	DRM_AUTH),
+	PSB_IOCTL_DEF(DRM_IOCTL_PSB_TTM_PL_WRAP_PVR_BUF,
+		      psb_pl_wrap_pvr_buf_ioctl, DRM_AUTH),
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_TTM_FENCE_SIGNALED,
 	psb_fence_signaled_ioctl, DRM_AUTH),
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_TTM_FENCE_FINISH, psb_fence_finish_ioctl,
