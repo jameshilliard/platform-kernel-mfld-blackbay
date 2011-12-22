@@ -36,7 +36,7 @@ struct pending_sync {
 	PVRSRV_KERNEL_SYNC_INFO *sync_info;
 	u32 pending_read_ops;
 	u32 pending_write_ops;
-	int flags;
+	unsigned int flags;
 	callback_t callback;
 	void *user_data;
 
@@ -46,7 +46,7 @@ struct pending_sync {
 #define ops_after(a, b) ((s32)(b) - (s32)(a) < 0)
 
 static bool pending_ops_completed(PVRSRV_KERNEL_SYNC_INFO *sync_info,
-				  int flags,
+				  unsigned int flags,
 				  u32 pending_read_ops,
 				  u32 pending_write_ops)
 {
@@ -65,7 +65,8 @@ static bool pending_ops_completed(PVRSRV_KERNEL_SYNC_INFO *sync_info,
  * Returns a negative value on error.
  */
 int
-PVRSRVCallbackOnSync(PVRSRV_KERNEL_SYNC_INFO *sync_info, int flags,
+PVRSRVCallbackOnSync(PVRSRV_KERNEL_SYNC_INFO *sync_info,
+		     unsigned int flags,
                      callback_t callback, void *user_data)
 {
 	struct pending_sync *pending_sync;

@@ -27,7 +27,7 @@
 #define PVRSRV_SYNC_READ	(1 << 0)
 #define PVRSRV_SYNC_WRITE	(1 << 1)
 
-int PVRSRVCallbackOnSync(PVRSRV_KERNEL_SYNC_INFO *sync_info, int flags,
+int PVRSRVCallbackOnSync(PVRSRV_KERNEL_SYNC_INFO *sync_info, unsigned int flags,
                          void (*callback)(void *), void *user_data);
 void PVRSRVCheckPendingSyncs(void);
 
