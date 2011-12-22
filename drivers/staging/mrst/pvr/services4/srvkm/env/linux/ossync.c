@@ -70,7 +70,6 @@ PVRSRVCallbackOnSync(PVRSRV_KERNEL_SYNC_INFO *sync_info,
                      callback_t callback, void *user_data)
 {
 	struct pending_sync *pending_sync;
-	unsigned long lock_flags;
 	u32 pending_read_ops = sync_info->psSyncData->ui32ReadOpsPending;
 	u32 pending_write_ops = sync_info->psSyncData->ui32WriteOpsPending;
 
@@ -93,9 +92,9 @@ PVRSRVCallbackOnSync(PVRSRV_KERNEL_SYNC_INFO *sync_info,
 	pending_sync->callback = callback;
 	pending_sync->user_data = user_data;
 
-	spin_lock_irqsave(&sync_lock, lock_flags);
+	spin_lock_irq(&sync_lock);
 	list_add_tail(&pending_sync->list, &sync_list);
-	spin_unlock_irqrestore(&sync_lock, lock_flags);
+	spin_unlock_irq(&sync_lock);
 
 	return 0;
 }
