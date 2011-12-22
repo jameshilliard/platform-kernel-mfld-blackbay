@@ -25,8 +25,8 @@
 #if defined(__linux__) && !defined(__KERNEL__)
 #include<stdint.h>
 #include <linux/types.h>
-#include "drm_mode.h"
 #endif
+#include "drm_mode.h"
 
 #include "psb_ttm_fence_user.h"
 #include "psb_ttm_placement_user.h"
