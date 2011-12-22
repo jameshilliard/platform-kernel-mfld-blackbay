@@ -194,24 +194,18 @@ psb_placement_fence_type(struct ttm_buffer_object *bo,
 	*/
 	struct ttm_fence_object *old_fence;
 	uint32_t old_fence_type;
-	struct ttm_placement placement;
+	const uint64_t mask = PSB_GPU_ACCESS_READ | PSB_GPU_ACCESS_WRITE;
 
-	if (unlikely
-	    (!(set_val_flags &
-	       (PSB_GPU_ACCESS_READ | PSB_GPU_ACCESS_WRITE)))) {
-		DRM_ERROR
-		("GPU access type (read / write) is not indicated.\n");
+	if (!(set_val_flags & mask)) {
+		DRM_ERROR("GPU access type (read / write) is not indicated.\n");
 		return -EINVAL;
 	}
 
-	/* User space driver doesn't set any TTM placement flags in set_val_flags or clr_val_flags */
-	placement.num_placement = 0;/* FIXME  */
-	placement.num_busy_placement = 0;
-	placement.fpfn = 0;
-	placement.lpfn = 0;
-	ret = psb_ttm_bo_check_placement(bo, &placement);
-	if (unlikely(ret != 0))
-		return ret;
+	/* The only accepted bits are PSB_GPU_ACCES_{READ,WRITE}. */
+	if ((set_val_flags | clr_val_flags) & ~mask) {
+		DRM_ERROR("invalid set/clear flags\n");
+		return -EINVAL;
+	}
 
 	switch (new_fence_class) {
 	default:
