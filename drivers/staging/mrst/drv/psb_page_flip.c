@@ -54,18 +54,19 @@ send_page_flip_event(struct drm_device *dev, int pipe,
 	struct timeval now;
 	unsigned long flags;
 
+	if (!pending_flip->event)
+		return;
+
 	spin_lock_irqsave(&dev->event_lock, flags);
 
-	if (pending_flip->event) {
-		e = pending_flip->event;
-		do_gettimeofday(&now);
-		e->event.sequence = drm_vblank_count(dev, pipe);
-		e->event.tv_sec = now.tv_sec;
-		e->event.tv_usec = now.tv_usec;
-		list_add_tail(&e->base.link,
-			      &e->base.file_priv->event_list);
-		wake_up_interruptible(&e->base.file_priv->event_wait);
-	}
+	e = pending_flip->event;
+	do_gettimeofday(&now);
+	e->event.sequence = drm_vblank_count(dev, pipe);
+	e->event.tv_sec = now.tv_sec;
+	e->event.tv_usec = now.tv_usec;
+	list_add_tail(&e->base.link,
+			&e->base.file_priv->event_list);
+	wake_up_interruptible(&e->base.file_priv->event_wait);
 
 	spin_unlock_irqrestore(&dev->event_lock, flags);
 }
