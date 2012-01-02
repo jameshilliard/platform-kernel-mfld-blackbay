@@ -1149,12 +1149,13 @@ IMG_VOID
 BM_DestroyHeap (IMG_HANDLE hDevMemHeap)
 {
 	BM_HEAP* psBMHeap = (BM_HEAP*)hDevMemHeap;
-	PVRSRV_DEVICE_NODE *psDeviceNode = psBMHeap->pBMContext->psDeviceNode;
+	PVRSRV_DEVICE_NODE *psDeviceNode;
 
 	PVR_DPF((PVR_DBG_MESSAGE, "BM_DestroyHeap"));
 
 	if(psBMHeap)
 	{
+		psDeviceNode = psBMHeap->pBMContext->psDeviceNode;
 		
 		if(psBMHeap->ui32Attribs
 		&	(PVRSRV_BACKINGSTORE_SYSMEM_NONCONTIG
