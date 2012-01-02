@@ -30,11 +30,13 @@ static void psb_fence_poll(struct ttm_fence_device *fdev,
 	struct drm_psb_private *dev_priv =
 		container_of(fdev, struct drm_psb_private, fdev);
 	uint32_t sequence = 0;
-	struct msvdx_private *msvdx_priv = dev_priv->msvdx_private;
+	struct msvdx_private *msvdx_priv;
 
 
 	if (unlikely(!dev_priv))
 		return;
+
+	msvdx_priv = dev_priv->msvdx_private;
 
 	if (waiting_types == 0)
 		return;
