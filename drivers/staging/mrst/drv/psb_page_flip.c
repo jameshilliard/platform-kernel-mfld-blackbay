@@ -52,13 +52,11 @@ send_page_flip_event(struct drm_device *dev, int pipe,
 {
 	struct drm_pending_vblank_event *e;
 	struct timeval now;
-	struct drm_file *file_priv;
 	unsigned long flags;
 
 	spin_lock_irqsave(&dev->event_lock, flags);
 
 	if (pending_flip->event) {
-		file_priv = e->base.file_priv;
 		e = pending_flip->event;
 		do_gettimeofday(&now);
 		e->event.sequence = drm_vblank_count(dev, pipe);
