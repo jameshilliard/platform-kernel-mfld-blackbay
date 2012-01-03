@@ -64,7 +64,6 @@ int drm_psb_debug;
 /*EXPORT_SYMBOL(drm_psb_debug); */
 static int drm_psb_trap_pagefaults;
 
-int drm_psb_disable_vsync = 1;
 int drm_psb_no_fb;
 int drm_psb_force_pipeb;
 int drm_msvdx_pmpolicy = PSB_PMPOLICY_POWERDOWN;

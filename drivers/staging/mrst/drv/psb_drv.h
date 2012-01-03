@@ -1184,7 +1184,6 @@ struct backlight_device * psb_get_backlight_device(void);
 
 extern int drm_psb_debug;
 extern int drm_psb_no_fb;
-extern int drm_psb_disable_vsync;
 extern int drm_topaz_sbuswa;
 
 #define PSB_DEBUG_GENERAL(_fmt, _arg...) \
