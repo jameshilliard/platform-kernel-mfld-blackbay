@@ -135,7 +135,8 @@ get_fb_meminfo(struct drm_framebuffer *fb)
 }
 
 static void
-psb_intel_flip_complete(struct pending_flip *pending_flip)
+psb_intel_flip_complete(struct pending_flip *pending_flip,
+		bool failed_vblank_get)
 {
 	if (pending_flip) {
 		struct drm_crtc *crtc = pending_flip->crtc;
@@ -144,7 +145,8 @@ psb_intel_flip_complete(struct pending_flip *pending_flip)
 		int pipe = psb_intel_crtc->pipe;
 
 		send_page_flip_event(dev, pipe, pending_flip);
-		drm_vblank_put(dev, pipe);
+		if (!failed_vblank_get)
+			drm_vblank_put(dev, pipe);
 		increase_read_ops_completed(pending_flip->old_mem_info);
 		PVRSRVScheduleDeviceCallbacks();
 
@@ -160,7 +162,7 @@ psb_intel_crtc_process_vblank(struct drm_crtc *crtc)
 
 	pending_flip = xchg(&psb_intel_crtc->pending_flip, NULL);
 
-	psb_intel_flip_complete(pending_flip);
+	psb_intel_flip_complete(pending_flip, false);
 }
 
 static void
@@ -174,11 +176,14 @@ sync_callback(struct pvr_pending_sync *pending_sync)
 
 	write_scanout_regs(pending_flip, pending_flip->offset);
 
-	drm_vblank_get(dev, psb_intel_crtc->pipe);
+	if (drm_vblank_get(dev, psb_intel_crtc->pipe)) {
+		psb_intel_flip_complete(pending_flip, true);
+		pending_flip = NULL;
+	}
 
 	pending_flip = xchg(&psb_intel_crtc->pending_flip, pending_flip);
 
-	psb_intel_flip_complete(pending_flip);
+	psb_intel_flip_complete(pending_flip, false);
 }
 
 int
