@@ -26,5 +26,7 @@ void psb_intel_crtc_process_vblank(struct drm_crtc *crtc);
 int psb_intel_crtc_page_flip(struct drm_crtc *crtc,
                              struct drm_framebuffer *fb,
                              struct drm_pending_vblank_event *event);
+void psb_cleanup_pending_events(struct drm_device *dev,
+				struct psb_fpriv *priv);
 
 #endif /* _PSB_PAGE_FLIP_H_ */

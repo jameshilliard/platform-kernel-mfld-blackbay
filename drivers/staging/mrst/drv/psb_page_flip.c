@@ -24,6 +24,7 @@
 #include <linux/list.h>
 
 #include <drm/drmP.h>
+#include "psb_drv.h"
 #include "psb_fb.h"
 #include "psb_intel_reg.h"
 #include "psb_page_flip.h"
@@ -43,8 +44,25 @@ struct pending_flip {
 	struct drm_pending_vblank_event *event;
 	PVRSRV_KERNEL_MEM_INFO *old_mem_info;
 	uint32_t offset;
+	struct list_head uncompleted;
 	struct pvr_pending_sync pending_sync;
 };
+
+void
+psb_cleanup_pending_events(struct drm_device *dev, struct psb_fpriv *priv)
+{
+	struct drm_pending_vblank_event *e;
+	struct pending_flip *pending_flip;
+	unsigned long flags;
+
+	spin_lock_irqsave(&dev->event_lock, flags);
+	list_for_each_entry(pending_flip, &priv->pending_flips, uncompleted) {
+		e = pending_flip->event;
+		pending_flip->event = NULL;
+		e->base.destroy(&e->base);
+	}
+	spin_unlock_irqrestore(&dev->event_lock, flags);
+}
 
 static void
 send_page_flip_event(struct drm_device *dev, int pipe,
@@ -54,11 +72,12 @@ send_page_flip_event(struct drm_device *dev, int pipe,
 	struct timeval now;
 	unsigned long flags;
 
-	if (!pending_flip->event)
-		return;
-
 	spin_lock_irqsave(&dev->event_lock, flags);
 
+	if (!pending_flip->event)
+		goto unlock;
+
+	list_del(&pending_flip->uncompleted);
 	e = pending_flip->event;
 	do_gettimeofday(&now);
 	e->event.sequence = drm_vblank_count(dev, pipe);
@@ -68,6 +87,7 @@ send_page_flip_event(struct drm_device *dev, int pipe,
 			&e->base.file_priv->event_list);
 	wake_up_interruptible(&e->base.file_priv->event_wait);
 
+unlock:
 	spin_unlock_irqrestore(&dev->event_lock, flags);
 }
 
@@ -194,6 +214,8 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 	struct psb_framebuffer *psbfb = to_psb_fb(fb);
 	PVRSRV_KERNEL_MEM_INFO *new_fb_mem_info, *current_fb_mem_info;
 	struct pending_flip *new_pending_flip;
+	struct psb_fpriv *priv;
+	unsigned long flags;
 
 	if (psb_get_meminfo_by_handle(psbfb->hKernelMemInfo, &new_fb_mem_info))
 		return -EINVAL;
@@ -205,6 +227,15 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 	new_pending_flip->crtc = crtc;
 	new_pending_flip->event = event;
 	new_pending_flip->offset = psbfb->offset;
+
+	if (event) {
+		spin_lock_irqsave(&crtc->dev->event_lock, flags);
+		priv = psb_fpriv(event->base.file_priv);
+		list_add(&new_pending_flip->uncompleted, &priv->pending_flips);
+		spin_unlock_irqrestore(&crtc->dev->event_lock, flags);
+	} else {
+		INIT_LIST_HEAD(&new_pending_flip->uncompleted);
+	}
 
 	current_fb_mem_info = get_fb_meminfo(crtc->fb);
 

@@ -983,6 +983,7 @@ struct drm_psb_private {
 struct psb_fpriv {
         int bcd_index;
 	struct ttm_object_file *tfile;
+	struct list_head pending_flips;
 };
 
 struct psb_mmu_driver;

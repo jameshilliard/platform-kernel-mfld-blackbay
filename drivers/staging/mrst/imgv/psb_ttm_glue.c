@@ -22,6 +22,7 @@
 
 #include <drm/drmP.h>
 #include "psb_drv.h"
+#include "psb_page_flip.h"
 #include "psb_ttm_userobj_api.h"
 #include <linux/io.h>
 #include "psb_msvdx.h"
@@ -66,6 +67,8 @@ int psb_open(struct inode *inode, struct file *filp)
 
 	psb_fp->tfile = ttm_object_file_init(dev_priv->tdev,
 					     PSB_FILE_OBJECT_HASH_ORDER);
+	INIT_LIST_HEAD(&psb_fp->pending_flips);
+
 	if (unlikely(psb_fp->tfile == NULL))
 		goto out_err1;
 
@@ -91,14 +94,18 @@ out_err0:
 int psb_release(struct inode *inode, struct file *filp)
 {
 	struct drm_file *file_priv;
+	struct drm_device *dev;
 	struct psb_fpriv *psb_fp;
 	struct drm_psb_private *dev_priv;
 	struct msvdx_private *msvdx_priv;
 	int ret;
 	file_priv = (struct drm_file *) filp->private_data;
 	psb_fp = psb_fpriv(file_priv);
-	dev_priv = psb_priv(file_priv->minor->dev);
+	dev = file_priv->minor->dev;
+	dev_priv = psb_priv(dev);
 	msvdx_priv = (struct msvdx_private *)dev_priv->msvdx_private;
+
+	psb_cleanup_pending_events(dev, psb_fp);
 
 	/*cleanup for msvdx*/
 	if (msvdx_priv->tfile == psb_fpriv(file_priv)->tfile) {
