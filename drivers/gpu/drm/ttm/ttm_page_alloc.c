@@ -708,7 +708,7 @@ int ttm_get_pages(struct list_head *pages, int flags,
 	/* clear the pages coming from the pool if requested */
 	if (flags & TTM_PAGE_FLAG_ZERO_ALLOC) {
 		list_for_each_entry(p, pages, lru) {
-			clear_page(page_address(p));
+			clear_highpage(p);
 		}
 	}
 
