@@ -90,6 +90,7 @@ static IMG_VOID SGXCommandComplete(PVRSRV_DEVICE_NODE *psDeviceNode)
 	{
 		
 		psDeviceNode->bReProcessDeviceCommandComplete = IMG_TRUE;
+		OSScheduleMISR(psDeviceNode->psSysData);
 	}
 	else
 	{
