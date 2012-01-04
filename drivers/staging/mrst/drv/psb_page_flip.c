@@ -52,14 +52,16 @@ void
 psb_cleanup_pending_events(struct drm_device *dev, struct psb_fpriv *priv)
 {
 	struct drm_pending_vblank_event *e;
-	struct pending_flip *pending_flip;
+	struct pending_flip *pending_flip, *temp;
 	unsigned long flags;
 
 	spin_lock_irqsave(&dev->event_lock, flags);
-	list_for_each_entry(pending_flip, &priv->pending_flips, uncompleted) {
+	list_for_each_entry_safe(pending_flip, temp, &priv->pending_flips,
+			uncompleted) {
 		e = pending_flip->event;
 		pending_flip->event = NULL;
 		e->base.destroy(&e->base);
+		list_del_init(&pending_flip->uncompleted);
 	}
 	spin_unlock_irqrestore(&dev->event_lock, flags);
 }
