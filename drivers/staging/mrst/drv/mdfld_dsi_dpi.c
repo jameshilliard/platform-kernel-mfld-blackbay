@@ -33,7 +33,6 @@
 #include "tc35876x-dsi-lvds.h"
 
 static void mdfld_dsi_dpi_shut_down(struct mdfld_dsi_dpi_output *output, int pipe);
-static bool dsi_device_ready = true; /* for TC35876X */
 
 static void mdfld_wait_for_HS_DATA_FIFO(struct drm_device *dev, u32 pipe)
 {
@@ -688,13 +687,7 @@ static void mdfld_dsi_dpi_set_power(struct drm_encoder * encoder, bool on)
 		if (get_panel_type(dev, pipe) == TMD_VID) {
 			mdfld_dsi_dpi_turn_on(dpi_output, pipe);
 		} else if (get_panel_type(dev, pipe) == TC35876X) {
-			if (dsi_device_ready) {
-				ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
-				return;
-			}
-
 			mdfld_dsi_configure_up(dsi_encoder, pipe);
-			dsi_device_ready = true;
 		} else {
 			/*enable mipi port*/
 			REG_WRITE(MIPI_PORT_CONTROL(pipe),
@@ -716,13 +709,7 @@ static void mdfld_dsi_dpi_set_power(struct drm_encoder * encoder, bool on)
 		if (get_panel_type(dev, pipe) == TMD_VID) {
 			mdfld_dsi_dpi_shut_down(dpi_output, pipe);
 		} else if (get_panel_type(dev, pipe) == TC35876X) {
-			if (!dsi_device_ready) {
-				ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
-				return;
-			}
-
 			mdfld_dsi_configure_down(dsi_encoder, pipe);
-			dsi_device_ready = false;
 		} else {
 			mdfld_dsi_dpi_shut_down(dpi_output, pipe);
 
@@ -986,7 +973,6 @@ void mdfld_dsi_dpi_mode_set(struct drm_encoder * encoder,
 
 		/* Configure MIPI Bridge and Panel */
 		tc35876x_configure_lvds_bridge(dev);
-		dsi_device_ready = true;
 		dev_priv->dpi_panel_on = true;
 	} else {
 		/*turn on DPI interface*/
