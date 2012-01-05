@@ -29,10 +29,7 @@ void tc35876x_set_bridge_reset_state(int state);
 void tc35876x_configure_lvds_bridge(struct drm_device *dev);
 void tc35876x_toshiba_bridge_panel_off(void);
 void tc35876x_toshiba_bridge_panel_on(void);
-void tc35876x_bridge_get_display_params(struct drm_display_mode *mode);
-int tc35876x_bridge_get_panel_info(struct drm_device *dev, int pipe,
-				struct panel_info *pi);
-int tc35876x_bridge_init(void);
-void tc35876x_bridge_exit(void);
+void tc35876x_init(struct drm_device *dev, struct panel_funcs *pf);
+void tc35876x_exit(void);
 
 #endif /*__MDFLD_DSI_LVDS_BRIDGE_H__*/

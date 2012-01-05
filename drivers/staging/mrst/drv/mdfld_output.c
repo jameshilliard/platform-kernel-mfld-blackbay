@@ -110,8 +110,9 @@ void init_panel(struct drm_device* dev, int mipi_pipe, enum panel_type p_type)
 		mdfld_dsi_output_init(dev, mipi_pipe, NULL, p_cmd_funcs, NULL);
 		break;
 	case TC35876X:
-		tc35876x_bridge_init();
-		/* fallthrough */
+		tc35876x_init(dev, p_vid_funcs);
+		mdfld_dsi_output_init(dev, mipi_pipe, NULL, NULL, p_vid_funcs);
+		break;
 	case TMD_VID:
 		tmd_vid_init(dev, p_vid_funcs);
 		mdfld_dsi_output_init(dev, mipi_pipe, NULL, NULL, p_vid_funcs);

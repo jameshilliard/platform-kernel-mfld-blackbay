@@ -30,7 +30,6 @@
 #include "displays/tmd_vid.h"
 #include "mdfld_dsi_dpi.h"
 #include "mdfld_dsi_pkg_sender.h"
-#include "tc35876x-dsi-lvds.h"
 
 static struct drm_display_mode*
 tmd_vid_get_config_mode(struct drm_device* dev)
@@ -47,9 +46,7 @@ tmd_vid_get_config_mode(struct drm_device* dev)
 	if (!mode)
 		return NULL;
 
-	if (get_panel_type(dev, 0) == TC35876X) { /* FIXME: pipe */
-		tc35876x_bridge_get_display_params(mode);
-	} else if (use_gct) {
+	if (use_gct) {
 		PSB_DEBUG_ENTRY("gct find MIPI panel. \n");
 
 		mode->hdisplay = (ti->hactive_hi << 8) | ti->hactive_lo;
@@ -213,11 +210,7 @@ void tmd_vid_init(struct drm_device* dev, struct panel_funcs* p_funcs)
 	p_funcs->encoder_helper_funcs = &mdfld_tpo_dpi_encoder_helper_funcs;
 	p_funcs->get_config_mode = &tmd_vid_get_config_mode;
 	p_funcs->update_fb = NULL;
-	if (get_panel_type(dev, 0) != TC35876X) { /* FIXME: pipe */
-		p_funcs->get_panel_info = tmd_vid_get_panel_info;
-		p_funcs->reset = mdfld_dsi_panel_reset;
-		p_funcs->drv_ic_init = mdfld_dsi_tmd_drv_ic_init;
-	} else {
-		p_funcs->get_panel_info = tc35876x_bridge_get_panel_info;
-	}
+	p_funcs->get_panel_info = tmd_vid_get_panel_info;
+	p_funcs->reset = mdfld_dsi_panel_reset;
+	p_funcs->drv_ic_init = mdfld_dsi_tmd_drv_ic_init;
 }

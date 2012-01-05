@@ -445,12 +445,15 @@ void tc35876x_toshiba_bridge_panel_on(void)
 		gpio_set_value_cansleep(pdata->gpio_panel_bl_en, 1);
 }
 
-void tc35876x_bridge_get_display_params(struct drm_display_mode *mode)
+static struct drm_display_mode *tc35876x_get_config_mode(struct drm_device *dev)
 {
-	if (WARN(!tc35876x_client, "%s called before probe", __func__))
-		return;
+	struct drm_display_mode *mode;
 
-	dev_dbg(&tc35876x_client->dev, "%s\n", __func__);
+	dev_dbg(&dev->pdev->dev, "%s\n", __func__);
+
+	mode = kzalloc(sizeof(*mode), GFP_KERNEL);
+	if (!mode)
+		return NULL;
 
 	/* FIXME: do this properly. */
 	mode->hdisplay = 1280;
@@ -463,22 +466,29 @@ void tc35876x_bridge_get_display_params(struct drm_display_mode *mode)
 	mode->vtotal = 838;
 	mode->clock = 33324;
 
-	dev_info(&tc35876x_client->dev, "hdisplay(w) = %d\n", mode->hdisplay);
-	dev_info(&tc35876x_client->dev, "vdisplay(h) = %d\n", mode->vdisplay);
-	dev_info(&tc35876x_client->dev, "HSS = %d\n", mode->hsync_start);
-	dev_info(&tc35876x_client->dev, "HSE = %d\n", mode->hsync_end);
-	dev_info(&tc35876x_client->dev, "htotal = %d\n", mode->htotal);
-	dev_info(&tc35876x_client->dev, "VSS = %d\n", mode->vsync_start);
-	dev_info(&tc35876x_client->dev, "VSE = %d\n", mode->vsync_end);
-	dev_info(&tc35876x_client->dev, "vtotal = %d\n", mode->vtotal);
-	dev_info(&tc35876x_client->dev, "clock = %d\n", mode->clock);
+	dev_info(&dev->pdev->dev, "hdisplay(w) = %d\n", mode->hdisplay);
+	dev_info(&dev->pdev->dev, "vdisplay(h) = %d\n", mode->vdisplay);
+	dev_info(&dev->pdev->dev, "HSS = %d\n", mode->hsync_start);
+	dev_info(&dev->pdev->dev, "HSE = %d\n", mode->hsync_end);
+	dev_info(&dev->pdev->dev, "htotal = %d\n", mode->htotal);
+	dev_info(&dev->pdev->dev, "VSS = %d\n", mode->vsync_start);
+	dev_info(&dev->pdev->dev, "VSE = %d\n", mode->vsync_end);
+	dev_info(&dev->pdev->dev, "vtotal = %d\n", mode->vtotal);
+	dev_info(&dev->pdev->dev, "clock = %d\n", mode->clock);
+
+	drm_mode_set_name(mode);
+	drm_mode_set_crtcinfo(mode, 0);
+
+	mode->type |= DRM_MODE_TYPE_PREFERRED;
+
+	return mode;
 }
 
 /* DV1 Active area 216.96 x 135.6 mm */
 #define DV1_PANEL_WIDTH 217
 #define DV1_PANEL_HEIGHT 136
 
-int tc35876x_bridge_get_panel_info(struct drm_device *dev, int pipe,
+static int tc35876x_get_panel_info(struct drm_device *dev, int pipe,
 				struct panel_info *pi)
 {
 	if (!dev || !pi)
@@ -637,23 +647,47 @@ static int cmi_lcd_hack_create_device(void)
 	return 0;
 }
 
-int tc35876x_bridge_init(void)
+static const struct drm_encoder_helper_funcs tc35876x_encoder_helper_funcs = {
+	.dpms = mdfld_dsi_dpi_dpms,
+	.mode_fixup = mdfld_dsi_dpi_mode_fixup,
+	.prepare = mdfld_dsi_dpi_prepare,
+	.mode_set = mdfld_dsi_dpi_mode_set,
+	.commit = mdfld_dsi_dpi_commit,
+};
+
+static const struct drm_encoder_funcs tc35876x_encoder_funcs = {
+	.destroy = drm_encoder_cleanup,
+};
+
+void tc35876x_init(struct drm_device *dev, struct panel_funcs *pf)
 {
 	int r;
 
-	pr_debug("%s\n", __func__);
+	dev_dbg(&dev->pdev->dev, "%s\n", __func__);
+
+	memset(pf, 0, sizeof(*pf));
+
+	pf->encoder_funcs = &tc35876x_encoder_funcs;
+	pf->encoder_helper_funcs = &tc35876x_encoder_helper_funcs;
+	pf->get_config_mode = tc35876x_get_config_mode;
+	pf->get_panel_info = tc35876x_get_panel_info;
 
 	cmi_lcd_hack_create_device();
 
 	r = i2c_add_driver(&cmi_lcd_i2c_driver);
 	if (r < 0)
-		pr_err("%s: i2c_add_driver() for %s failed (%d)\n",
-		       __func__, cmi_lcd_i2c_driver.driver.name, r);
+		dev_err(&dev->pdev->dev,
+			"%s: i2c_add_driver() for %s failed (%d)\n",
+			__func__, cmi_lcd_i2c_driver.driver.name, r);
 
-	return i2c_add_driver(&tc35876x_bridge_i2c_driver);
+	r = i2c_add_driver(&tc35876x_bridge_i2c_driver);
+	if (r < 0)
+		dev_err(&dev->pdev->dev,
+			"%s: i2c_add_driver() for %s failed (%d)\n",
+			__func__, tc35876x_bridge_i2c_driver.driver.name, r);
 }
 
-void tc35876x_bridge_exit(void)
+void tc35876x_exit(void)
 {
 	pr_debug("%s\n", __func__);
 
