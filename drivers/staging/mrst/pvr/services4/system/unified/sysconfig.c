@@ -1168,7 +1168,6 @@ PVRSRV_ERROR SysDevicePrePowerState(IMG_UINT32			ui32DeviceIndex,
 			ospm_power_using_hw_end(OSPM_GRAPHICS_ISLAND);
 #endif
 		}
-#if 1
 		else if (ui32DeviceIndex == gui32MRSTMSVDXDeviceID)
 		{
 			if (ospm_power_is_hw_on(OSPM_DISPLAY_ISLAND)) {
@@ -1178,12 +1177,6 @@ PVRSRV_ERROR SysDevicePrePowerState(IMG_UINT32			ui32DeviceIndex,
 				ospm_power_island_down(OSPM_VIDEO_DEC_ISLAND);
 				ospm_power_island_down(OSPM_DISPLAY_ISLAND);
 			}
-#if 0
-#if defined(SUPPORT_DRI_DRM_EXT)
-			ospm_power_using_hw_end(OSPM_VIDEO_DEC_ISLAND);
-			ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
-#endif
-#endif
 		}
 		else if (ui32DeviceIndex == gui32MRSTTOPAZDeviceID)
 		{
@@ -1195,13 +1188,6 @@ PVRSRV_ERROR SysDevicePrePowerState(IMG_UINT32			ui32DeviceIndex,
 				ospm_power_island_down(OSPM_DISPLAY_ISLAND);
 			}
 		}
-#if 0
-#if defined(SUPPORT_DRI_DRM_EXT)
-			ospm_power_using_hw_end(OSPM_VIDEO_ENC_ISLAND);
-			ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
-#endif
-#endif
-#endif
 	}
 
 	return PVRSRV_OK;
@@ -1223,7 +1209,6 @@ PVRSRV_ERROR SysDevicePostPowerState(IMG_UINT32			ui32DeviceIndex,
 #endif
 
 		}
-#if 1
 		else if (ui32DeviceIndex == gui32MRSTMSVDXDeviceID)
 		{
 			PVR_DPF((PVR_DBG_MESSAGE,"SysDevicePrePowerState: Restore MSVDX power"));
@@ -1234,21 +1219,6 @@ PVRSRV_ERROR SysDevicePostPowerState(IMG_UINT32			ui32DeviceIndex,
 				ospm_power_island_up(OSPM_VIDEO_DEC_ISLAND);
 				ospm_power_island_down(OSPM_DISPLAY_ISLAND);
 			}
-#if 0
-#if defined(SUPPORT_DRI_DRM_EXT)
-			if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true))
-			{
-				return PVRSRV_ERROR_GENERIC;
-			}
-
-			if (!ospm_power_using_hw_begin(OSPM_VIDEO_DEC_ISLAND, true))
-			{
-				ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
-
-				return PVRSRV_ERROR_GENERIC;
-			}
-#endif
-#endif
 		}
 		else if (ui32DeviceIndex == gui32MRSTTOPAZDeviceID)
 		{
@@ -1260,23 +1230,7 @@ PVRSRV_ERROR SysDevicePostPowerState(IMG_UINT32			ui32DeviceIndex,
 				ospm_power_island_up(OSPM_VIDEO_ENC_ISLAND);
 				ospm_power_island_down(OSPM_DISPLAY_ISLAND);
 			}
-#if 0
-#if defined(SUPPORT_DRI_DRM_EXT)
-			if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true))
-			{
-				return PVRSRV_ERROR_GENERIC;
-			}
-
-			if (!ospm_power_using_hw_begin(OSPM_VIDEO_ENC_ISLAND, true))
-			{
-				ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
-
-				return PVRSRV_ERROR_GENERIC;
-			}
-#endif
-#endif
 		}
-#endif
 	}
 
 	return PVRSRV_OK;
