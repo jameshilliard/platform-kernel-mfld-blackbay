@@ -58,7 +58,6 @@ static atomic_t g_videodec_access_count;
 void ospm_power_island_up(int hw_islands);
 void ospm_power_island_down(int hw_islands);
 static bool gbSuspended = false;
-bool gbdispstatus = true;
 
 #if 1
 static int ospm_runtime_check_msvdx_hw_busy(struct drm_device *dev)
@@ -1780,8 +1779,9 @@ int psb_runtime_idle(struct device *dev)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct drm_device *drm_dev = pci_get_drvdata(pdev);
+	struct drm_psb_private *dev_priv = drm_dev->dev_private;
 
-	if (gbdispstatus ||
+	if (dev_priv->dpi_panel_on || dev_priv->dpi_panel_on2 ||
 	    atomic_read(&g_graphics_access_count) ||
 	    atomic_read(&g_videoenc_access_count) ||
 	    atomic_read(&g_videodec_access_count) ||

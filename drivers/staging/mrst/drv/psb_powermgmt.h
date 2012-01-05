@@ -98,6 +98,5 @@ int psb_runtime_resume(struct device *dev);
 int psb_runtime_idle(struct device *dev);
 
 extern struct drm_device *gpDrmDevice;
-extern bool gbdispstatus;
 
 #endif /*_PSB_POWERMGMT_H_*/

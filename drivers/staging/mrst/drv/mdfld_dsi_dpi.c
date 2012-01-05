@@ -733,15 +733,7 @@ void mdfld_dsi_dpi_dpms(struct drm_encoder *encoder, int mode)
 {
 	PSB_DEBUG_ENTRY("%s \n",  (mode == DRM_MODE_DPMS_ON ? "on":"off"));
 
-	if (mode == DRM_MODE_DPMS_ON) {
-		mdfld_dsi_dpi_set_power(encoder, true);
-		gbdispstatus = true;
-	} else {
-		mdfld_dsi_dpi_set_power(encoder, false);
-		gbdispstatus = false;
-	}
-
-	return;
+	mdfld_dsi_dpi_set_power(encoder, mode == DRM_MODE_DPMS_ON);
 }
 
 bool mdfld_dsi_dpi_mode_fixup(struct drm_encoder * encoder,

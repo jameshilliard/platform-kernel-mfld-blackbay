@@ -396,7 +396,6 @@ static void mdfld_dsi_dbi_dpms(struct drm_encoder *encoder, int mode)
 		 * on work to do.
 		 */ 
 		bdispoff = true;
-                gbdispstatus = false;
 		mdfld_dsi_dbi_set_power(encoder, false);
 	}
 }
