@@ -1093,11 +1093,6 @@ struct mdfld_dsi_encoder * mdfld_dsi_dpi_init(struct drm_device * dev,
 		encoder->possible_clones = (1 << 0);
 	}
 
-	if (get_panel_type(dev, pipe) == TC35876X) {
-		struct drm_psb_private *dev_priv = dev->dev_private;
-		dev_priv->dpi_panel_on = false;
-	}
-
 	PSB_DEBUG_ENTRY("successfully\n");
 	
 	return &dpi_output->base;
