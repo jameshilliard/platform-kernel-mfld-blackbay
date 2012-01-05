@@ -1744,26 +1744,88 @@ void ospm_power_using_hw_end(int hw_island)
 	WARN_ON(atomic_read(&g_display_access_count) < 0);
 }
 
+#ifdef CONFIG_SND_INTELMID_HDMI_AUDIO
+static int psb_runtime_hdmi_audio_suspend(struct drm_device *drm_dev)
+{
+	struct drm_psb_private *dev_priv = drm_dev->dev_private;
+	pm_event_t pm_event = {0};
+	int r;
+
+	if (!dev_priv->had_pvt_data)
+		return 0;
+
+	r = dev_priv->had_interface->suspend(dev_priv->had_pvt_data, pm_event);
+
+	return r ? -EBUSY : 0;
+}
+
+static void psb_runtime_hdmi_audio_resume(struct drm_device *drm_dev)
+{
+	struct drm_psb_private *dev_priv = drm_dev->dev_private;
+
+	if (dev_priv->had_pvt_data)
+		dev_priv->had_interface->resume(dev_priv->had_pvt_data);
+}
+#else
+static inline int psb_runtime_hdmi_audio_suspend(struct drm_device *drm_dev)
+{
+	return 0;
+}
+static inline void psb_runtime_hdmi_audio_resume(struct drm_device *drm_dev)
+{
+}
+#endif
+
+int psb_runtime_idle(struct device *dev)
+{
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct drm_device *drm_dev = pci_get_drvdata(pdev);
+
+	if (gbdispstatus ||
+	    atomic_read(&g_graphics_access_count) ||
+	    atomic_read(&g_videoenc_access_count) ||
+	    atomic_read(&g_videodec_access_count) ||
+	    atomic_read(&g_display_access_count) ||
+	    ospm_runtime_check_msvdx_hw_busy(drm_dev) == 1 ||
+	    ospm_runtime_check_topaz_hw_busy(drm_dev) == 1) {
+
+#ifdef OSPM_GFX_DPK
+		dev_dbg(&drm_dev->pdev->dev,
+			"%s: GFX: %d VEC: %d VED: %d DC: %d\n",
+			__func__,
+			atomic_read(&g_graphics_access_count),
+			atomic_read(&g_videoenc_access_count),
+			atomic_read(&g_videodec_access_count),
+			atomic_read(&g_display_access_count));
+#endif
+
+		return -EBUSY;
+	}
+
+	return 0;
+}
+
 int psb_runtime_suspend(struct device *dev)
 {
-	int ret = 0;
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct drm_device *drm_dev = pci_get_drvdata(pdev);
+	int r;
 
 #ifdef OSPM_GFX_DPK
-	printk(KERN_ALERT "OSPM_GFX_DPK: %s \n", __func__);
+	dev_dbg(&drm_dev->pdev->dev, "%s\n", __func__);
 #endif
-        if (atomic_read(&g_graphics_access_count) || atomic_read(&g_videoenc_access_count)
-		|| (gbdispstatus == true)
-		|| atomic_read(&g_videodec_access_count) || atomic_read(&g_display_access_count)){
-#ifdef OSPM_GFX_DPK
-		printk(KERN_ALERT "OSPM_GFX_DPK: GFX: %d VEC: %d VED: %d DC: %d DSR: (N/A) \n", atomic_read(&g_graphics_access_count),
-			atomic_read(&g_videoenc_access_count), atomic_read(&g_videodec_access_count), atomic_read(&g_display_access_count));
-#endif
-                return -EBUSY;
-        }
-        else
-		ret = ospm_power_suspend(dev);
 
-	return ret;
+	r = psb_runtime_idle(dev);
+	if (r)
+		return r;
+
+	r = psb_runtime_hdmi_audio_suspend(drm_dev);
+	if (r)
+		return r;
+
+	/* REVISIT: if ospm_power_suspend fails, do what with hdmi audio? */
+
+	return ospm_power_suspend(dev);
 }
 
 int psb_runtime_resume(struct device *dev)
@@ -1771,60 +1833,8 @@ int psb_runtime_resume(struct device *dev)
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct drm_device *drm_dev = pci_get_drvdata(pdev);
 
-	//Notify HDMI Audio sub-system about the resume.
-#ifdef CONFIG_SND_INTELMID_HDMI_AUDIO
-	struct drm_psb_private *dev_priv = drm_dev->dev_private;
-
-	if (dev_priv->had_pvt_data)
-		dev_priv->had_interface->resume(dev_priv->had_pvt_data);
-#endif
-
 	ospm_power_resume(dev);
+	psb_runtime_hdmi_audio_resume(drm_dev);
 
 	return 0;
 }
-
-int psb_runtime_idle(struct device *dev)
-{
-	struct pci_dev *pdev = to_pci_dev(dev);
-	struct drm_device *drm_dev = pci_get_drvdata(pdev);
-
-#ifdef CONFIG_SND_INTELMID_HDMI_AUDIO
-	struct drm_psb_private *dev_priv = drm_dev->dev_private;
-	int hdmi_audio_busy = 0;
-	pm_event_t hdmi_audio_event;
-#endif
-
-#if 1
-	int msvdx_hw_busy = 0;
-	int topaz_hw_busy = 0;
-
-	msvdx_hw_busy = ospm_runtime_check_msvdx_hw_busy(drm_dev);
-	topaz_hw_busy = ospm_runtime_check_topaz_hw_busy(drm_dev);
-#endif
-
-#ifdef CONFIG_SND_INTELMID_HDMI_AUDIO
-       if(dev_priv->had_pvt_data){
-               hdmi_audio_event.event = 0;
-               hdmi_audio_busy = dev_priv->had_interface->suspend(dev_priv->had_pvt_data, hdmi_audio_event);
-       }
-#endif
-	/*printk (KERN_ALERT "lvds:%d,mipi:%d\n", dev_priv->is_lvds_on, dev_priv->is_mipi_on);*/
-	if (atomic_read(&g_graphics_access_count) || atomic_read(&g_videoenc_access_count)
-		|| atomic_read(&g_videodec_access_count) || atomic_read(&g_display_access_count)
-		|| (gbdispstatus == true)
-#ifdef CONFIG_SND_INTELMID_HDMI_AUDIO
-		|| hdmi_audio_busy
-#endif
-
-#if 1
-		|| (msvdx_hw_busy == 1)
-		|| (topaz_hw_busy == 1))
-#else
-		)
-#endif
-		return 1;
-		else
-			return 0;
-}
-
