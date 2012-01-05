@@ -202,7 +202,8 @@ static void mdfld_dsi_configure_down(struct mdfld_dsi_encoder * dsi_encoder, int
 
 	printk(KERN_ALERT "[DISPLAY TRK] Enter %s\n", __func__);
 
-	if (!dev_priv->dpi_panel_on) {
+	if ((pipe == 0 && !dev_priv->dpi_panel_on) ||
+	    (pipe == 2 && !dev_priv->dpi_panel_on2)) {
 		printk(KERN_ALERT "[DISPLAY] %s: DPI Panel is Already Off\n", __func__);
 		return;
 	}
@@ -226,7 +227,8 @@ static void mdfld_dsi_configure_up(struct mdfld_dsi_encoder * dsi_encoder, int p
 
 	printk(KERN_ALERT "[DISPLAY TRK] Enter %s\n", __func__);
 
-	if (dev_priv->dpi_panel_on) {
+	if ((pipe == 0 && dev_priv->dpi_panel_on) ||
+	    (pipe == 2 && dev_priv->dpi_panel_on2)) {
 		printk(KERN_ALERT "[DISPLAY] %s: DPI Panel is Already On\n", __func__);
 		return;
 	}
