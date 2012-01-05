@@ -298,14 +298,6 @@ enum panel_type {
 #define MDFLD_PLANE_MAX_WIDTH		2048
 #define MDFLD_PLANE_MAX_HEIGHT		2048
 
-/*
- *User options.
- */
-
-struct drm_psb_uopt {
-	int pad; /*keep it here in case we use it in future*/
-};
-
 /**
  *struct psb_context
  *
@@ -397,7 +389,6 @@ struct drm_psb_private {
 	unsigned long chipset;
 
 	struct drm_psb_dev_info_arg dev_info;
-	struct drm_psb_uopt uopt;
 
 	struct psb_gtt *pg;
 

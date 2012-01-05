@@ -452,11 +452,6 @@ static struct drm_ioctl_desc psb_ioctls[] = {
 	DRM_AUTH)
 };
 
-static void psb_set_uopt(struct drm_psb_uopt *uopt)
-{
-	return;
-}
-
 static void psb_lastclose(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv =
@@ -1084,7 +1079,6 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 
 	dev->dev_private = (void *) dev_priv;
 	dev_priv->chipset = chipset;
-	psb_set_uopt(&dev_priv->uopt);
 
 	PSB_DEBUG_GENERAL("Init scheduler\n");
 	psb_scheduler_init(dev, &dev_priv->scheduler);
