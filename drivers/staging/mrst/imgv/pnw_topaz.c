@@ -27,7 +27,6 @@
 /* include headers */
 /* #define DRM_DEBUG_CODE 2 */
 #include <drm/drmP.h>
-#include <drm/drm_os_linux.h>
 
 #include "psb_drv.h"
 #include "psb_drm.h"

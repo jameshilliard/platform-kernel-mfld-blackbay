@@ -20,7 +20,6 @@
  **************************************************************************/
 
 #include <drm/drmP.h>
-#include <drm/drm_os_linux.h>
 #include "psb_drm.h"
 #include "psb_drv.h"
 #include "psb_msvdx.h"
