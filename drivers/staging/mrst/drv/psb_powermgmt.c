@@ -1464,10 +1464,6 @@ void ospm_power_island_down(int islands)
 	u32 cnt = 0;
 	unsigned long flags;
 
-#ifndef CONFIG_MDFD_GL3
-	islands &= ~OSPM_GL3_CACHE_ISLAND;
-#endif
-
 	g_hw_power_status_mask &= ~islands;
 
 	if (islands & OSPM_GRAPHICS_ISLAND) {
