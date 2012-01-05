@@ -214,8 +214,6 @@ static void mdfld_dsi_configure_down(struct mdfld_dsi_encoder * dsi_encoder, int
 	mdfld_dsi_dpi_shut_down(dpi_output, pipe);  //Send shut down command
 
 	dsi_set_device_ready_state(dev, 0, pipe);  //Clear device ready state
-
-	dev_priv->dpi_panel_on = false;
 }
 
 static void mdfld_dsi_configure_up(struct mdfld_dsi_encoder * dsi_encoder, int pipe)
@@ -242,8 +240,6 @@ static void mdfld_dsi_configure_up(struct mdfld_dsi_encoder * dsi_encoder, int p
 	tc35876x_configure_lvds_bridge(dev);
 	mdfld_dsi_dpi_turn_on(dpi_output, pipe);  //Send turn on command
 	dsi_set_pipe_plane_enable_state(dev, 1, pipe);  //Enable plane and pipe
-
-	dev_priv->dpi_panel_on = true;
 }
 /* End for TC35876X */
 
