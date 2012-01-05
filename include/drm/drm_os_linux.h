@@ -3,9 +3,6 @@
  * OS abstraction macros.
  */
 
-#ifndef _DRM_OS_LINUX_H_
-#define _DRM_OS_LINUX_H_
-
 #include <linux/interrupt.h>	/* For task queue support */
 #include <linux/delay.h>
 
@@ -128,5 +125,3 @@ do {								\
 
 #define DRM_WAKEUP( queue ) wake_up( queue )
 #define DRM_INIT_WAITQUEUE( queue ) init_waitqueue_head( queue )
-
-#endif /* _DRM_OS_LINUX_H_ */
