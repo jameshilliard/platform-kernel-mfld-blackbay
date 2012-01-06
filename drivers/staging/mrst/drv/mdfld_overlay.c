@@ -903,10 +903,23 @@ mfld_overlay_update_plane(struct drm_plane *plane, struct drm_crtc *crtc, struct
 		regs->OBUF_1V += uv.stride >> 1;
 	}
 
+	/*
+	 * uv.width *= uv.cpp is missing because NV12 chroma SWIDTHSW seems
+	 * to be based on pixels instead of bytes. Not quite sure how the
+	 * alignment should be handled, but this code at least appears to work.
+	 * For all other formats uv.cpp is one or zero anyway.
+	 */
 	y.width *= y.cpp;
-	uv.width *= uv.cpp;
 	y.width = (((y_off + y.width + 0x3f) >> 6) - (y_off >> 6)) << 3;
 	uv.width = (((u_off + uv.width + 0x3f) >> 6) - (u_off >> 6)) << 3;
+	/*
+	 * Apparently the register likes to be programmed
+	 * with one SWORD less than we want to fetch.
+	 */
+	if (y.width)
+		y.width -= 4;
+	if (uv.width)
+		uv.width -= 4;
 	regs->SWIDTHSW = (uv.width << 16) | (y.width & 0xffff);
 
 	regs->OSTRIDE = (uv.stride << 16) | (y.stride & 0xffff);
