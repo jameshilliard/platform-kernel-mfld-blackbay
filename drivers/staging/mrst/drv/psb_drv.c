@@ -272,6 +272,9 @@ MODULE_DEVICE_TABLE(pci, pciidlist);
 /*BC_VIDEO ioctl*/
 #define DRM_BUFFER_CLASS_VIDEO      (DRM_LNC_VIDEO_GETPARAM + 1)    /*0x32*/
 
+/*BC_ST_GFX_VIDEO ioctl*/
+#define DRM_ST_GFX_BUFFER_CLASS_VIDEO	(DRM_BUFFER_CLASS_VIDEO + 1)  /*0x33*/
+
 #define DRM_IOCTL_PSB_TTM_PL_CREATE    \
 	DRM_IOWR(DRM_COMMAND_BASE + DRM_PSB_TTM_PL_CREATE,\
 		 union ttm_pl_create_arg)
@@ -317,6 +320,10 @@ MODULE_DEVICE_TABLE(pci, pciidlist);
 #define DRM_IOCTL_PSB_TTM_PL_WRAP_PVR_BUF \
 	DRM_IOWR(DRM_COMMAND_BASE + DRM_PSB_TTM_PL_WRAP_PVR_BUF, \
 		 union ttm_pl_create_arg)
+/*bc_st_gfx_video ioctl*/
+#define DRM_IOCTL_ST_GFX_BUFFER_CLASS_VIDEO \
+	DRM_IOWR(DRM_COMMAND_BASE + DRM_ST_GFX_BUFFER_CLASS_VIDEO, \
+		BC_Video_ioctl_package)
 
 static int psb_vt_leave_ioctl(struct drm_device *dev, void *data,
 			      struct drm_file *file_priv);
@@ -449,7 +456,9 @@ static struct drm_ioctl_desc psb_ioctls[] = {
 	PSB_IOCTL_DEF(DRM_IOCRL_PSB_DPU_DSR_ON, psb_dpu_dsr_on_ioctl,
 	DRM_AUTH),
 	PSB_IOCTL_DEF(DRM_IOCRL_PSB_DPU_DSR_OFF, psb_dpu_dsr_off_ioctl,
-	DRM_AUTH)
+	DRM_AUTH),
+	PSB_IOCTL_DEF(DRM_IOCTL_ST_GFX_BUFFER_CLASS_VIDEO,
+	psb_st_gfx_video_bridge, DRM_AUTH)
 };
 
 static void psb_lastclose(struct drm_device *dev)
@@ -1343,6 +1352,17 @@ int psb_extension_ioctl(struct drm_device *dev, void *data,
 	if (strcmp(arg->extension, "lnc_video_getparam") == 0) {
 		rep->exists = 1;
 		rep->driver_ioctl_offset = DRM_LNC_VIDEO_GETPARAM;
+		rep->sarea_offset = 0;
+		rep->major = 1;
+		rep->minor = 0;
+		rep->pl = 0;
+		return 0;
+	}
+
+	/* return the video bind offset */
+	if (strcmp(arg->extension, "psb_video_bind") == 0) {
+		rep->exists = 1;
+		rep->driver_ioctl_offset = DRM_ST_GFX_BUFFER_CLASS_VIDEO;
 		rep->sarea_offset = 0;
 		rep->major = 1;
 		rep->minor = 0;

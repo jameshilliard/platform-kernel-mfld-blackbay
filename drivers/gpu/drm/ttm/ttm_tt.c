@@ -631,9 +631,18 @@ int ttm_tt_bind(struct ttm_tt *ttm, struct ttm_mem_reg *bo_mem)
 
 	be = ttm->be;
 
-	ret = ttm_tt_populate(ttm);
-	if (ret)
-		return ret;
+	/* Bypass ttm_tt_populate when TTM_PL_FLAG_VED is enabled */
+	if (!(bo_mem->placement & TTM_PL_FLAG_VED)) {
+		ret = ttm_tt_populate(ttm);
+		if (ret)
+			return ret;
+	} else {
+	/* TTM_PL_FLAG_VED indicates gralloc buffer allocation. As such,
+	* TTM allocation and BE bind should be bypassed.
+	* ttm->state remains unpopulated.
+	*/
+		return 0;
+	}
 
 	ret = be->func->bind(be, bo_mem);
 	if (unlikely(ret != 0))

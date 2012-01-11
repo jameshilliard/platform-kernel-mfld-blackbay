@@ -93,4 +93,10 @@
 #define TTM_ACCESS_READ         (1 << 0)
 #define TTM_ACCESS_WRITE        (1 << 1)
 
+/*
+ * TTM_PL_FLAG_VED indicates gralloc buffer allocation is active and
+ * that TTM allocation must be inhibited.
+ */
+#define TTM_PL_FLAG_VED         (1 << 22)
+
 #endif

@@ -1150,6 +1150,10 @@ int psb_set_brightness(struct backlight_device *bd);
 int psb_get_brightness(struct backlight_device *bd);
 struct backlight_device * psb_get_backlight_device(void);
 
+/* psb_video_bind.c */
+int psb_st_gfx_video_bridge(struct drm_device *dev,
+		IMG_VOID *arg, struct drm_file *file_priv);
+
 /*
  *Debug print bits setting
  */
