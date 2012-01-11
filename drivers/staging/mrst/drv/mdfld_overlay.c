@@ -600,7 +600,7 @@ static void ovl_setup_regs(struct mfld_overlay *ovl)
 {
 	struct mfld_overlay_regs *regs = &ovl->regs;
 
-	regs->OCONFIG = OVL_OCONFIG_IEP_BYPASS;
+	regs->OCONFIG = OVL_OCONFIG_IEP_BYPASS | OVL_OCONFIG_CC_OUT;
 }
 
 static unsigned int ovl_setup_coefs(struct mfld_overlay *ovl,
