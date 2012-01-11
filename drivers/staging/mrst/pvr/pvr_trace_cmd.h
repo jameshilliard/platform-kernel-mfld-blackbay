@@ -110,7 +110,7 @@ static inline void pvr_trcmd_set_data(unsigned long *a, unsigned long val)
 
 static inline void pvr_trcmd_clear_syn(struct pvr_trcmd_syn *ts)
 {
-	memset(ts, 0, sizeof(*ts));
+	ts->addr = 0;
 }
 
 void pvr_trcmd_check_syn_completions(int type);
