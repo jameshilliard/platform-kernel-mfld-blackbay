@@ -904,22 +904,39 @@ mfld_overlay_update_plane(struct drm_plane *plane, struct drm_crtc *crtc, struct
 	}
 
 	/*
-	 * uv.width *= uv.cpp is missing because NV12 chroma SWIDTHSW seems
-	 * to be based on pixels instead of bytes. Not quite sure how the
-	 * alignment should be handled, but this code at least appears to work.
-	 * For all other formats uv.cpp is one or zero anyway.
+	 * Hardware starts fetching from a 64 byte
+	 * aligned address in 32 byte (SWORD) units.
 	 */
-	y.width *= y.cpp;
-	y.width = (((y_off + y.width + 0x3f) >> 6) - (y_off >> 6)) << 3;
-	uv.width = (((u_off + uv.width + 0x3f) >> 6) - (u_off >> 6)) << 3;
+	y.width = ALIGN((y_off & 63) + y.width * y.cpp, 32);
+	uv.width = ALIGN((u_off & 63) + uv.width * uv.cpp, 32);
+
 	/*
-	 * Apparently the register likes to be programmed
-	 * with one SWORD less than we want to fetch.
+	 * Hardware doesn't like SWIDTHSW getting too big.
+	 * This can only happen if the source window is already
+	 * close to the maximum width, and fb->offset[] is
+	 * sufficiently misaligned. This limit may cause some
+	 * pixels near the end of the source window to be repeated,
+	 * but at least the hardware will not fail.
 	 */
-	if (y.width)
+	y.width = min(y.width, 2048 * y.cpp);
+	uv.width = min(uv.width, 2048 * uv.cpp / c.hsub);
+
+	if (y.width) {
+		y.width >>= 3;
 		y.width -= 4;
-	if (uv.width)
+	}
+	if (uv.width) {
+		/*
+		 * NV12 chroma SWIDTHSW must be halved. The two lsbs
+		 * aren't used, so align to 64 to avoid an underflow.
+		 */
+		if (fb->pixel_format == DRM_FORMAT_NV12)
+			uv.width = ALIGN(uv.width, 64) >> 4;
+		else
+			uv.width >>= 3;
 		uv.width -= 4;
+	}
+
 	regs->SWIDTHSW = (uv.width << 16) | (y.width & 0xffff);
 
 	regs->OSTRIDE = (uv.stride << 16) | (y.stride & 0xffff);
