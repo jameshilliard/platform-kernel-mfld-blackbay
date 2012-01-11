@@ -171,6 +171,11 @@ IMG_EXPORT PVRSRV_ERROR SGXSubmitTransferKM(IMG_HANDLE hDevHandle, PVRSRV_TRANSF
 
 			pvr_trcmd_set_syn(&ttrace->dst_syn[loop], psSyncInfo);
 		}
+	} else {
+		for (loop = 0; loop < SGX_MAX_TRANSFER_SYNC_OPS; loop++) {
+			pvr_trcmd_clear_syn(&ttrace->src_syn[loop]);
+			pvr_trcmd_clear_syn(&ttrace->dst_syn[loop]);
+		}
 	}
 
 #if defined(PDUMP)
