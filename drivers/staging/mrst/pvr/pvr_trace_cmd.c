@@ -158,6 +158,23 @@ static size_t trcmd_prn_flpreq(char *dst, size_t dst_size, const void *tbuf)
 	return len;
 }
 
+static const char * const trcmd_devices[] = {
+	[PVR_TRCMD_DEVICE_PCI]          = "PCI device",
+	[PVR_TRCMD_DEVICE_SGX]          = "SGX",
+	[PVR_TRCMD_DEVICE_DISPC]        = "Display controller",
+	[PVR_TRCMD_DEVICE_PIPE_A_VSYNC] = "Pipe A VSync",
+	[PVR_TRCMD_DEVICE_PIPE_B_VSYNC] = "Pipe B VSync",
+	[PVR_TRCMD_DEVICE_PIPE_C_VSYNC] = "Pipe C VSync",
+};
+
+static size_t trcmd_prn_power(char *dst, size_t dst_size, const void *tbuf)
+{
+	const struct pvr_trcmd_power *s = tbuf;
+
+	return scnprintf(dst, dst_size, "%*sdev %s\n", PVR_TRCMD_INDENT,
+			"", trcmd_devices[s->dev]);
+}
+
 static struct trcmd_desc trcmd_desc_table[] = {
 	[PVR_TRCMD_SGX_FIRSTKICK]    = { "sgx_first_kick", trcmd_prn_sgxkick },
 	[PVR_TRCMD_SGX_KICK]	     = { "sgx_kick", trcmd_prn_sgxkick },
@@ -167,6 +184,8 @@ static struct trcmd_desc trcmd_desc_table[] = {
 	[PVR_TRCMD_FLPREQ]           = { "sgx_flip_req", trcmd_prn_flpreq },
 	[PVR_TRCMD_FLPCOMP]          = { "sgx_flip_comp", trcmd_prn_syn },
 	[PVR_TRCMD_SYN_REMOVE]       = { "sgx_syn_remove", trcmd_prn_syn },
+	[PVR_TRCMD_SUSPEND]          = { "pvr_suspend", trcmd_prn_power },
+	[PVR_TRCMD_RESUME]           = { "pvr_resume", trcmd_prn_power },
 };
 
 /* Modular add */

@@ -36,6 +36,8 @@ enum pvr_trcmd_type {
 	PVR_TRCMD_SGX_QBLT_SYNCHK,
 	PVR_TRCMD_FLPREQ,
 	PVR_TRCMD_FLPCOMP,
+	PVR_TRCMD_SUSPEND,
+	PVR_TRCMD_RESUME,
 };
 
 struct pvr_trcmd_buf;
@@ -67,6 +69,19 @@ struct pvr_trcmd_sgxtransfer {
 
 struct pvr_trcmd_flpreq {
 	struct pvr_trcmd_syn	src_syn[2];
+};
+
+enum pvr_trcmd_device {
+	PVR_TRCMD_DEVICE_PCI,
+	PVR_TRCMD_DEVICE_SGX,
+	PVR_TRCMD_DEVICE_DISPC,
+	PVR_TRCMD_DEVICE_PIPE_A_VSYNC,
+	PVR_TRCMD_DEVICE_PIPE_B_VSYNC,
+	PVR_TRCMD_DEVICE_PIPE_C_VSYNC,
+};
+
+struct pvr_trcmd_power {
+	enum pvr_trcmd_device dev;
 };
 
 #ifdef CONFIG_PVR_TRACE_CMD

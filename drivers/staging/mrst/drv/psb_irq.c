@@ -30,6 +30,7 @@
 #include "pnw_topaz.h"
 #include "psb_intel_reg.h"
 #include "psb_powermgmt.h"
+#include "pvr_trace_cmd.h"
 
 #include "mdfld_dsi_dbi_dpu.h"
 
@@ -89,11 +90,25 @@ mid_pipeconf(int pipe)
 	BUG();
 }
 
+static void trcmd_vblank_power(unsigned type, int pipe)
+{
+	struct pvr_trcmd_power *p;
+	if (in_interrupt())
+		p = pvr_trcmd_reserve(type, 0, "irq", sizeof *p);
+	else
+		p = pvr_trcmd_reserve(type, task_tgid_nr(current),
+				current->comm, sizeof *p);
+	p->dev = PVR_TRCMD_DEVICE_PIPE_A_VSYNC + pipe;
+	pvr_trcmd_commit(p);
+}
+
 void
 psb_enable_pipestat(struct drm_psb_private *dev_priv, int pipe, u32 mask)
 {
 	if ((dev_priv->pipestat[pipe] & mask) != mask) {
 		u32 reg = psb_pipestat(pipe);
+		if (mask & PIPE_VBLANK_INTERRUPT_ENABLE)
+			trcmd_vblank_power(PVR_TRCMD_RESUME, pipe);
 		dev_priv->pipestat[pipe] |= mask;
 		/* Enable the interrupt, clear any pending status */
 		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON)) {
@@ -111,6 +126,8 @@ psb_disable_pipestat(struct drm_psb_private *dev_priv, int pipe, u32 mask)
 {
 	if ((dev_priv->pipestat[pipe] & mask) != 0) {
 		u32 reg = psb_pipestat(pipe);
+		if (mask & PIPE_VBLANK_INTERRUPT_ENABLE)
+			trcmd_vblank_power(PVR_TRCMD_SUSPEND, pipe);
 		dev_priv->pipestat[pipe] &= ~mask;
 		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON)) {
 			u32 writeVal = PSB_RVDC32(reg);

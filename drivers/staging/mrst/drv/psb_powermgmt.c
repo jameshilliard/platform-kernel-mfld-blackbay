@@ -32,11 +32,13 @@
 #include "psb_msvdx.h"
 #include "pnw_topaz.h"
 #include "mdfld_gl3.h"
+#include "pvr_trace_cmd.h"
 
 #include <linux/mutex.h>
 #include "mdfld_dsi_dbi.h"
 #include "mdfld_dsi_dbi_dpu.h"
 #include <asm/intel_scu_ipc.h>
+
 
 #undef OSPM_GFX_DPK
 
@@ -1177,6 +1179,18 @@ static void ospm_resume_display(struct drm_device *drm_dev)
 	mdfld_restore_cursor_overlay_registers(drm_dev);
 }
 
+static void pvrcmd_device_power(unsigned type, enum pvr_trcmd_device dev)
+{
+	struct pvr_trcmd_power *p;
+	if (in_interrupt())
+		p = pvr_trcmd_reserve(type, 0, "irq", sizeof *p);
+	else
+		p = pvr_trcmd_reserve(type, task_tgid_nr(current),
+				current->comm, sizeof *p);
+	p->dev = dev;
+	pvr_trcmd_commit(p);
+}
+
 /*
  * ospm_suspend_pci
  *
@@ -1198,6 +1212,7 @@ static void ospm_suspend_pci(struct pci_dev *pdev)
 #ifdef CONFIG_MDFD_GL3
 	gl3_invalidate();
 #endif
+	pvrcmd_device_power(PVR_TRCMD_SUSPEND, PVR_TRCMD_DEVICE_PCI);
 	/* Power off GL3 after all GFX sub-systems are powered off. */
 	ospm_power_island_down(OSPM_GL3_CACHE_ISLAND);
 
@@ -1226,6 +1241,7 @@ static bool ospm_resume_pci(struct pci_dev *pdev)
 #ifdef OSPM_GFX_DPK
 	printk(KERN_ALERT "ospm_resume_pci\n");
 #endif
+	pvrcmd_device_power(PVR_TRCMD_RESUME, PVR_TRCMD_DEVICE_PCI);
 
 	pci_write_config_dword(pdev, 0x5c, dev_priv->saveBSM);
 	pci_write_config_dword(pdev, 0xFC, dev_priv->saveVBT);
@@ -1338,6 +1354,9 @@ void ospm_power_island_up(int hw_islands)
 
 
 		if (hw_islands & OSPM_GRAPHICS_ISLAND) {
+			pvrcmd_device_power(PVR_TRCMD_RESUME,
+					PVR_TRCMD_DEVICE_SGX);
+
 			pwr_cnt &= ~PSB_PWRGT_GFX_MASK;
 			pwr_mask |= PSB_PWRGT_GFX_MASK;
 #ifdef OSPM_STAT
@@ -1388,6 +1407,8 @@ void ospm_power_island_up(int hw_islands)
 
 		spin_lock_irqsave(&dev_priv->ospm_lock, flags);
 		pwr_cnt = inl(dev_priv->ospm_base + PSB_PM_SSC);
+		pvrcmd_device_power(PVR_TRCMD_RESUME,
+				PVR_TRCMD_DEVICE_DISPC);
 		pwr_cnt &= ~pwr_mask;
 		outl(pwr_cnt, (dev_priv->ospm_base + PSB_PM_SSC));
 		spin_unlock_irqrestore(&dev_priv->ospm_lock, flags);
@@ -1467,6 +1488,7 @@ void ospm_power_island_down(int islands)
 	g_hw_power_status_mask &= ~islands;
 
 	if (islands & OSPM_GRAPHICS_ISLAND) {
+		pvrcmd_device_power(PVR_TRCMD_SUSPEND, PVR_TRCMD_DEVICE_SGX);
 		pwr_cnt |= PSB_PWRGT_GFX_MASK;
 		pwr_mask |= PSB_PWRGT_GFX_MASK;
 #ifdef OSPM_STAT
@@ -1519,6 +1541,7 @@ void ospm_power_island_down(int islands)
 
 		outl(pwr_mask, (dev_priv->ospm_base + PSB_PM_SSC));
 
+		pvrcmd_device_power(PVR_TRCMD_SUSPEND, PVR_TRCMD_DEVICE_DISPC);
 		pwr_mask = MDFLD_PWRGT_DISPLAY_STS_B0;
 
 		cnt = 0;
