@@ -255,6 +255,11 @@ static int drm_open_helper(struct inode *inode, struct file *filp,
 	priv->authenticated = capable(CAP_SYS_ADMIN);
 	priv->lock_count = 0;
 
+	/* Authenticating Android userspace with DRM */
+#ifdef CONFIG_ANDROID
+	DRM_DEBUG("setting as authenticated\n");
+	priv->authenticated = 1;
+#endif
 	INIT_LIST_HEAD(&priv->lhead);
 	INIT_LIST_HEAD(&priv->fbs);
 	INIT_LIST_HEAD(&priv->event_list);
