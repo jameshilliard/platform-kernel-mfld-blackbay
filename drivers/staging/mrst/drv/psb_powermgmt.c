@@ -1598,7 +1598,10 @@ bool ospm_power_using_hw_begin(int hw_island, UHBUsage usage)
 	IMG_UINT32 deviceID = 0;
 	bool force_on = usage ? true : false;
 
-	pm_runtime_get(&drm_dev->pdev->dev);
+	if (b_atomic)
+		pm_runtime_get(&drm_dev->pdev->dev);
+	else
+		pm_runtime_get_sync(&drm_dev->pdev->dev);
 
 	/*quick path, not 100% race safe, but should be enough comapre to current other code in this file */
 	if (!force_on) {
