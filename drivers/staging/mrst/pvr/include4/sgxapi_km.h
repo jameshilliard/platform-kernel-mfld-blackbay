@@ -79,7 +79,7 @@ extern "C" {
 #define SGX_MAX_TA_SRC_SYNCS			1
 #define SGX_MAX_3D_SRC_SYNCS			4
 #else
-#define SGX_MAX_SRC_SYNCS				8
+#define SGX_MAX_SRC_SYNCS				16
 #define SGX_MAX_DST_SYNCS				1
 #endif
 
