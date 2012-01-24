@@ -218,8 +218,7 @@ static void tc35876x_brightness_control(struct drm_device *dev, int pipe,
 	/* PWM duty cycle 0x00...0x63 corresponds to 0...99% */
 	duty_val = level * 0x63 / MDFLD_DSI_BRIGHTNESS_MAX_LEVEL;
 
-	printk(KERN_DEBUG "[DISPLAY] %s: level = %d, duty_val = %d\n", __func__,
-	       level, duty_val);
+	PSB_DEBUG_ENTRY("level = %d, duty_val = %d\n", level, duty_val);
 
 	ret = intel_scu_ipc_iowrite8(PWM0DUTYCYCLE, duty_val);
 	if (ret)
