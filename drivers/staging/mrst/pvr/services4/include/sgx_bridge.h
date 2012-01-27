@@ -458,6 +458,7 @@ typedef struct PVRSRV_BRIDGE_IN_SGX_READ_HWPERF_CB_TAG
 	IMG_UINT32					ui32BridgeFlags; 
 	IMG_HANDLE					hDevCookie;
 	IMG_UINT32					ui32ArraySize;
+	IMG_UINT32			entry_size;
 	PVRSRV_SGX_HWPERF_CB_ENTRY	*psHWPerfCBData;
 } PVRSRV_BRIDGE_IN_SGX_READ_HWPERF_CB;
 

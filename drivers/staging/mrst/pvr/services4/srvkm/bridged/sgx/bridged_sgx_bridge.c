@@ -788,6 +788,7 @@ SGXReadHWPerfCBBW(IMG_UINT32							ui32BridgeID,
 	PVRSRV_SGX_HWPERF_CB_ENTRY	*psAllocated;
 	IMG_HANDLE					hAllocatedHandle;
 	IMG_UINT32					ui32AllocatedSize;
+	size_t	entry_size;
 
 	PVRSRV_BRIDGE_ASSERT_CMD(ui32BridgeID, PVRSRV_BRIDGE_SGX_READ_HWPERF_CB);
 
@@ -801,8 +802,11 @@ SGXReadHWPerfCBBW(IMG_UINT32							ui32BridgeID,
 		return 0;
 	}
 
-	ui32AllocatedSize = psSGXReadHWPerfCBIN->ui32ArraySize *
-							sizeof(psSGXReadHWPerfCBIN->psHWPerfCBData[0]);
+	entry_size = sizeof(psSGXReadHWPerfCBIN->psHWPerfCBData[0]);
+	if (psSGXReadHWPerfCBIN->entry_size != entry_size)
+		return -EINVAL;
+
+	ui32AllocatedSize = psSGXReadHWPerfCBIN->ui32ArraySize * entry_size;
 	ASSIGN_AND_EXIT_ON_ERROR(psSGXReadHWPerfCBOUT->eError,
 	                    OSAllocMem(PVRSRV_OS_PAGEABLE_HEAP,
 	                    ui32AllocatedSize,
