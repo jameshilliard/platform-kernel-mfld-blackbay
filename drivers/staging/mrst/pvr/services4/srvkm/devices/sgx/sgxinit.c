@@ -2751,6 +2751,9 @@ PVRSRV_ERROR SGXReadHWPerfCBKM(IMG_HANDLE					hDevHandle,
 		SGXMKIF_HWPERF_CB_ENTRY *psMKPerfEntry = &psHWPerfCB->psHWPerfCBData[psHWPerfCB->ui32Roff];
 
 		psClientHWPerfEntry[i].ui32FrameNo = psMKPerfEntry->ui32FrameNo;
+		psClientHWPerfEntry[i].ui32PID = psMKPerfEntry->ui32PID;
+		psClientHWPerfEntry[i].ui32RTData = psMKPerfEntry->ui32RTData;
+
 		psClientHWPerfEntry[i].ui32Type = psMKPerfEntry->ui32Type;
 		psClientHWPerfEntry[i].ui32Ordinal	= psMKPerfEntry->ui32Ordinal;
 		psClientHWPerfEntry[i].ui32Info	= psMKPerfEntry->ui32Info;
@@ -2760,6 +2763,11 @@ PVRSRV_ERROR SGXReadHWPerfCBKM(IMG_HANDLE					hDevHandle,
 		OSMemCopy(&psClientHWPerfEntry[i].ui32Counters[0][0],
 				  &psMKPerfEntry->ui32Counters[0][0],
 				  sizeof(psMKPerfEntry->ui32Counters));
+
+		OSMemCopy(&psClientHWPerfEntry[i].ui32MiscCounters[0][0],
+			&psMKPerfEntry->ui32MiscCounters[0][0],
+			sizeof(psMKPerfEntry->ui32MiscCounters));
+
 
 		psHWPerfCB->ui32Roff = (psHWPerfCB->ui32Roff + 1) & (SGXMKIF_HWPERF_CB_SIZE - 1);
 	}
