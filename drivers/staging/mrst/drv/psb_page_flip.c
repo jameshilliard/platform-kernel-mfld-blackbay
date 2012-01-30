@@ -219,6 +219,8 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 	PVRSRV_KERNEL_MEM_INFO *new_fb_mem_info, *current_fb_mem_info;
 	struct pending_flip *new_pending_flip;
 	struct psb_fpriv *priv;
+	struct drm_device *dev = crtc->dev;
+	struct psb_fbdev *fbdev = NULL;
 	unsigned long flags;
 	struct pvr_trcmd_flpreq *fltrace;
 
@@ -243,6 +245,14 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 	}
 
 	current_fb_mem_info = get_fb_meminfo(crtc->fb);
+
+	/* In page flip, change the psb_fb_helper.fb to the swapped fb.*/
+	if (dev->dev_private)
+		fbdev = ((struct drm_psb_private *)dev->dev_private)->fbdev;
+	if (fbdev)
+		fbdev->psb_fb_helper.fb = fb;
+	else
+		printk(KERN_ALERT "%s cannot find the fb\n", __func__);
 
 	crtc->fb = fb;
 
