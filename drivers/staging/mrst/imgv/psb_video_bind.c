@@ -48,6 +48,7 @@
 #include "pvrmodule.h"
 #include "sys_pvr_drm_export.h"
 #include "psb_pvr_glue.h"
+#include "psb_ttm_userobj_api.h"
 
 #include "perproc.h"
 
@@ -57,13 +58,14 @@ static int
 set_unset_ttm_st_gfx_buffer(
 	struct drm_file *file_priv,
 	struct page **pPageList,
+	int num_pages,
 	int handle,
 	int release)
 {
 	struct ttm_object_file *tfile = psb_fpriv(file_priv)->tfile;
 	struct ttm_buffer_object *bo = NULL;
 	struct ttm_tt *ttm = NULL;
-	int i;
+	int r = 0;
 
 	if (!handle) {
 		printk(KERN_ERR " : handle is NULL.\n");
@@ -76,18 +78,24 @@ set_unset_ttm_st_gfx_buffer(
 			" : Could not find buffer object for setstatus.\n");
 		return -EINVAL;
 	}
+
 	ttm = bo->ttm;
 
-	for (i = 0; i < ttm->num_pages; i++) {
-		if (release)
-			ttm->pages[i] = NULL;
-		else
-			ttm->pages[i] = pPageList[i];
+	if (!release && num_pages != ttm->num_pages) {
+		printk(KERN_ERR "%s: invalid number of pages\n", __func__);
+		r = -EINVAL;
+		goto out;
 	}
 
+	if (release)
+		drm_psb_unset_fixed_pages(ttm->be);
+	else
+		r = drm_psb_set_fixed_pages(ttm, pPageList, num_pages);
+
+out:
 	if (bo)
 		ttm_bo_unref(&bo);
-	return 0;
+	return r;
 }
 
 
@@ -149,7 +157,8 @@ psb_st_drm_tbe_bind(
 	if (ret)
 		printk(KERN_ERR "%s:Insert Pages failed for gralloc buffer\n",
 								__func__);
-	ret = set_unset_ttm_st_gfx_buffer(file_priv, pPageList, hTTMHandle, 0);
+	ret = set_unset_ttm_st_gfx_buffer(file_priv, pPageList, num_pages,
+			hTTMHandle, 0);
 	if (ret)
 		printk(KERN_ERR "ERORR: set_ttm_st_gfx_buffer failed.\n");
 	return ret;
@@ -192,7 +201,7 @@ psb_st_drm_tbe_unbind(
 
 	num_pages = (uiAllocSize + PAGE_SIZE - 1) / PAGE_SIZE;
 
-	if (set_unset_ttm_st_gfx_buffer(file_priv, NULL, hTTMHandle, 1)) {
+	if (set_unset_ttm_st_gfx_buffer(file_priv, NULL, 0, hTTMHandle, 1)) {
 		printk(KERN_ERR "%s:Failed to release TTM buffer\n", __func__);
 		return -EFAULT;
 	}
