@@ -1121,11 +1121,11 @@ static void ospm_suspend_display(struct drm_device *dev)
 
 	mdfld_save_display_registers(dev, 0);
 	mdfld_save_display_registers(dev, 2);
-	mdfld_save_display_registers(dev, 1);
+	android_hdmi_save_display_registers(dev);
 
 	mdfld_disable_crtc(dev, 0);
 	mdfld_disable_crtc(dev, 2);
-	mdfld_disable_crtc(dev, 1);
+	android_disable_hdmi(dev);
 
 	/* Put the panel in ULPS mode for S0ix. */
 	temp = REG_READ(device_ready_reg);
@@ -1173,7 +1173,7 @@ static void ospm_resume_display(struct drm_device *drm_dev)
 	 */
 	/*psb_gtt_init(dev_priv->pg, 1);*/
 
-	mdfld_restore_display_registers(drm_dev, 1);
+	android_hdmi_restore_and_enable_display(drm_dev);
 	mdfld_restore_display_registers(drm_dev, 0);
 	mdfld_restore_display_registers(drm_dev, 2);
 	mdfld_restore_cursor_overlay_registers(drm_dev);
