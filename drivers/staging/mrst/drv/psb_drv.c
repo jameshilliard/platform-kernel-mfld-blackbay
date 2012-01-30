@@ -1276,11 +1276,11 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 		psb_modeset_init(dev);
 		psb_fbdev_init(dev);
 		drm_kms_helper_poll_init(dev);
+		/* register HDMI hotplug interrupt
+		 * handle after psb_fbdev_init
+		 */
+		android_hdmi_enable_hotplug(dev);
 	}
-
-	/* initialize HDMI Hotplug interrupt forwarding
-	* notifications for user mode
-	*/
 
 	/*find handle to drm kboject*/
 	pdev = dev->pdev;
