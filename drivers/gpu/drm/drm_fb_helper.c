@@ -1423,8 +1423,13 @@ int drm_fb_helper_hotplug_event(struct drm_fb_helper *fb_helper)
 	}
 	DRM_DEBUG_KMS("\n");
 
-	max_width = fb_helper->fb->width;
-	max_height = fb_helper->fb->height;
+	/* Use max size from mode_config instead of fb size to enable inclusion
+	 * of higher resolution modes for external display.
+	 * Local display is configured with fb size.
+	 */
+	max_width = fb_helper->dev->mode_config.max_width;
+	max_height = fb_helper->dev->mode_config.max_height;
+
 	bpp_sel = fb_helper->fb->bits_per_pixel;
 
 	count = drm_fb_helper_probe_connector_modes(fb_helper, max_width,

@@ -442,8 +442,28 @@ static int psbfb_probe(struct drm_fb_helper *helper, struct drm_fb_helper_surfac
 	struct psb_fbdev * psb_fbdev = (struct psb_fbdev *)helper;
 	int new_fb = 0;
 	int ret;
+	struct drm_device *dev = helper->dev;
+	struct drm_display_mode *dsi_mode = NULL;
 
 	DRM_DEBUG("%s\n", __FUNCTION__);
+
+	/* Mode management between local and external displays:
+	 * Frame buffer and surface dimensions will always be equal to
+	 * local display mode value.
+	 */
+
+	if (sizes != NULL) {
+		/* local display desired mode */
+		dsi_mode = helper->crtc_info[0].desired_mode;
+		if (dsi_mode) {
+			DRM_INFO("setting fb and surface dimensions to %dx%d\n",
+					dsi_mode->hdisplay, dsi_mode->vdisplay);
+			sizes->fb_width  = dsi_mode->hdisplay;
+			sizes->fb_height = dsi_mode->vdisplay;
+			sizes->surface_width  = dsi_mode->hdisplay;
+			sizes->surface_height = dsi_mode->vdisplay;
+		}
+	}
 
 	if(!helper->fb) {
 		ret = psbfb_create(psb_fbdev, sizes);
