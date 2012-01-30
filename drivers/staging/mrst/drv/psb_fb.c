@@ -330,6 +330,7 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 	psbfb->fbdev = info;
 	fbdev->pfb = psbfb;
 
+	fb->helper_private = &(fbdev->psb_fb_helper);
 	fbdev->psb_fb_helper.fb = fb;
 	fbdev->psb_fb_helper.fbdev = info;
 	MRSTLFBHandleChangeFB(dev, psbfb);
@@ -384,6 +385,7 @@ static int psbfb_create(struct psb_fbdev * fbdev, struct drm_fb_helper_surface_s
 
 	psbfb->fbdev = info;
 
+	fb->helper_private = &(fbdev->psb_fb_helper);
 	fbdev->psb_fb_helper.fb = fb;
 	fbdev->psb_fb_helper.fbdev = info;
 	fbdev->pfb = psbfb;

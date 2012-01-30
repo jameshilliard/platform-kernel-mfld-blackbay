@@ -478,10 +478,13 @@ int drm_crtc_helper_set_config(struct drm_mode_set *set)
 	bool mode_changed = false; /* if true do a full mode set */
 	bool fb_changed = false; /* if true and !mode_changed just do a flip */
 	struct drm_connector *save_connectors, *connector;
+	struct drm_connector *hdmiconnector = NULL;
 	int count = 0, ro, fail = 0;
 	struct drm_crtc_helper_funcs *crtc_funcs;
 	int ret = 0;
 	int i;
+	/* true if this is triggerred from hotplug event*/
+	bool in_hotplug = false;
 
 	DRM_DEBUG_KMS("\n");
 
@@ -652,7 +655,34 @@ int drm_crtc_helper_set_config(struct drm_mode_set *set)
 
 	if (mode_changed) {
 		set->crtc->enabled = drm_helper_crtc_in_use(set->crtc);
-		if (set->crtc->enabled) {
+		/* check whether the crtc is used for HDMI output */
+		list_for_each_entry(connector,
+			&dev->mode_config.connector_list, head) {
+			if (!connector->encoder)
+				continue;
+			if ((connector->encoder->crtc == set->crtc) &&
+				(connector->connector_type
+					== DRM_MODE_CONNECTOR_DVID)) {
+				hdmiconnector = connector;
+				break;
+			}
+		}
+
+		/* check whether this is from HDMI hotplug */
+		if (set->fb) {
+			struct drm_fb_helper *fb_helper =
+				(struct drm_fb_helper *)set->fb->helper_private;
+			if (fb_helper)
+				in_hotplug = fb_helper->hotplug;
+		}
+
+		/* FIXME: This is workaround of i2c failure when setup local
+		 * MIPI in hotplug sequence.
+		 * We only set mode for HDMI pipe in HDMI hotplug sequence.
+		 * This should be reverted after fix the bug.
+		 */
+		if (set->crtc->enabled &&
+				(hdmiconnector || !in_hotplug)) {
 			DRM_DEBUG_KMS("attempting to set mode from"
 					" userspace\n");
 			drm_mode_debug_printmodeline(set->mode);

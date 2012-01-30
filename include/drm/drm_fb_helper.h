@@ -82,6 +82,8 @@ struct drm_fb_helper {
 	/* we got a hotplug but fbdev wasn't running the console
 	   delay until next set_par */
 	bool delayed_hotplug;
+	/* indicate we are in the process of one hotplug */
+	bool hotplug;
 };
 
 int drm_fb_helper_single_fb_probe(struct drm_fb_helper *helper,

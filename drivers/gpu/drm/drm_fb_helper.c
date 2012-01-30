@@ -1402,10 +1402,12 @@ int drm_fb_helper_hotplug_event(struct drm_fb_helper *fb_helper)
 	u32 max_width, max_height, bpp_sel;
 	bool bound = false, crtcs_bound = false;
 	struct drm_crtc *crtc;
+	int ret;
 
 	if (!fb_helper->fb)
 		return 0;
 
+	fb_helper->hotplug = true;
 	mutex_lock(&dev->mode_config.mutex);
 	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
 		if (crtc->fb)
@@ -1430,7 +1432,9 @@ int drm_fb_helper_hotplug_event(struct drm_fb_helper *fb_helper)
 	drm_setup_crtcs(fb_helper);
 	mutex_unlock(&dev->mode_config.mutex);
 
-	return drm_fb_helper_single_fb_probe(fb_helper, bpp_sel);
+	ret = drm_fb_helper_single_fb_probe(fb_helper, bpp_sel);
+	fb_helper->hotplug = false;
+	return ret;
 }
 EXPORT_SYMBOL(drm_fb_helper_hotplug_event);
 
