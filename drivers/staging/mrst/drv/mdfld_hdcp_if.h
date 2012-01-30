@@ -74,6 +74,5 @@ typedef struct _cp_parameters {
 
 extern uint32_t hdcp_set_cp_data(cp_parameters_t* cp);
 extern uint32_t hdcp_get_cp_data(cp_parameters_t* cp);
-void mdfld_hdcp_init(struct mid_intel_hdmi_priv *p_hdmi_priv);
 
 #endif /* MDFLD_HDCP_IF_H */

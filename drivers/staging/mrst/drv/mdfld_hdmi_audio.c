@@ -36,9 +36,9 @@
 /*
  *
  */
-static struct mid_intel_hdmi_priv *hdmi_priv;
+static struct android_hdmi_priv *hdmi_priv;
 
-void mdfld_hdmi_audio_init(struct mid_intel_hdmi_priv *p_hdmi_priv)
+void mdfld_hdmi_audio_init(struct android_hdmi_priv *p_hdmi_priv)
 {
 	hdmi_priv = p_hdmi_priv;
 }

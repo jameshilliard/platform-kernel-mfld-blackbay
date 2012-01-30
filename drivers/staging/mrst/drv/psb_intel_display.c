@@ -122,7 +122,7 @@ static bool psb_intel_crtc_mode_fixup(struct drm_crtc *crtc,
  * Return the pipe currently connected to the panel fitter,
  * or -1 if the panel fitter is not present or not in use
  */
-static int psb_intel_panel_fitter_pipe(struct drm_device *dev)
+int psb_intel_panel_fitter_pipe(struct drm_device *dev)
 {
 	u32 pfit_control;
 
@@ -1541,7 +1541,16 @@ static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 	struct drm_connector * connector;
 	int timeout = 0;
 
-	PSB_DEBUG_ENTRY("pipe = 0x%x \n", pipe);
+	PSB_DEBUG_ENTRY("pipe = 0x%x\n", pipe);
+
+	if (pipe == 1) {
+		if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND,
+				OSPM_UHB_FORCE_POWER_ON))
+			return 0;
+		android_hdmi_crtc_mode_set(crtc, mode, adjusted_mode,
+			x, y, old_fb);
+		goto mrst_crtc_mode_set_exit;
+	}
 
 	switch (pipe) {
 	case 0:

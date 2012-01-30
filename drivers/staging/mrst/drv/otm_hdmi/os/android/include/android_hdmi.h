@@ -65,6 +65,9 @@
 #define __ANDROID_HDMI_H
 
 #include <linux/types.h>
+#include "drm.h"
+#include "drmP.h"
+#include "drm_crtc.h"
 
 #define CEA_EXT     0x02
 #define VTB_EXT     0x10
@@ -279,6 +282,16 @@ extern const struct drm_connector_funcs mdfld_hdmi_connector_funcs;
 extern const struct drm_connector_helper_funcs
 			mdfld_hdmi_connector_helper_funcs;
 
+/* TODO: do this down the layers. */
+extern int psb_intel_panel_fitter_pipe(struct drm_device *dev);
+
+/* TODO: medfiled specific */
+extern void mdfld_hdmi_audio_init(struct android_hdmi_priv *p_hdmi_priv);
+
+extern void mdfld_msic_init(struct android_hdmi_priv *p_hdmi_priv);
+
+#ifdef CONFIG_MDFD_HDMI
+
 extern void android_hdmi_driver_init(struct drm_device *dev,
 						void *mode_dev);
 
@@ -322,13 +335,6 @@ extern int android_hdmi_crtc_mode_set(struct drm_crtc *crtc,
 extern void android_hdmi_enc_mode_set(struct drm_encoder *encoder,
 				struct drm_display_mode *mode,
 				struct drm_display_mode *adjusted_mode);
-
-/* TODO: do this down the layers. */
-extern int psb_intel_panel_fitter_pipe(struct drm_device *dev);
-
-/* TODO: medfiled specific */
-extern void mdfld_hdmi_audio_init(struct android_hdmi_priv *p_hdmi_priv);
-extern void mdfld_msic_init(struct android_hdmi_priv *p_hdmi_priv);
 
 /*
  * Allocates the hdmi buffers of specified dimensions.
@@ -393,5 +399,51 @@ extern enum drm_connector_status android_hdmi_detect(struct drm_connector
  */
 extern void android_hdmi_dpms(struct drm_encoder *encoder,
 				int mode);
+
+#else /* CONFIG_MDFD_HDMI */
+
+static inline void android_hdmi_driver_init(struct drm_device *dev,
+						void *mode_dev) {}
+
+static inline void android_hdmi_enable_hotplug(struct drm_device *dev) {}
+
+static inline void android_hdmi_driver_setup(struct drm_device *dev) {}
+
+static inline void android_hdmi_context_init(void *context) {}
+
+static inline int android_hdmi_mode_valid(struct drm_connector *connector,
+					struct drm_display_mode *mode) { return 0; }
+
+static inline int android_hdmi_get_modes(struct drm_connector *connector) { return 0; }
+
+static inline int android_hdmi_crtc_mode_set(struct drm_crtc *crtc,
+				struct drm_display_mode *mode,
+				struct drm_display_mode *adjusted_mode,
+				int x, int y,
+				struct drm_framebuffer *old_fb) { return 0; }
+
+static inline void android_hdmi_enc_mode_set(struct drm_encoder *encoder,
+				struct drm_display_mode *mode,
+				struct drm_display_mode *adjusted_mode) {}
+
+static inline int android_hdmi_setup_hdmibuffers(struct drm_device *psDrmDev,
+				u32 ui32HdmiWidth, u32 ui32HdmiHeight,
+				u32 ui32BufferCount, int bpp, u32 ui32LvdsWidth,
+				u32 ui32LvdsHeight) { return 0; }
+
+static inline void android_hdmi_restore_and_enable_display(struct drm_device *dev) {}
+
+static inline void android_hdmi_save_display_registers(struct drm_device *dev) {}
+
+static inline void android_disable_hdmi(struct drm_device *dev) {}
+
+static inline enum drm_connector_status android_hdmi_detect(struct drm_connector
+								*connector)
+{ return connector_status_disconnected; }
+static inline void android_hdmi_dpms(struct drm_encoder *encoder,
+				int mode) {}
+
+
+#endif /* CONFIG_MDFD_HDMI */
 
 #endif /* __ANDROID_HDMI_H */

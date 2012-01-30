@@ -31,6 +31,8 @@
 
 #include <linux/pci.h>
 #include <drm/drmP.h>
+#include <drm/drm_crtc.h>
+#include <linux/intel_mid_pm.h>
 #ifdef CONFIG_PM_RUNTIME
 #include <linux/pm_runtime.h>
 #endif
@@ -47,6 +49,10 @@
 #define IPC_MSG_PANEL_ON_OFF    0xE9
 #define IPC_CMD_PANEL_ON        1
 #define IPC_CMD_PANEL_OFF       0
+
+#define DISPLAY_A 0x1
+#define DISPLAY_B 0x2
+#define DISPLAY_C 0x4
 
 typedef enum _UHBUsage
 {

@@ -34,6 +34,4 @@
 int msic_regsiter_driver(void);
 int msic_unregister_driver(void);
 extern void hpd_notify_um (void);
-void mdfld_msic_init(struct mid_intel_hdmi_priv *p_hdmi_priv);
-
 #endif /* MDFLD_MSIC_H */

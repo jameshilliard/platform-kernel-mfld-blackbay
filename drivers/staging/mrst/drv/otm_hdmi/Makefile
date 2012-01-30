@@ -226,17 +226,15 @@ ifeq ($(CONFIG_MDFD_HDMI_GREENRIDGE),y)
    $(TARGET)-y += ipil/specific/oktl-sdv/ips_hdmi.o
    $(TARGET)-y += ipil/specific/oktl-sdv/ips_hdcp.o
    $(TARGET)-y += pil/specific/oktl/ps_hdmi.o
-   obj-$(CONFIG_DRM_MRST) += $(TARGET).o
 else ifeq ($(CONFIG_MDFD_HDMI_REDRIDGE),y)
       $(TARGET)-y += ipil/specific/mfld/ips_hdmi.o
       $(TARGET)-y += ipil/specific/mfld/ips_hdcp.o
       $(TARGET)-y += pil/specific/mfld/ps_hdmi.o
       $(TARGET)-y += pil/specific/mfld/ps_hdmi_tablet.o
-      obj-$(CONFIG_DRM_MDFLD) += $(TARGET).o
 else ifeq ($(CONFIG_MDFD_HDMI_PR2),y)
       $(TARGET)-y += ipil/specific/mfld/ips_hdmi.o
       $(TARGET)-y += ipil/specific/mfld/ips_hdcp.o
       $(TARGET)-y += pil/specific/mfld/ps_hdmi.o
       $(TARGET)-y += pil/specific/mfld/ps_hdmi_phone.o
-      obj-$(CONFIG_DRM_MDFLD) += $(TARGET).o
 endif
+obj-$(CONFIG_MDFD_HDMI) += $(TARGET).o

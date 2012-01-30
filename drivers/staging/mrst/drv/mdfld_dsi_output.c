@@ -469,6 +469,7 @@ mdfld_dsi_connector_detect(struct drm_connector *connector, bool force)
 	struct mdfld_dsi_connector *dsi_connector
 		= MDFLD_DSI_CONNECTOR(psb_output);
 
+	dsi_connector->status = connector_status_connected;
 	PSB_DEBUG_ENTRY("\n");
 
 	return dsi_connector->status;

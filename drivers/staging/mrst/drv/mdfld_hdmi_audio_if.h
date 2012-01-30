@@ -83,6 +83,4 @@ struct snd_intel_had_interface {
 extern int intel_hdmi_audio_query_capabilities (had_event_call_back audio_callbacks, struct hdmi_audio_registers_ops *reg_ops,struct hdmi_audio_query_set_ops *query_ops);
 extern  int display_register(struct snd_intel_had_interface *driver,void * had_data);
 
-void mdfld_hdmi_audio_init(struct mid_intel_hdmi_priv *p_hdmi_priv);
-
 #endif /* MDFLD_HDMI_AUDIO_IF_H */

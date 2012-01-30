@@ -38,8 +38,13 @@
 #include "mdfld_hdmi_audio_if.h"
 #include "mdfld_msic.h"
 #include "mdfld_hdcp_if.h"
+#include <linux/switch.h>
 #include <linux/pm_runtime.h>
 #include <asm/intel_scu_ipc.h>
+
+/* Global devices for switch class used for hotplug notification */
+struct switch_dev g_switch_hdmi_dev;
+struct switch_dev g_switch_dvi_dev;
 
 /* FIXME_MDFLD HDMI EDID supports */
 
@@ -176,48 +181,13 @@ static bool mdfld_hdmi_mode_fixup(struct drm_encoder *encoder,
        struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(encoder->crtc);
        PSB_DEBUG_ENTRY("hdisplay = %d, vdisplay = %d. a_hdisplay = %d, a_vdisplay = %d.\n", mode->hdisplay, mode->vdisplay, adjusted_mode->hdisplay, adjusted_mode->vdisplay);
 
-       /* Should never happen!! */
-       if (psb_intel_crtc->pipe != 1) {
-               printk(KERN_ERR
-                      "Only support HDMI on pipe B on MID \n");
-       }
-
-       /* FIXME: To make HDMI display with 1920x1080, 
-	* in 864x480 (TPO), 480x864 (PYR) or 480x854 (TMD) fixed mode. */
-       if ((mode->hdisplay == 864 && mode->vdisplay == 480)
-		       || (mode->hdisplay == 854 && mode->vdisplay == 480)
-		       || (mode->hdisplay == 480 && mode->vdisplay == 864)
-		       || (mode->hdisplay == 480 && mode->vdisplay == 854)) {
-	       adjusted_mode->hdisplay = 1920;
-	       adjusted_mode->htotal = 2200;
-	       adjusted_mode->hsync_start = 2008;
-	       adjusted_mode->hsync_end = 2052;
-	       adjusted_mode->hskew = 0;
-	       adjusted_mode->vdisplay = 1080;
-	       adjusted_mode->vtotal = 1125;
-	       adjusted_mode->vsync_start = 1084;
-	       adjusted_mode->vsync_end = 1089;
-	       adjusted_mode->vscan = 0;
-	       adjusted_mode->clock = 148500;
-
-	       /* Apply the adjusted mode to CRTC mode setting parameters. */
-	       drm_mode_set_crtcinfo(adjusted_mode, CRTC_INTERLACE_HALVE_V);
-       }
-
-#if 0 /* MDFLD_HDMI_JLIU7_HACKS */
-	if (mode->hdisplay == 864 && mode->vdisplay == 480) { 
-		adjusted_mode->hdisplay = 0x500;
-		adjusted_mode->htotal = 0x672;
-		adjusted_mode->hsync_start = 0x56e;
-		adjusted_mode->hsync_end = 0x596;
-		adjusted_mode->vdisplay = 0x2d0; 
-		adjusted_mode->vtotal = 0x2ee;
-		adjusted_mode->vsync_start = 0x2d5;
-		adjusted_mode->vsync_end = 0x2da;
-		drm_mode_set_crtcinfo(adjusted_mode,
-				CRTC_INTERLACE_HALVE_V);
+	/* Should never happen!! */
+	if (psb_intel_crtc->pipe != 1) {
+		printk(KERN_ERR
+			"Only support HDMI on pipe B on MID\n");
+		return false;
 	}
-#endif /* MDFLD_HDMI_JLIU7_HACKS */ /* Debug HDMI - Can't enalbe HDMI */
+
 #if 0 // MDFLD_HDMI_JLIU7_HACKS /* Debug HDMI - Can't enalbe HDMI */
 #if 1 /* 720p - Adeel */
 	adjusted_mode->hdisplay = 0x500;
@@ -328,10 +298,10 @@ static void mdfld_hdmi_dpms(struct drm_encoder *encoder, int mode)
 {
 	struct drm_device *dev = encoder->dev;
 	struct psb_intel_output *output = enc_to_psb_intel_output(encoder);
-	struct mid_intel_hdmi_priv *hdmi_priv = output->dev_priv;
+	struct android_hdmi_priv *hdmi_priv = output->dev_priv;
 	u32 hdmib, hdmi_phy_misc;
 
-	PSB_DEBUG_ENTRY("%s \n", mode == DRM_MODE_DPMS_ON ? "on" : "off");
+	PSB_DEBUG_ENTRY("%s\n", mode == DRM_MODE_DPMS_ON ? "on" : "off");
 
 	hdmib = REG_READ(hdmi_priv->hdmib_reg) | HDMIB_PIPE_B_SELECT | HDMIB_NULL_PACKET;
 	hdmi_phy_misc = REG_READ(HDMIPHYMISCCTL);
@@ -986,30 +956,30 @@ static void psb_intel_lvds_enc_destroy(struct drm_encoder *encoder)
 }
 
 /* Note: taken from psb_intel_lvds.c */
-static const struct drm_encoder_funcs psb_intel_lvds_enc_funcs = {
+const struct drm_encoder_funcs psb_intel_lvds_enc_funcs = {
 	.destroy = psb_intel_lvds_enc_destroy,
 };
 
-static const struct drm_encoder_helper_funcs mdfld_hdmi_helper_funcs = {
+const struct drm_encoder_helper_funcs mdfld_hdmi_helper_funcs = {
 	.dpms = mdfld_hdmi_dpms,
 	.mode_fixup = mdfld_hdmi_mode_fixup,
 	.prepare = psb_intel_encoder_prepare,
-	.mode_set = mdfld_hdmi_mode_set,
+	.mode_set = android_hdmi_enc_mode_set,
 	.commit = psb_intel_encoder_commit,
 };
 
-static const struct drm_connector_helper_funcs
+const struct drm_connector_helper_funcs
     mdfld_hdmi_connector_helper_funcs = {
-	.get_modes = mdfld_hdmi_get_modes,
-	.mode_valid = mdfld_hdmi_mode_valid,
+	.get_modes = android_hdmi_get_modes,
+	.mode_valid = android_hdmi_mode_valid,
 	.best_encoder = psb_intel_best_encoder,
 };
 
-static const struct drm_connector_funcs mdfld_hdmi_connector_funcs = {
+const struct drm_connector_funcs mdfld_hdmi_connector_funcs = {
 	.dpms = mdfld_hdmi_connector_dpms,
 	.save = mdfld_hdmi_save,
 	.restore = mdfld_hdmi_restore,
-	.detect = mdfld_hdmi_detect,
+	.detect = android_hdmi_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
 	.set_property = mdfld_hdmi_set_property,
 	.destroy = psb_intel_lvds_destroy,
@@ -1018,68 +988,28 @@ static const struct drm_connector_funcs mdfld_hdmi_connector_funcs = {
 void mdfld_hdmi_init(struct drm_device *dev,
 		    struct psb_intel_mode_device *mode_dev)
 {
-#if 0
-	DRM_DRIVER_PRIVATE_T *dev_priv = dev->dev_private;
-#endif 
-	struct psb_intel_output *psb_intel_output;
-	struct drm_connector *connector;
-	struct drm_encoder *encoder;
-	struct mid_intel_hdmi_priv *hdmi_priv;
-
 	PSB_DEBUG_ENTRY("\n");
 
-	psb_intel_output = kzalloc(sizeof(struct psb_intel_output) +
-			       sizeof(struct mid_intel_hdmi_priv), GFP_KERNEL);
-	if (!psb_intel_output)
-		return;
+	android_hdmi_driver_init(dev, (void *) mode_dev);
 
-	hdmi_priv = (struct mid_intel_hdmi_priv *)(psb_intel_output + 1);
-	psb_intel_output->mode_dev = mode_dev;
-	connector = &psb_intel_output->base;
-	encoder = &psb_intel_output->enc;
-	drm_connector_init(dev, &psb_intel_output->base,
-			   &mdfld_hdmi_connector_funcs,
-			   DRM_MODE_CONNECTOR_DVID);
+	/* turn on HDMI power rails. These will be on in all non-S0iX
+	 * states so that HPD and connection status will work. VCC330
+	 * will have ~1.7mW usage during idle states when the display
+	 * is active.
+	 */
+	intel_scu_ipc_iowrite8(MSIC_VCC330CNT, VCC330_ON);
 
-	drm_encoder_init(dev, &psb_intel_output->enc, &psb_intel_lvds_enc_funcs,
-			 DRM_MODE_ENCODER_TMDS);
+	/* MSIC documentation requires that there be a 500us delay
+	 * after enabling VCC330 before you can enable VHDMI
+	 */
+	usleep_range(500, 1000);
 
-	drm_mode_connector_attach_encoder(&psb_intel_output->base,
-					  &psb_intel_output->enc);
-	psb_intel_output->type = INTEL_OUTPUT_HDMI;
-	/*FIXME: May need to get this somewhere, but CG code seems hard coded it*/
-	hdmi_priv->hdmib_reg = HDMIB_CONTROL;
-	hdmi_priv->has_hdmi_sink = false;
-	psb_intel_output->dev_priv = hdmi_priv;
+	/* Extend VHDMI switch de-bounce time, to avoid redundant MSIC
+	 * VREG/HDMI interrupt during HDMI cable plugged
+	 * in/out.
+	 */
+	intel_scu_ipc_iowrite8(MSIC_VHDMICNT, VHDMI_ON | VHDMI_DB_30MS);
 
-	drm_encoder_helper_add(encoder, &mdfld_hdmi_helper_funcs);
-	drm_connector_helper_add(connector,
-				 &mdfld_hdmi_connector_helper_funcs);
-	connector->display_info.subpixel_order = SubPixelHorizontalRGB;
-	connector->interlace_allowed = false;
-	connector->doublescan_allowed = false;
-
-	drm_connector_attach_property(connector, dev->mode_config.scaling_mode_property, DRM_MODE_SCALE_FULLSCREEN);
-
-	/* hard-coded the HDMI_I2C_ADAPTER_ID to be 3, Should get from GCT*/
-	psb_intel_output->hdmi_i2c_adapter = i2c_get_adapter(3);
-
-	if (psb_intel_output->hdmi_i2c_adapter) {
-     		/* HACKS_JLIU7 */
-		DRM_INFO("Enter mdfld_hdmi_init, i2c_adapter is availabe.\n");
-	
-	} else {
-		printk(KERN_ALERT "No ddc adapter available!\n");
-	}
-
-	hdmi_priv->is_hdcp_supported = true;
-	hdmi_priv->hdmi_i2c_adapter = psb_intel_output->hdmi_i2c_adapter;
-	hdmi_priv->dev = dev; 
-	mdfld_hdcp_init(hdmi_priv);
-	mdfld_hdmi_audio_init(hdmi_priv);
-	mdfld_msic_init(hdmi_priv);
-
-	drm_sysfs_connector_add(connector);
 	return;
 }
 #endif

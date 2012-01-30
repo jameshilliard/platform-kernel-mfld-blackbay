@@ -82,7 +82,7 @@ void mdfld_output_init(struct drm_device* dev)
 
 #ifdef CONFIG_MDFD_HDMI
 	/* HDMI panel */
-	init_panel(dev, 0, HDMI);
+	init_panel(dev, 1, HDMI);
 #endif
 }
 
@@ -125,10 +125,15 @@ void init_panel(struct drm_device* dev, int mipi_pipe, enum panel_type p_type)
 	case TMD:
 		break;
 	case HDMI:
-		/*hdmi_init(dev);*/
-		printk(KERN_ALERT "GFX: Initializing HDMI");
-		mdfld_hdmi_init(dev, &dev_priv->mode_dev);
-		/*hdmi_output_init(dev);*/
+		if (dev_priv && dev_priv->hdmi_present) {
+			printk(KERN_ALERT "GFX: Initializing HDMI");
+			mdfld_hdmi_init(dev, &dev_priv->mode_dev);
+		} else {
+			printk(KERN_ERR "HDMI dev priv should not be null"
+			       "at this time!\n");
+			BUG();
+		}
+
 		break;
 	default:
 		break;

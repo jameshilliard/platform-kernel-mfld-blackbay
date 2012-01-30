@@ -495,6 +495,7 @@ struct drm_psb_private {
 	*/
 	uint32_t ospm_base;
 	spinlock_t ospm_lock;
+	uint8_t panel_desc;
 
 	/*
 	 * Sizes info
@@ -524,6 +525,13 @@ struct drm_psb_private {
 
 	struct bdb_lvds_backlight *lvds_bl; /*LVDS backlight info from VBT*/
 	struct psb_intel_i2c_chan *lvds_i2c_bus;
+
+	/*
+	 * HDMI info
+	 */
+	struct android_hdmi_priv *hdmi_priv;
+	/* TODO: choose either hdmi_present or HDMI_enable in this struct.*/
+	uint32_t hdmi_present;
 
 	/* Feature bits from the VBIOS*/
 	unsigned int int_tv_support:1;

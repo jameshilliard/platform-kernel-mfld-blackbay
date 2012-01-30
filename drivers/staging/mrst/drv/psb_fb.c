@@ -303,6 +303,7 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 	if (!info)
 		return ERR_PTR(-ENOMEM);
 
+	info->par = fbdev;
 	strcpy(info->fix.id, "psbfb");
 
 	info->flags = FBINFO_DEFAULT;

@@ -60,6 +60,8 @@
 
 #include "bufferclass_video_linux.h"
 
+#include "android_hdmi.h"
+
 int drm_psb_debug;
 /*EXPORT_SYMBOL(drm_psb_debug); */
 static int drm_psb_trap_pagefaults;
@@ -1117,6 +1119,9 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 
 	if (!dev_priv->sgx_reg)
 		goto out_err;
+
+	/* setup hdmi driver */
+	android_hdmi_driver_setup(dev);
 
 	mrst_get_fuse_settings(dev);
 	mrst_get_vbt_data(dev_priv);
@@ -2507,10 +2512,6 @@ static int __init psb_init(void)
 		return ret;
 	}
 
-#ifdef CONFIG_MDFD_HDMI
-	msic_regsiter_driver();
-#endif
-
 	return ret;
 }
 
@@ -2522,9 +2523,6 @@ static void __exit psb_exit(void)
 	if (ret != 0) {
 		return;
 	}
-#ifdef CONFIG_MDFD_HDMI
-	msic_unregister_driver();
-#endif
 	drm_pci_exit(&driver, &psb_pci_driver);
 }
 
