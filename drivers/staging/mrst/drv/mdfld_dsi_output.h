@@ -43,6 +43,7 @@
 
 #include <asm/mrst.h>
 
+#define MDFLD_DSI_BRIGHTNESS_MAX_LEVEL 100
 
 #ifdef DEBUG
 #define CHECK_PIPE(pipe) ({			\

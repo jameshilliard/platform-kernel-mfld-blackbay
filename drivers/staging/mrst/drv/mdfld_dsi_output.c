@@ -30,10 +30,9 @@
 #include "mdfld_dsi_dpi.h"
 #include "mdfld_output.h"
 #include "mdfld_dsi_pkg_sender.h"
+#include "tc35876x-dsi-lvds.h"
 #include <linux/pm_runtime.h>
 #include <asm/intel_scu_ipc.h>
-
-#define MDFLD_DSI_BRIGHTNESS_MAX_LEVEL 100
 
 /* get the CABC LABC from command line. */
 static int CABC_control = 1;
@@ -200,29 +199,6 @@ void mdfld_dsi_brightness_init (struct mdfld_dsi_config * dsi_config, int pipe)
 		return;
 
 	mdfld_dsi_send_mcs_short(sender, write_ctrl_cabc, UI_IMAGE, 1, true);
-}
-
-/**
- * Manage the mipi display brightness.
- * TODO: refine this interface later
- */
-#define PWM0DUTYCYCLE			0x67
-static void tc35876x_brightness_control(struct drm_device *dev, int pipe,
-					int level)
-{
-	int ret;
-	u8 duty_val;
-
-	level = clamp(level, 0, MDFLD_DSI_BRIGHTNESS_MAX_LEVEL);
-
-	/* PWM duty cycle 0x00...0x63 corresponds to 0...99% */
-	duty_val = level * 0x63 / MDFLD_DSI_BRIGHTNESS_MAX_LEVEL;
-
-	PSB_DEBUG_ENTRY("level = %d, duty_val = %d\n", level, duty_val);
-
-	ret = intel_scu_ipc_iowrite8(PWM0DUTYCYCLE, duty_val);
-	if (ret)
-		printk(KERN_ERR "[DISPLAY] %s: ipc write fail\n", __func__);
 }
 
 void mdfld_dsi_brightness_control (struct drm_device *dev, int pipe, int level)

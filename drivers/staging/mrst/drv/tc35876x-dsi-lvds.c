@@ -27,6 +27,8 @@
 #include "mdfld_dsi_pkg_sender.h"
 #include "tc35876x-dsi-lvds.h"
 #include <linux/i2c/tc35876x.h>
+#include <linux/kernel.h>
+#include <asm/intel_scu_ipc.h>
 
 static struct i2c_client *tc35876x_client;
 static struct i2c_client *cmi_lcd_i2c_client;
@@ -418,6 +420,27 @@ void tc35876x_configure_lvds_bridge(struct drm_device *dev)
 	/* Clear notifications. Don't write reserved bits. Was write 0xffffffff
 	 * to 0x0288, must be in error?! */
 	tc35876x_regw(i2c, DSI_INTCLR, FLD_MASK(31, 30) | FLD_MASK(22, 0));
+}
+
+#define PWM0DUTYCYCLE			0x67
+
+void tc35876x_brightness_control(struct drm_device *dev, int pipe,
+				int level)
+{
+	int ret;
+	u8 duty_val;
+
+	level = clamp(level, 0, MDFLD_DSI_BRIGHTNESS_MAX_LEVEL);
+
+	/* PWM duty cycle 0x00...0x63 corresponds to 0...99% */
+	duty_val = level * 0x63 / MDFLD_DSI_BRIGHTNESS_MAX_LEVEL;
+
+	printk(KERN_DEBUG "[DISPLAY] %s: level = %d, duty_val = %d\n", __func__,
+	       level, duty_val);
+
+	ret = intel_scu_ipc_iowrite8(PWM0DUTYCYCLE, duty_val);
+	if (ret)
+		printk(KERN_ERR "[DISPLAY] %s: ipc write fail\n", __func__);
 }
 
 void tc35876x_toshiba_bridge_panel_off(void)
