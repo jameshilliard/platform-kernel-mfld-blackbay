@@ -34,30 +34,12 @@
 #include <linux/pm_runtime.h>
 #include <asm/intel_scu_ipc.h>
 
-/* get the CABC LABC from command line. */
-static int CABC_control = 1;
+/* get the LABC from command line. */
 static int LABC_control = 1;
 
 #ifdef MODULE
-module_param (CABC_control, int, 0644);
 module_param (LABC_control, int, 0644);
 #else
-static int __init parse_CABC_control(char *arg)
-{
-	/* CABC control can be passed in as a cmdline parameter */
-	/* to enable this feature add CABC=1 to cmdline */
-	/* to disable this feature add CABC=0 to cmdline */
-	if (!arg)
-		return -EINVAL;
-
-	if (!strcasecmp(arg, "0"))
-		CABC_control = 0;
-	else if (!strcasecmp (arg, "1"))
-		CABC_control = 1;
-
-	return 0;
-}
-early_param ("CABC", parse_CABC_control);
 
 static int __init parse_LABC_control(char *arg)
 {
@@ -184,7 +166,7 @@ void mdfld_dsi_brightness_init (struct mdfld_dsi_config * dsi_config, int pipe)
 	
 	/* Enable backlight or/and LABC */
 	gen_ctrl_val = BRIGHT_CNTL_BLOCK_ON | DISPLAY_DIMMING_ON| BACKLIGHT_ON;
-	if (LABC_control == 1 || CABC_control == 1)
+	if (LABC_control == 1)
 		gen_ctrl_val |= DISPLAY_DIMMING_ON| DISPLAY_BRIGHTNESS_AUTO | GAMMA_AUTO;
 
 	if (LABC_control == 1)
@@ -194,9 +176,6 @@ void mdfld_dsi_brightness_init (struct mdfld_dsi_config * dsi_config, int pipe)
 	
 	mdfld_dsi_send_mcs_short(sender, write_ctrl_display, (u8)gen_ctrl_val,
 				1, true);
-
-	if (CABC_control == 0)
-		return;
 
 	mdfld_dsi_send_mcs_short(sender, write_ctrl_cabc, UI_IMAGE, 1, true);
 }

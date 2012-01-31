@@ -429,18 +429,30 @@ void tc35876x_brightness_control(struct drm_device *dev, int pipe,
 {
 	int ret;
 	u8 duty_val;
+	u8 panel_duty_val;
 
 	level = clamp(level, 0, MDFLD_DSI_BRIGHTNESS_MAX_LEVEL);
 
 	/* PWM duty cycle 0x00...0x63 corresponds to 0...99% */
 	duty_val = level * 0x63 / MDFLD_DSI_BRIGHTNESS_MAX_LEVEL;
 
-	printk(KERN_DEBUG "[DISPLAY] %s: level = %d, duty_val = %d\n", __func__,
-	       level, duty_val);
+	/* I won't pretend to understand this formula. The panel spec is quite
+	 * bad engrish.
+	 */
+	panel_duty_val = (2 * level - 100) * 0xA9 /
+			 MDFLD_DSI_BRIGHTNESS_MAX_LEVEL + 0x56;
 
 	ret = intel_scu_ipc_iowrite8(PWM0DUTYCYCLE, duty_val);
 	if (ret)
 		printk(KERN_ERR "[DISPLAY] %s: ipc write fail\n", __func__);
+
+	if (cmi_lcd_i2c_client) {
+		ret = i2c_smbus_write_byte_data(cmi_lcd_i2c_client,
+						PANEL_PWM_MAX, panel_duty_val);
+		if (ret < 0)
+			printk(KERN_ERR "[DISPLAY] %s: i2c write failed\n",
+			       __func__);
+	}
 }
 
 void tc35876x_toshiba_bridge_panel_off(void)
@@ -478,14 +490,31 @@ void tc35876x_toshiba_bridge_panel_on(void)
 	}
 
 	if (cmi_lcd_i2c_client) {
-		int r;
-
-		dev_dbg(&cmi_lcd_i2c_client->dev, "bypass panel PWM\n");
-
-		r = i2c_smbus_write_byte_data(cmi_lcd_i2c_client, 0x9b, 0x40);
-		if (r < 0)
+		int ret;
+		dev_dbg(&cmi_lcd_i2c_client->dev, "setting TCON\n");
+		/* Bit 4 is average_saving. Setting it to 1, the brightness is
+		 * referenced to the average of the frame content. 0 means
+		 * reference to the maximum of frame contents. Bits 3:0 are
+		 * allow_distort. When set to a nonzero value, all color values
+		 * between 255-allow_distort*2 and 255 are mapped to the
+		 * 255-allow_distort*2 value.
+		 */
+		ret = i2c_smbus_write_byte_data(cmi_lcd_i2c_client,
+						PANEL_ALLOW_DISTORT, 0x10);
+		if (ret < 0)
 			dev_err(&cmi_lcd_i2c_client->dev,
-				"i2c write failed (%d)\n", r);
+				"i2c write failed (%d)\n", ret);
+		ret = i2c_smbus_write_byte_data(cmi_lcd_i2c_client,
+						PANEL_BYPASS_PWMI, 0);
+		if (ret < 0)
+			dev_err(&cmi_lcd_i2c_client->dev,
+				"i2c write failed (%d)\n", ret);
+		/* Set minimum brightness value - this is tunable */
+		ret = i2c_smbus_write_byte_data(cmi_lcd_i2c_client,
+						PANEL_PWM_MIN, 0x35);
+		if (ret < 0)
+			dev_err(&cmi_lcd_i2c_client->dev,
+				"i2c write failed (%d)\n", ret);
 	}
 
 	if (pdata->gpio_panel_bl_en != -1)
