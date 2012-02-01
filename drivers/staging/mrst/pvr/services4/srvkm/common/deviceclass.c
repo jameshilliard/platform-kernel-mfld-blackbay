@@ -1310,12 +1310,14 @@ PVRSRV_ERROR PVRSRVSwapToDCBufferKM(IMG_HANDLE	hDeviceKM,
 	PVRSRV_ERROR eError;
 	PVRSRV_DISPLAYCLASS_INFO *psDCInfo;
 	PVRSRV_DC_BUFFER *psBuffer;
+	PVRSRV_DC_BUFFER *last_buf;
 	PVRSRV_QUEUE_INFO *psQueue;
 	DISPLAYCLASS_FLIP_COMMAND *psFlipCmd;
 	IMG_UINT32 i;
 	IMG_BOOL bAddReferenceToLast = IMG_TRUE;
 	IMG_UINT16 ui16SwapCommandID = DC_FLIP_COMMAND;
 	IMG_UINT32 ui32NumSrcSyncs = 1;
+	PVRSRV_KERNEL_SYNC_INFO *old_syn;
 	PVRSRV_KERNEL_SYNC_INFO *apsSrcSync[2];
 	PVRSRV_COMMAND *psCommand;
 	struct pvr_trcmd_flpreq *fltrace;
@@ -1364,22 +1366,17 @@ PVRSRV_ERROR PVRSRVSwapToDCBufferKM(IMG_HANDLE	hDeviceKM,
 	
 	psQueue = psBuffer->psSwapChain->psQueue;
 
-	
 	apsSrcSync[0] = psBuffer->sDeviceClassBuffer.psKernelSyncInfo;
-	
-
-
-	if(bAddReferenceToLast && psBuffer->psSwapChain->psLastFlipBuffer &&
-		psBuffer != psBuffer->psSwapChain->psLastFlipBuffer)
-	{
-		apsSrcSync[1] = psBuffer->psSwapChain->psLastFlipBuffer->sDeviceClassBuffer.psKernelSyncInfo;
-		
-
-
-		ui32NumSrcSyncs++;
+	old_syn = NULL;
+	last_buf = psBuffer->psSwapChain->psLastFlipBuffer;
+	if (last_buf) {
+		old_syn = last_buf->sDeviceClassBuffer.psKernelSyncInfo;
+		if (bAddReferenceToLast && psBuffer != last_buf) {
+			apsSrcSync[1] = old_syn;
+			ui32NumSrcSyncs++;
+		}
 	}
 
-	
 	eError = PVRSRVInsertCommandKM (psQueue,
 									&psCommand,
 									psDCInfo->ui32DeviceID,
@@ -1392,8 +1389,8 @@ PVRSRV_ERROR PVRSRVSwapToDCBufferKM(IMG_HANDLE	hDeviceKM,
 	fltrace = pvr_trcmd_reserve(PVR_TRCMD_FLPREQ, psPerProc->ui32PID,
 				  psPerProc->name, sizeof(*fltrace));
 	pvr_trcmd_set_syn(&fltrace->new_syn, apsSrcSync[0]);
-	if (ui32NumSrcSyncs > 1)
-		pvr_trcmd_set_syn(&fltrace->old_syn, apsSrcSync[1]);
+	if (old_syn)
+		pvr_trcmd_set_syn(&fltrace->old_syn, old_syn);
 	else
 		pvr_trcmd_clear_syn(&fltrace->old_syn);
 

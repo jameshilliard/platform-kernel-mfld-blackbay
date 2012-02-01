@@ -267,7 +267,7 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 				current_fb_mem_info->psKernelSyncInfo);
 	else
 		pvr_trcmd_clear_syn(&fltrace->old_syn);
-	pvr_trcmd_clear_syn(&fltrace->new_syn);
+	pvr_trcmd_set_syn(&fltrace->new_syn, new_fb_mem_info->psKernelSyncInfo);
 	pvr_trcmd_commit(fltrace);
 
 
