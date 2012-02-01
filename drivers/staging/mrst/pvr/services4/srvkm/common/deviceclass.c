@@ -1391,11 +1391,11 @@ PVRSRV_ERROR PVRSRVSwapToDCBufferKM(IMG_HANDLE	hDeviceKM,
 									sizeof(DISPLAYCLASS_FLIP_COMMAND) + (sizeof(IMG_RECT) * ui32ClipRectCount));
 	fltrace = pvr_trcmd_reserve(PVR_TRCMD_FLPREQ, psPerProc->ui32PID,
 				  psPerProc->name, sizeof(*fltrace));
-	pvr_trcmd_set_syn(&fltrace->src_syn[0], apsSrcSync[0]);
+	pvr_trcmd_set_syn(&fltrace->new_syn, apsSrcSync[0]);
 	if (ui32NumSrcSyncs > 1)
-		pvr_trcmd_set_syn(&fltrace->src_syn[1], apsSrcSync[1]);
+		pvr_trcmd_set_syn(&fltrace->old_syn, apsSrcSync[1]);
 	else
-		pvr_trcmd_clear_syn(&fltrace->src_syn[1]);
+		pvr_trcmd_clear_syn(&fltrace->old_syn);
 
 	pvr_trcmd_commit(fltrace);
 

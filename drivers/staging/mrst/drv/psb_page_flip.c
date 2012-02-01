@@ -263,11 +263,11 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 	fltrace = pvr_trcmd_reserve(PVR_TRCMD_FLPREQ, task_tgid_nr(current),
 				  current->comm, sizeof(*fltrace));
 	if (current_fb_mem_info && current_fb_mem_info->psKernelSyncInfo)
-		pvr_trcmd_set_syn(&fltrace->src_syn[0],
+		pvr_trcmd_set_syn(&fltrace->old_syn,
 				current_fb_mem_info->psKernelSyncInfo);
 	else
-		pvr_trcmd_clear_syn(&fltrace->src_syn[0]);
-	pvr_trcmd_clear_syn(&fltrace->src_syn[1]);
+		pvr_trcmd_clear_syn(&fltrace->old_syn);
+	pvr_trcmd_clear_syn(&fltrace->new_syn);
 	pvr_trcmd_commit(fltrace);
 
 

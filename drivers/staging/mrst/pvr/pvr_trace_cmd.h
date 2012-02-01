@@ -68,7 +68,8 @@ struct pvr_trcmd_sgxtransfer {
 };
 
 struct pvr_trcmd_flpreq {
-	struct pvr_trcmd_syn	src_syn[2];
+	struct pvr_trcmd_syn	old_syn;
+	struct pvr_trcmd_syn	new_syn;
 };
 
 enum pvr_trcmd_device {

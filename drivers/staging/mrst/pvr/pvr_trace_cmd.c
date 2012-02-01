@@ -145,15 +145,9 @@ static size_t trcmd_prn_flpreq(char *dst, size_t dst_size, const void *tbuf)
 {
 	const struct pvr_trcmd_flpreq *d = tbuf;
 	size_t len = 0;
-	int i;
 
-	for (i = 0; i < ARRAY_SIZE(d->src_syn); i++) {
-		char sname[10];
-
-		snprintf(sname, sizeof(sname), "src_syn%d", i);
-		len += prn_syn(sname, &dst[len], dst_size - len,
-			       &d->src_syn[i]);
-	}
+	len += prn_syn("old_syn ", &dst[len], dst_size - len, &d->old_syn);
+	len += prn_syn("new_syn ", &dst[len], dst_size - len, &d->new_syn);
 
 	return len;
 }
