@@ -6,7 +6,8 @@ void pvr_debugfs_hwrec_create_snapshot(PVRSRV_DEVICE_NODE *dev_node);
 int pvr_debugfs_init(void);
 void pvr_debugfs_cleanup(void);
 #else
-void pvr_debugfs_hwrec_create_snapshot(PVRSRV_DEVICE_NODE *dev_node)
+static inline void pvr_debugfs_hwrec_create_snapshot(
+		PVRSRV_DEVICE_NODE *dev_node)
 {
 }
 static inline int pvr_debugfs_init(void)
