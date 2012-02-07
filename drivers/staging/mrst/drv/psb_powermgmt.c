@@ -1515,31 +1515,21 @@ bool ospm_power_using_hw_begin(int hw_island, bool force_on)
 		break;
 
 	case OSPM_VIDEO_DEC_ISLAND:
-		if (!ospm_power_is_hw_on(OSPM_DISPLAY_ISLAND)) {
-			ospm_resume_display(drm_dev);
-			psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
-			psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
-		}
-		if (!ospm_power_is_hw_on(OSPM_VIDEO_DEC_ISLAND)) {
-			ospm_power_island_up(OSPM_VIDEO_DEC_ISLAND);
-			ospm_runtime_pm_msvdx_resume(drm_dev);
-			psb_irq_preinstall_islands(drm_dev, OSPM_VIDEO_DEC_ISLAND);
-			psb_irq_postinstall_islands(drm_dev, OSPM_VIDEO_DEC_ISLAND);
-		}
+		WARN_ON(!ospm_power_is_hw_on(OSPM_DISPLAY_ISLAND));
+
+		ospm_power_island_up(OSPM_VIDEO_DEC_ISLAND);
+		ospm_runtime_pm_msvdx_resume(drm_dev);
+		psb_irq_preinstall_islands(drm_dev, OSPM_VIDEO_DEC_ISLAND);
+		psb_irq_postinstall_islands(drm_dev, OSPM_VIDEO_DEC_ISLAND);
 		break;
 
 	case OSPM_VIDEO_ENC_ISLAND:
-		if (!ospm_power_is_hw_on(OSPM_DISPLAY_ISLAND)) {
-			ospm_resume_display(drm_dev);
-			psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
-			psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
-		}
-		if (!ospm_power_is_hw_on(OSPM_VIDEO_ENC_ISLAND)) {
-			ospm_power_island_up(OSPM_VIDEO_ENC_ISLAND);
-			ospm_runtime_pm_topaz_resume(drm_dev);
-			psb_irq_preinstall_islands(drm_dev, OSPM_VIDEO_ENC_ISLAND);
-			psb_irq_postinstall_islands(drm_dev, OSPM_VIDEO_ENC_ISLAND);
-		}
+		WARN_ON(!ospm_power_is_hw_on(OSPM_DISPLAY_ISLAND));
+
+		ospm_power_island_up(OSPM_VIDEO_ENC_ISLAND);
+		ospm_runtime_pm_topaz_resume(drm_dev);
+		psb_irq_preinstall_islands(drm_dev, OSPM_VIDEO_ENC_ISLAND);
+		psb_irq_postinstall_islands(drm_dev, OSPM_VIDEO_ENC_ISLAND);
 		break;
 
 	default:
