@@ -51,10 +51,6 @@
 #define IPC_CMD_PANEL_ON        1
 #define IPC_CMD_PANEL_OFF       0
 
-#define DISPLAY_A 0x1
-#define DISPLAY_B 0x2
-#define DISPLAY_C 0x4
-
 //extern int psb_check_msvdx_idle(struct drm_device *dev);
 //extern int lnc_check_topaz_idle(struct drm_device *dev);
 /* Use these functions to power down video HW for D0i3 purpose  */

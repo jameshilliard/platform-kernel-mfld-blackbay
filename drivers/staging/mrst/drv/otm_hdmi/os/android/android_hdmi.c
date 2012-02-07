@@ -1452,7 +1452,6 @@ enum drm_connector_status android_hdmi_detect(struct drm_connector *connector)
 					OSPM_ISLAND_UP, OSPM_REG_TYPE))
 			BUG();
 
-		dev_priv->panel_desc |= DISPLAY_B;
 		return connector_status_connected;
 	} else {
 		/*

@@ -490,11 +490,6 @@ struct drm_psb_private {
 	struct drm_psb_sarea *sarea_priv;
 
 	/*
-	*OSPM info
-	*/
-	uint8_t panel_desc;
-
-	/*
 	 * Sizes info
 	 */
 
