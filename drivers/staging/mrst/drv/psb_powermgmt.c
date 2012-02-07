@@ -1501,14 +1501,6 @@ bool ospm_power_using_hw_begin(int hw_island, bool force_on)
 
 	gbResumeInProgress = true;
 
-	ret = ospm_resume_pci(drm_dev->pdev);
-	if (!ret) {
-		printk(KERN_ALERT "ospm_power_using_hw_begin: forcing on %d failed\n", hw_island);
-		gbResumeInProgress = false;
-		pm_runtime_put(&drm_dev->pdev->dev);
-		goto out_unlock;
-	}
-
 	switch (hw_island) {
 	case OSPM_DISPLAY_ISLAND:
 		ospm_resume_display(drm_dev);
@@ -1572,7 +1564,6 @@ increase_count:
 		break;
 	}
 
-out_unlock:
 	mutex_unlock(&g_ospm_mutex);
 
 	return ret;
