@@ -42,11 +42,6 @@
 
 #undef OSPM_GFX_DPK
 
-extern IMG_UINT32 gui32SGXDeviceID;
-extern IMG_UINT32 gui32MRSTDisplayDeviceID;
-extern IMG_UINT32 gui32MRSTMSVDXDeviceID;
-extern IMG_UINT32 gui32MRSTTOPAZDeviceID;
-
 struct drm_device *gpDrmDevice = NULL;
 static struct mutex g_ospm_mutex;
 static bool gbSuspendInProgress = false;
@@ -1462,7 +1457,6 @@ bool ospm_power_using_hw_begin(int hw_island, bool force_on)
 	bool island_is_off = false;
 	bool b_atomic = (in_interrupt() || in_atomic());
 	bool locked = true;
-	IMG_UINT32 deviceID = 0;
 
 	if (b_atomic)
 		pm_runtime_get(&drm_dev->pdev->dev);
@@ -1499,13 +1493,11 @@ bool ospm_power_using_hw_begin(int hw_island, bool force_on)
 		if (ret) {
 			switch (hw_island) {
 			case OSPM_DISPLAY_ISLAND:
-				deviceID = gui32MRSTDisplayDeviceID;
 				ospm_resume_display(drm_dev);
 				psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
 				psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
 				break;
 			case OSPM_GRAPHICS_ISLAND:
-				deviceID = gui32SGXDeviceID;
 				ospm_power_island_up(OSPM_GRAPHICS_ISLAND);
 				psb_irq_preinstall_islands(drm_dev, OSPM_GRAPHICS_ISLAND);
 				psb_irq_postinstall_islands(drm_dev, OSPM_GRAPHICS_ISLAND);
@@ -1514,7 +1506,6 @@ bool ospm_power_using_hw_begin(int hw_island, bool force_on)
 			case OSPM_VIDEO_DEC_ISLAND:
 				if (!ospm_power_is_hw_on(OSPM_DISPLAY_ISLAND)) {
 					//printk(KERN_ALERT "%s power on display for video decode use\n", __func__);
-					deviceID = gui32MRSTDisplayDeviceID;
 					ospm_resume_display(drm_dev);
 					psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
 					psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
@@ -1524,7 +1515,6 @@ bool ospm_power_using_hw_begin(int hw_island, bool force_on)
 
 				if (!ospm_power_is_hw_on(OSPM_VIDEO_DEC_ISLAND)) {
 					//printk(KERN_ALERT "%s power on video decode\n", __func__);
-					deviceID = gui32MRSTMSVDXDeviceID;
 					ospm_power_island_up(OSPM_VIDEO_DEC_ISLAND);
 					ospm_runtime_pm_msvdx_resume(drm_dev);
 					psb_irq_preinstall_islands(drm_dev, OSPM_VIDEO_DEC_ISLAND);
@@ -1537,7 +1527,6 @@ bool ospm_power_using_hw_begin(int hw_island, bool force_on)
 			case OSPM_VIDEO_ENC_ISLAND:
 				if (!ospm_power_is_hw_on(OSPM_DISPLAY_ISLAND)) {
 					//printk(KERN_ALERT "%s power on display for video encode\n", __func__);
-					deviceID = gui32MRSTDisplayDeviceID;
 					ospm_resume_display(drm_dev);
 					psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
 					psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
@@ -1547,7 +1536,6 @@ bool ospm_power_using_hw_begin(int hw_island, bool force_on)
 
 				if (!ospm_power_is_hw_on(OSPM_VIDEO_ENC_ISLAND)) {
 					//printk(KERN_ALERT "%s power on video encode\n", __func__);
-					deviceID = gui32MRSTTOPAZDeviceID;
 					ospm_power_island_up(OSPM_VIDEO_ENC_ISLAND);
 					ospm_runtime_pm_topaz_resume(drm_dev);
 					psb_irq_preinstall_islands(drm_dev, OSPM_VIDEO_ENC_ISLAND);
