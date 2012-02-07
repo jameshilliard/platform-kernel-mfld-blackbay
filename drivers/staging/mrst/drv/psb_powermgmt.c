@@ -35,10 +35,10 @@
 #include "pvr_trace_cmd.h"
 
 #include <linux/mutex.h>
+#include <linux/intel_mid_pm.h>
 #include "mdfld_dsi_dbi.h"
 #include "mdfld_dsi_dbi_dpu.h"
 #include <asm/intel_scu_ipc.h>
-
 
 #undef OSPM_GFX_DPK
 
@@ -412,11 +412,8 @@ void ospm_power_init(struct drm_device *dev)
 
 	gpDrmDevice = dev;
 
-	dev_priv->apm_reg = MDFLD_MSG_READ32(PSB_PUNIT_PORT, PSB_APMBA);
-	dev_priv->ospm_base = MDFLD_MSG_READ32(PSB_PUNIT_PORT, PSB_OSPMBA);
-
-	dev_priv->apm_base = dev_priv->apm_reg & 0xffff;
-	dev_priv->ospm_base &= 0xffff;
+	dev_priv->apm_base = MDFLD_MSG_READ32(PSB_PUNIT_PORT, PSB_APMBA) &
+		0xffff;
 
 	mutex_init(&g_ospm_mutex);
 	g_hw_power_status_mask = OSPM_ALL_ISLANDS;
@@ -424,15 +421,6 @@ void ospm_power_init(struct drm_device *dev)
 	atomic_set(&g_graphics_access_count, 0);
 	atomic_set(&g_videoenc_access_count, 0);
 	atomic_set(&g_videodec_access_count, 0);
-
-#ifdef OSPM_STAT
-	dev_priv->graphics_state = PSB_PWR_STATE_ON;
-	dev_priv->gfx_last_mode_change = jiffies;
-	dev_priv->gfx_on_time = 0;
-	dev_priv->gfx_off_time = 0;
-#endif
-
-	spin_lock_init(&dev_priv->ospm_lock);
 
 #ifdef CONFIG_EARLYSUSPEND
 	dev_priv->early_suspend.suspend = gfx_early_suspend;
@@ -1326,111 +1314,82 @@ int ospm_power_suspend(struct device *dev)
 	return ret;
 }
 
+/* The PMU/P-Unit driver has different island definitions */
+static int to_pmu_islands(int reg_type, int islands)
+{
+	int ret = 0;
+
+	if (reg_type == APM_REG_TYPE) {
+		if (islands & OSPM_GRAPHICS_ISLAND)
+			ret |= APM_GRAPHICS_ISLAND;
+		if (islands & OSPM_VIDEO_DEC_ISLAND)
+			ret |= APM_VIDEO_DEC_ISLAND;
+		if (islands & OSPM_VIDEO_ENC_ISLAND)
+			ret |= APM_VIDEO_ENC_ISLAND;
+		if (islands & OSPM_GL3_CACHE_ISLAND)
+			ret |= APM_GL3_CACHE_ISLAND;
+	} else if (reg_type == OSPM_REG_TYPE) {
+		if (islands & OSPM_DISPLAY_ISLAND)
+			ret |= OSPM_DISPLAY_A_ISLAND | OSPM_DISPLAY_B_ISLAND |
+				OSPM_DISPLAY_C_ISLAND | OSPM_MIPI_ISLAND;
+	}
+
+	return ret;
+}
+
+static int ospm_set_power_state(int state_type, int islands)
+{
+	int pmu_islands;
+
+	pmu_islands = to_pmu_islands(APM_REG_TYPE, islands);
+	if (pmu_islands)
+		pmu_nc_set_power_state(pmu_islands, state_type, APM_REG_TYPE);
+
+	pmu_islands = to_pmu_islands(OSPM_REG_TYPE, islands);
+	if (pmu_islands)
+		pmu_nc_set_power_state(pmu_islands, state_type, OSPM_REG_TYPE);
+
+	return 0;
+}
+
 /*
  * ospm_power_island_up
  *
  * Description: Restore power to the specified island(s) (powergating)
  */
-void ospm_power_island_up(int hw_islands)
+void ospm_power_island_up(int islands)
 {
-	struct drm_device *drm_dev = gpDrmDevice; /* FIXME: Pass as parameter */
-	struct drm_psb_private *dev_priv = drm_dev->dev_private;
-	u32 pwr_cnt = 0;
-	u32 pwr_sts = 0;
-	u32 pwr_mask = 0;
-	u32 cnt = 0;
-	unsigned long flags;
-
 #ifndef CONFIG_MDFD_GL3
-	hw_islands &= ~OSPM_GL3_CACHE_ISLAND;
+	islands &= ~OSPM_GL3_CACHE_ISLAND;
 #endif
-	if (hw_islands & (OSPM_GRAPHICS_ISLAND | OSPM_VIDEO_ENC_ISLAND |
-				OSPM_VIDEO_DEC_ISLAND | OSPM_GL3_CACHE_ISLAND |
-				OSPM_ISP_ISLAND)) {
-		spin_lock_irqsave(&dev_priv->ospm_lock, flags);
-		pwr_cnt = inl(dev_priv->apm_base + PSB_APM_CMD);
 
-		pwr_mask = 0;
+	if (islands & OSPM_GRAPHICS_ISLAND)
+		pvrcmd_device_power(PVR_TRCMD_RESUME, PVR_TRCMD_DEVICE_SGX);
 
+	if (islands & OSPM_DISPLAY_ISLAND)
+		pvrcmd_device_power(PVR_TRCMD_RESUME, PVR_TRCMD_DEVICE_DISPC);
 
-		if (hw_islands & OSPM_GRAPHICS_ISLAND) {
-			pvrcmd_device_power(PVR_TRCMD_RESUME,
-					PVR_TRCMD_DEVICE_SGX);
+	ospm_set_power_state(OSPM_ISLAND_UP, islands);
 
-			pwr_cnt &= ~PSB_PWRGT_GFX_MASK;
-			pwr_mask |= PSB_PWRGT_GFX_MASK;
-#ifdef OSPM_STAT
-			if (dev_priv->graphics_state == PSB_PWR_STATE_OFF) {
-				dev_priv->gfx_off_time += (jiffies - dev_priv->gfx_last_mode_change) * 1000 / HZ;
-				dev_priv->gfx_last_mode_change = jiffies;
-				dev_priv->graphics_state = PSB_PWR_STATE_ON;
-				dev_priv->gfx_on_cnt++;
-			}
-#endif
-		}
-		if (hw_islands & OSPM_GL3_CACHE_ISLAND) {
-			pwr_cnt &= ~PSB_PWRGT_GL3_MASK;
-			pwr_mask |= PSB_PWRGT_GL3_MASK;
-		}
-		if (hw_islands & OSPM_VIDEO_ENC_ISLAND) {
-			pwr_cnt &= ~PSB_PWRGT_VID_ENC_MASK;
-			pwr_mask |= PSB_PWRGT_VID_ENC_MASK;
-		}
-		if (hw_islands & OSPM_VIDEO_DEC_ISLAND) {
-			pwr_cnt &= ~PSB_PWRGT_VID_DEC_MASK;
-			pwr_mask |= PSB_PWRGT_VID_DEC_MASK;
-		}
-		if (hw_islands & OSPM_ISP_ISLAND) {
-			pwr_cnt &= ~PSB_PWRGT_ISP_MASK;
-			pwr_mask |= PSB_PWRGT_ISP_MASK;
-		}
+	g_hw_power_status_mask |= islands;
+}
 
-		outl(pwr_cnt, dev_priv->apm_base + PSB_APM_CMD);
-		spin_unlock_irqrestore(&dev_priv->ospm_lock, flags);
+/*
+ * ospm_power_island_down
+ *
+ * Description: Cut power to the specified island(s) (powergating)
+ */
+void ospm_power_island_down(int islands)
+{
+	g_hw_power_status_mask &= ~islands;
 
-		while (true) {
-			pwr_sts = inl(dev_priv->apm_base + PSB_APM_STS);
-			if ((pwr_sts & pwr_mask) == 0)
-				break;
-			else
-				udelay(10);
-			cnt++;
-			if (cnt > 1000) {
-				printk(KERN_ALERT "%s: STUCK in INFINITE LOOP - failing on islands:0x%x\n", __func__, hw_islands);
-				cnt = 0;
-			}
-		}
-	}
-	if (hw_islands & OSPM_DISPLAY_ISLAND) {
+	if (islands & OSPM_GRAPHICS_ISLAND)
+		pvrcmd_device_power(PVR_TRCMD_SUSPEND, PVR_TRCMD_DEVICE_SGX);
 
-		pwr_mask = MDFLD_PWRGT_DISPLAY_CNTR;
+	if (islands & OSPM_DISPLAY_ISLAND)
+		pvrcmd_device_power(PVR_TRCMD_SUSPEND, PVR_TRCMD_DEVICE_DISPC);
 
-		spin_lock_irqsave(&dev_priv->ospm_lock, flags);
-		pwr_cnt = inl(dev_priv->ospm_base + PSB_PM_SSC);
-		pvrcmd_device_power(PVR_TRCMD_RESUME,
-				PVR_TRCMD_DEVICE_DISPC);
-		pwr_cnt &= ~pwr_mask;
-		outl(pwr_cnt, (dev_priv->ospm_base + PSB_PM_SSC));
-		spin_unlock_irqrestore(&dev_priv->ospm_lock, flags);
-
-		pwr_mask = MDFLD_PWRGT_DISPLAY_STS_B0;
-
-		cnt = 0;
-		while (true) {
-			pwr_sts = inl(dev_priv->ospm_base + PSB_PM_SSS);
-			if ((pwr_sts & pwr_mask) == 0)
-				break;
-			else
-				udelay(10);
-			cnt++;
-			if (cnt > 1000) {
-				printk(KERN_ALERT "%s: STUCK in INFINITE LOOP - failing on DISPLAY \n", __func__);
-				cnt = 0;
-			}
-		}
-	}
-
-	g_hw_power_status_mask |= hw_islands;
+	ospm_set_power_state(OSPM_ISLAND_DOWN, islands);
 }
 
 /*
@@ -1468,98 +1427,6 @@ int ospm_power_resume(struct device *dev)
 
 	return 0;
 }
-
-
-/*
- * ospm_power_island_down
- *
- * Description: Cut power to the specified island(s) (powergating)
- */
-void ospm_power_island_down(int islands)
-{
-	struct drm_device *drm_dev = gpDrmDevice; /* FIXME: Pass as parameter */
-	struct drm_psb_private *dev_priv = drm_dev->dev_private;
-	u32 pwr_cnt = 0;
-	u32 pwr_mask = 0;
-	u32 pwr_sts = 0;
-	u32 cnt = 0;
-	unsigned long flags;
-
-	g_hw_power_status_mask &= ~islands;
-
-	if (islands & OSPM_GRAPHICS_ISLAND) {
-		pvrcmd_device_power(PVR_TRCMD_SUSPEND, PVR_TRCMD_DEVICE_SGX);
-		pwr_cnt |= PSB_PWRGT_GFX_MASK;
-		pwr_mask |= PSB_PWRGT_GFX_MASK;
-#ifdef OSPM_STAT
-		if (dev_priv->graphics_state == PSB_PWR_STATE_ON) {
-			dev_priv->gfx_on_time += (jiffies - dev_priv->gfx_last_mode_change) * 1000 / HZ;
-			dev_priv->gfx_last_mode_change = jiffies;
-			dev_priv->graphics_state = PSB_PWR_STATE_OFF;
-			dev_priv->gfx_off_cnt++;
-		}
-#endif
-	}
-	if (islands & OSPM_GL3_CACHE_ISLAND) {
-		pwr_cnt |= PSB_PWRGT_GL3_MASK;
-		pwr_mask |= PSB_PWRGT_GL3_MASK;
-	}
-	if (islands & OSPM_VIDEO_ENC_ISLAND) {
-		pwr_cnt |= PSB_PWRGT_VID_ENC_MASK;
-		pwr_mask |= PSB_PWRGT_VID_ENC_MASK;
-	}
-	if (islands & OSPM_VIDEO_DEC_ISLAND) {
-		pwr_cnt |= PSB_PWRGT_VID_DEC_MASK;
-		pwr_mask |= PSB_PWRGT_VID_DEC_MASK;
-	}
-	if (islands & OSPM_ISP_ISLAND) {
-		pwr_cnt |= PSB_PWRGT_ISP_MASK;
-		pwr_mask |= PSB_PWRGT_ISP_MASK;
-	}
-	if (pwr_cnt) {
-		spin_lock_irqsave(&dev_priv->ospm_lock, flags);
-		pwr_cnt |= inl(dev_priv->apm_base);
-		outl(pwr_cnt, dev_priv->apm_base  + PSB_APM_CMD);
-		spin_unlock_irqrestore(&dev_priv->ospm_lock, flags);
-
-		while (true) {
-			pwr_sts = inl(dev_priv->apm_base + PSB_APM_STS);
-			if ((pwr_sts & pwr_mask) == pwr_mask)
-				break;
-			else
-				udelay(10);
-			cnt++;
-			if (cnt > 1000) {
-				printk(KERN_ALERT "%s: STUCK in INFINITE LOOP - failing on islands:0x%x\n", __func__, islands);
-				cnt = 0;
-			}
-		}
-	}
-	if (islands & OSPM_DISPLAY_ISLAND) {
-
-		pwr_mask = MDFLD_PWRGT_DISPLAY_CNTR;
-
-		outl(pwr_mask, (dev_priv->ospm_base + PSB_PM_SSC));
-
-		pvrcmd_device_power(PVR_TRCMD_SUSPEND, PVR_TRCMD_DEVICE_DISPC);
-		pwr_mask = MDFLD_PWRGT_DISPLAY_STS_B0;
-
-		cnt = 0;
-		while (true) {
-			pwr_sts = inl(dev_priv->ospm_base + PSB_PM_SSS);
-			if ((pwr_sts & pwr_mask) == pwr_mask)
-				break;
-			else
-				udelay(10);
-			cnt++;
-			if (cnt > 1000) {
-				printk(KERN_ALERT "%s: STUCK in INFINITE LOOP - failing on Display island\n", __func__);
-				cnt = 0;
-			}
-		}
-	}
-}
-
 
 /*
  * ospm_power_is_hw_on

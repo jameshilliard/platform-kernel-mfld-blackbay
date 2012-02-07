@@ -42,8 +42,9 @@
 #define OSPM_VIDEO_DEC_ISLAND	0x4
 #define OSPM_DISPLAY_ISLAND	0x8
 #define OSPM_GL3_CACHE_ISLAND	0x10
-#define OSPM_ISP_ISLAND		0x20
-#define OSPM_ALL_ISLANDS	0x3f
+#define OSPM_ALL_ISLANDS	(OSPM_GRAPHICS_ISLAND | OSPM_VIDEO_ENC_ISLAND \
+				| OSPM_VIDEO_DEC_ISLAND | OSPM_DISPLAY_ISLAND \
+				| OSPM_GL3_CACHE_ISLAND)
 
 /* IPC message and command defines used to enable/disable mipi panel voltages */
 #define IPC_MSG_PANEL_ON_OFF    0xE9

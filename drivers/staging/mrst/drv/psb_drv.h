@@ -82,7 +82,6 @@ enum panel_type {
 
 #define FIX_TG_16
 #define FIX_TG_2D_CLOCKGATE
-#define OSPM_STAT
 
 #define DRIVER_NAME "pvrsrvkm"
 #define DRIVER_DESC "drm driver for the Intel GMA500"
@@ -493,8 +492,6 @@ struct drm_psb_private {
 	/*
 	*OSPM info
 	*/
-	uint32_t ospm_base;
-	spinlock_t ospm_lock;
 	uint8_t panel_desc;
 
 	/*
@@ -899,16 +896,7 @@ struct drm_psb_private {
 	struct work_struct topaz_watchdog_wq;
 	int timer_available;
 
-	uint32_t apm_reg;
 	uint16_t apm_base;
-#ifdef OSPM_STAT
-	unsigned char graphics_state;
-	unsigned long gfx_on_time;
-	unsigned long gfx_off_time;
-	unsigned long gfx_last_mode_change;
-	unsigned long gfx_on_cnt;
-	unsigned long gfx_off_cnt;
-#endif
 
 	/*to be removed later*/
 	/*int dri_page_flipping;
