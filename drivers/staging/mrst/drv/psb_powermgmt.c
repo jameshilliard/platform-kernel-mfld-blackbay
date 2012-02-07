@@ -1250,41 +1250,42 @@ int ospm_power_suspend(struct device *dev)
 
 	mutex_lock(&g_ospm_mutex);
 
-	if (!gbSuspended) {
-		graphics_access_count = atomic_read(&g_graphics_access_count);
-		videoenc_access_count = atomic_read(&g_videoenc_access_count);
-		videodec_access_count = atomic_read(&g_videodec_access_count);
-		display_access_count = atomic_read(&g_display_access_count);
+	if (gbSuspended)
+		goto out;
 
-		if (graphics_access_count ||
-		    videoenc_access_count ||
-		    videodec_access_count ||
-		    display_access_count)
-			ret = -EBUSY;
+	graphics_access_count = atomic_read(&g_graphics_access_count);
+	videoenc_access_count = atomic_read(&g_videoenc_access_count);
+	videodec_access_count = atomic_read(&g_videodec_access_count);
+	display_access_count = atomic_read(&g_display_access_count);
 
-		if (!ret) {
-			psb_irq_uninstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
-			ospm_suspend_display(drm_dev);
-#if 1
-			/* FIXME: video driver support for Linux Runtime PM */
-			if (ospm_runtime_pm_msvdx_suspend(drm_dev) != 0) {
-				suspend_pci = false;
-			}
+	if (graphics_access_count || videoenc_access_count ||
+		videodec_access_count || display_access_count) {
+		ret = -EBUSY;
 
-			if (ospm_runtime_pm_topaz_suspend(drm_dev) != 0) {
-				suspend_pci = false;
-			}
-
-#endif
-			if (suspend_pci == true) {
-				ospm_suspend_pci(pdev);
-			}
-		} else {
-			printk(KERN_ALERT "ospm_power_suspend: device busy: graphics %d videoenc %d videodec %d display %d\n", graphics_access_count, videoenc_access_count, videodec_access_count, display_access_count);
-		}
+		printk(KERN_ALERT "%s: device busy: graphics %d videoenc %d videodec %d display %d\n",
+			__func__, graphics_access_count, videoenc_access_count,
+			videodec_access_count, display_access_count);
+		goto out;
 	}
 
+	psb_irq_uninstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
+	ospm_suspend_display(drm_dev);
 
+	/* FIXME: video driver support for Linux Runtime PM */
+	if (ospm_runtime_pm_msvdx_suspend(drm_dev))
+		suspend_pci = false;
+
+	if (ospm_runtime_pm_topaz_suspend(drm_dev))
+		suspend_pci = false;
+
+	if (suspend_pci)
+		ospm_suspend_pci(pdev);
+	/*
+	 * REVISIT: else pci is not suspended but this happily returns success
+	 * status?!
+	 */
+
+out:
 	mutex_unlock(&g_ospm_mutex);
 	return ret;
 }
