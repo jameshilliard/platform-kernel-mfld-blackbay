@@ -54,12 +54,6 @@
 #define DISPLAY_B 0x2
 #define DISPLAY_C 0x4
 
-typedef enum _UHBUsage
-{
-    OSPM_UHB_ONLY_IF_ON = 0,
-    OSPM_UHB_FORCE_POWER_ON,
-} UHBUsage;
-
 //extern int psb_check_msvdx_idle(struct drm_device *dev);
 //extern int lnc_check_topaz_idle(struct drm_device *dev);
 /* Use these functions to power down video HW for D0i3 purpose  */
@@ -80,7 +74,7 @@ int ospm_power_resume(struct device *dev);
  * These are the functions the driver should use to wrap all hw access
  * (i.e. register reads and writes)
  */
-bool ospm_power_using_hw_begin(int hw_island, UHBUsage usage);
+bool ospm_power_using_hw_begin(int hw_island, bool force_on);
 void ospm_power_using_hw_end(int hw_island);
 
 /*

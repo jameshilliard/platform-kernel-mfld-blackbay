@@ -262,7 +262,7 @@ static int ovl_wait(struct mfld_overlay *ovl)
 	unsigned long timeout = jiffies + msecs_to_jiffies(OVL_UPDATE_TIMEOUT);
 
 	/* No point in waiting if the hardware is powered down */
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON))
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false))
 		return 0;
 
 	/*
@@ -322,7 +322,7 @@ static void ovl_commit(struct mfld_overlay *ovl, unsigned int dirty)
 	spin_unlock_irq(&ovl->regs_lock);
 
 	/* If the hardware is powered down, postpone the OVADD write to resume time. */
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON))
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false))
 		return;
 
 	spin_lock_irq(&ovl->regs_lock);
@@ -1361,7 +1361,7 @@ static int ovl_regs_show(struct seq_file *s, void *data)
 #undef OVL_REG_SHOW
 #define OVL_REG_SHOW(x) seq_printf(s, "%s 0x%08x\n", #x, OVL_REG_READ(ovl, OVL_ ## x))
 
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_FORCE_POWER_ON))
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true))
 		return -ENXIO;
 
 	OVL_REG_SHOW(OVADD);

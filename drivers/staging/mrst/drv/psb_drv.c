@@ -1507,9 +1507,8 @@ static int psb_hist_enable_ioctl(struct drm_device *dev, void *data,
 	struct dpst_ie_histogram_control ie_hist_cont_reg;
 	uint32_t *enable = data;
 
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_FORCE_POWER_ON)) {
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true))
 		return 0;
-	}
 
 	if (*enable == 1) {
 		ie_hist_cont_reg.data = PSB_RVDC32(HISTOGRAM_LOGIC_CONTROL);
@@ -1562,9 +1561,8 @@ static int psb_hist_status_ioctl(struct drm_device *dev, void *data,
 	uint32_t iedbr_busy_bit		= 0x80000000;
 	int dpst3_bin_count		= 32;
 
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON)) {
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false))
 		return 0;
-	}
 
 	ie_hist_cont_reg.data			= PSB_RVDC32(blm_hist_ctl);
 	ie_hist_cont_reg.bin_reg_func_select	= dpst3_bin_threshold_count;
@@ -1636,9 +1634,8 @@ static int psb_dpst_ioctl(struct drm_device *dev, void *data,
 	uint32_t y;
 	uint32_t reg;
 
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON)) {
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false))
 		return 0;
-	}
 
 	reg = PSB_RVDC32(PIPEASRC);
 
@@ -1694,9 +1691,8 @@ static int psb_update_guard_ioctl(struct drm_device *dev, void *data,
 	struct dpst_guardband* input = (struct dpst_guardband*) data;
 	struct dpst_guardband reg_data;
 
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON)) {
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false))
 		return 0;
-	}
 
 	reg_data.data = PSB_RVDC32(HISTOGRAM_INT_CONTROL);
 	reg_data.guardband = input->guardband;
@@ -1742,8 +1738,7 @@ static int psb_mode_operation_ioctl(struct drm_device *dev, void *data,
 		drm_fb = obj_to_fb(obj);
 		psb_fb = to_psb_fb(drm_fb);
 
-		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND,
-					      OSPM_UHB_ONLY_IF_ON)) {
+		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
 			REG_WRITE(DSPASURF, psb_fb->offset);
 			REG_READ(DSPASURF);
 			ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
@@ -1944,11 +1939,10 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 	struct drm_psb_register_rw_arg *arg = data;
 	unsigned int iep_ble_status;
 	unsigned long iep_timeout;
-	UHBUsage usage =
-		arg->b_force_hw_on ? OSPM_UHB_FORCE_POWER_ON : OSPM_UHB_ONLY_IF_ON;
+	bool force_on = arg->b_force_hw_on;
 
 	if (arg->display_write_mask != 0) {
-		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, usage)) {
+		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, force_on)) {
 			if (arg->display_write_mask & REGRWBITS_PFIT_CONTROLS)
 				PSB_WVDC32(arg->display.pfit_controls,
 					   PFIT_CONTROL);
@@ -1998,7 +1992,7 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if (arg->display_read_mask != 0) {
-		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, usage)) {
+		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, force_on)) {
 			if (arg->display_read_mask &
 			    REGRWBITS_PFIT_CONTROLS)
 				arg->display.pfit_controls =
@@ -2045,7 +2039,7 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if (arg->overlay_write_mask != 0) {
-		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, usage)) {
+		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, force_on)) {
 			if (arg->overlay_write_mask & OV_REGRWBITS_OGAM_ALL) {
 				PSB_WVDC32(arg->overlay.OGAMC5, OV_OGAMC5);
 				PSB_WVDC32(arg->overlay.OGAMC4, OV_OGAMC4);
@@ -2152,7 +2146,7 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if (arg->overlay_read_mask != 0) {
-		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, usage)) {
+		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, force_on)) {
 			if (arg->overlay_read_mask & OV_REGRWBITS_OGAM_ALL) {
 				arg->overlay.OGAMC5 = PSB_RVDC32(OV_OGAMC5);
 				arg->overlay.OGAMC4 = PSB_RVDC32(OV_OGAMC4);
@@ -2199,7 +2193,7 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if (arg->sprite_enable_mask != 0) {
-		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, usage)) {
+		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, force_on)) {
 			PSB_WVDC32(0x1F3E, DSPARB);
 			PSB_WVDC32(arg->sprite.dspa_control | PSB_RVDC32(DSPACNTR), DSPACNTR);
 			PSB_WVDC32(arg->sprite.dspa_key_value, DSPAKEYVAL);
@@ -2218,7 +2212,7 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if (arg->sprite_disable_mask != 0) {
-		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, usage)) {
+		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, force_on)) {
 			PSB_WVDC32(0x3F3E, DSPARB);
 			PSB_WVDC32(0x0, DSPCCNTR);
 			PSB_WVDC32(arg->sprite.dspc_surface, DSPCSURF);
@@ -2228,7 +2222,7 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if (arg->subpicture_enable_mask != 0) {
-		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, usage)) {
+		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, force_on)) {
 			uint32_t temp;
 			if (arg->subpicture_enable_mask & REGRWBITS_DSPACNTR) {
 				temp =  PSB_RVDC32(DSPACNTR);
@@ -2277,7 +2271,7 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if (arg->subpicture_disable_mask != 0) {
-		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, usage)) {
+		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, force_on)) {
 			uint32_t temp;
 			if (arg->subpicture_disable_mask & REGRWBITS_DSPACNTR) {
 				temp =  PSB_RVDC32(DSPACNTR);

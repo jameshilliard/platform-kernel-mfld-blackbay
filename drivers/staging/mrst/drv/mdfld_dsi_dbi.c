@@ -208,7 +208,7 @@ void mdfld_dsi_dbi_enter_dsr (struct mdfld_dsi_dbi_output * dbi_output, int pipe
 		dspsurf_reg = DSPCSURF;
 	}
 
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_FORCE_POWER_ON)) {
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true)) {
 		DRM_ERROR("hw begin failed\n");
 		return;
 	}
@@ -275,7 +275,7 @@ static void mdfld_dbi_output_exit_dsr (struct mdfld_dsi_dbi_output * dbi_output,
 		dspcntr_reg = DSPCCNTR;
 	}
 
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_FORCE_POWER_ON)) {
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true)) {
 		DRM_ERROR("hw begin failed\n");
 		return;
 	}

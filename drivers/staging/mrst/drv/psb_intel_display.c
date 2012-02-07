@@ -168,8 +168,7 @@ void psb_intel_crtc_load_lut(struct drm_crtc *crtc)
 		return;
 	}
 	
-	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND,
-				      OSPM_UHB_ONLY_IF_ON)) {
+	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
 		for (i = 0; i < 256; i++) {
 			REG_WRITE(palreg + 4 * i,
 				  ((psb_intel_crtc->lut_r[i] +
@@ -694,8 +693,7 @@ static int mdfld_intel_crtc_cursor_set(struct drm_crtc *crtc,
 		temp = 0;
 		temp |= CURSOR_MODE_DISABLE;
 
-		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND,
-					      OSPM_UHB_ONLY_IF_ON)) {
+		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
 			REG_WRITE(control, temp);
 			REG_WRITE(base, 0);
 			ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
@@ -748,7 +746,7 @@ static int mdfld_intel_crtc_cursor_set(struct drm_crtc *crtc,
 	temp |= (pipe << 28);
 	temp |= CURSOR_MODE_64_ARGB_AX | MCURSOR_GAMMA_ENABLE;
 
-	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON)) {
+	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
 		REG_WRITE(control, temp);
 		REG_WRITE(base, addr);
 		ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
@@ -829,8 +827,7 @@ static int mdfld_intel_crtc_cursor_move(struct drm_crtc *crtc, int x, int y)
 
 	addr = psb_intel_crtc->cursor_addr;
 
-	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND,
-				      OSPM_UHB_ONLY_IF_ON)) {
+	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
 		REG_WRITE(pos, temp);
 		REG_WRITE(base, addr);
 		ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
@@ -919,8 +916,7 @@ static int mdfld__intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 		return -EINVAL;
 	}
 
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND,
-				       OSPM_UHB_FORCE_POWER_ON))
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true))
 		return 0;
 
 	Start = mode_dev->bo_offset(dev, psbfb);
@@ -1105,8 +1101,7 @@ static void mdfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 		return;
 	}
 
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND,
-				       OSPM_UHB_FORCE_POWER_ON))
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true))
 		return;
 
 	/* XXX: When our outputs are all unaware of DPMS modes other than off
@@ -1544,8 +1539,7 @@ static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 	PSB_DEBUG_ENTRY("pipe = 0x%x\n", pipe);
 
 	if (pipe == 1) {
-		if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND,
-				OSPM_UHB_FORCE_POWER_ON))
+		if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true))
 			return 0;
 		android_hdmi_crtc_mode_set(crtc, mode, adjusted_mode,
 			x, y, old_fb);
@@ -1618,7 +1612,7 @@ static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 	PSB_DEBUG_ENTRY("vdisplay = %d\n",
 		 mode->vdisplay);
 
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_FORCE_POWER_ON))
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true))
 		return 0;
 
 	memcpy(&psb_intel_crtc->saved_mode, mode, sizeof(struct drm_display_mode));

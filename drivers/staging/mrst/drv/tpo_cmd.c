@@ -155,7 +155,7 @@ static void mdfld_dsi_dbi_set_power(struct drm_encoder *encoder, bool on)
 			dev_priv->dual_mipi = false;
 	}
 
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_FORCE_POWER_ON)) {
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true)) {
 		DRM_ERROR("hw begin failed\n");
 		return;
 	}
@@ -270,7 +270,7 @@ static void mdfld_dsi_dbi_mode_set(struct drm_encoder * encoder,
 		mipi_val |= 0x2; /*two lanes for port A and C respectively*/
 	}
 
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_FORCE_POWER_ON)) {
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true)) {
 		DRM_ERROR("hw begin failed\n");
 		return;
 	}
@@ -431,7 +431,7 @@ static void mdfld_dsi_dbi_update_fb (struct mdfld_dsi_dbi_output * dbi_output, i
 		dspsurf_reg = DSPCSURF;
 	}
 
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_FORCE_POWER_ON)) {
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true)) {
 		DRM_ERROR("hw begin failed\n");
 		return;
 	}

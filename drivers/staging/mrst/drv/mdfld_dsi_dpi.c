@@ -678,7 +678,7 @@ static void mdfld_dsi_dpi_set_power(struct drm_encoder * encoder, bool on)
 		pipeconf_reg = PIPECCONF;
 	
 	/*start up display island if it was shutdown*/
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_FORCE_POWER_ON))
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true))
 		return;
 
 	if(on) {
@@ -907,7 +907,7 @@ void mdfld_dsi_dpi_mode_set(struct drm_encoder * encoder,
 	}
 	
 	/*start up display island if it was shutdown*/
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_FORCE_POWER_ON))
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true))
 		return;
 
 	if (get_panel_type(dev, pipe) == TC35876X) {

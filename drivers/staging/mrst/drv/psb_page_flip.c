@@ -120,8 +120,7 @@ write_scanout_regs(struct pending_flip *pending_flip, uint32_t offset)
 		return;
 	}
 
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND,
-				       OSPM_UHB_FORCE_POWER_ON))
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true))
 		return;
 
 	iowrite32(offset, dev_priv->vdc_reg + reg_offset);

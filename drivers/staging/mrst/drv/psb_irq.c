@@ -111,7 +111,7 @@ psb_enable_pipestat(struct drm_psb_private *dev_priv, int pipe, u32 mask)
 			trcmd_vblank_power(PVR_TRCMD_RESUME, pipe);
 		dev_priv->pipestat[pipe] |= mask;
 		/* Enable the interrupt, clear any pending status */
-		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON)) {
+		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
 			u32 writeVal = PSB_RVDC32(reg);
 			writeVal |= (mask | (mask >> 16));
 			PSB_WVDC32(writeVal, reg);
@@ -129,7 +129,7 @@ psb_disable_pipestat(struct drm_psb_private *dev_priv, int pipe, u32 mask)
 		if (mask & PIPE_VBLANK_INTERRUPT_ENABLE)
 			trcmd_vblank_power(PVR_TRCMD_SUSPEND, pipe);
 		dev_priv->pipestat[pipe] &= ~mask;
-		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON)) {
+		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
 			u32 writeVal = PSB_RVDC32(reg);
 			writeVal &= ~mask;
 			PSB_WVDC32(writeVal, reg);
@@ -142,7 +142,7 @@ psb_disable_pipestat(struct drm_psb_private *dev_priv, int pipe, u32 mask)
 static void
 mid_enable_pipe_event(struct drm_psb_private *dev_priv, int pipe)
 {
-	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON)) {
+	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
 		u32 pipe_event = mid_pipe_event(pipe);
 		dev_priv->vdc_irq_mask |= pipe_event;
 		PSB_WVDC32(~dev_priv->vdc_irq_mask, PSB_INT_MASK_R);
@@ -155,7 +155,7 @@ static void
 mid_disable_pipe_event(struct drm_psb_private *dev_priv, int pipe)
 {
 	if (dev_priv->pipestat[pipe] == 0) {
-		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON)) {
+		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
 			u32 pipe_event = mid_pipe_event(pipe);
 			dev_priv->vdc_irq_mask &= ~pipe_event;
 			PSB_WVDC32(~dev_priv->vdc_irq_mask, PSB_INT_MASK_R);
@@ -688,7 +688,7 @@ void psb_irq_turn_on_dpst(struct drm_device *dev)
 	u32 hist_reg;
 	u32 pwm_reg;
 
-	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON)) {
+	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
 		PSB_WVDC32(BIT(31), HISTOGRAM_LOGIC_CONTROL);
 		hist_reg = PSB_RVDC32(HISTOGRAM_LOGIC_CONTROL);
 		PSB_WVDC32(BIT(31), HISTOGRAM_INT_CONTROL);
@@ -736,7 +736,7 @@ void psb_irq_turn_off_dpst(struct drm_device *dev)
 	u32 hist_reg;
 	u32 pwm_reg;
 
-	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON)) {
+	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
 		PSB_WVDC32(0x00000000, HISTOGRAM_INT_CONTROL);
 		hist_reg = PSB_RVDC32(HISTOGRAM_INT_CONTROL);
 
@@ -799,7 +799,7 @@ int psb_enable_vblank(struct drm_device *dev, int pipe)
 	if (!is_panel_vid_or_cmd(dev))
 		return mdfld_enable_te(dev, pipe);
 
-	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON)) {
+	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
 		reg_val = REG_READ(pipeconf_reg);
 		ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 	}
@@ -914,7 +914,7 @@ int mdfld_enable_te(struct drm_device *dev, int pipe)
 
 	PSB_DEBUG_ENTRY("pipe = %d, \n", pipe);
 
-	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON)) {
+	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
 		reg_val = REG_READ(pipeconf_reg);
 		ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 	}
@@ -961,7 +961,7 @@ int mdfld_irq_enable_hdmi_audio(struct drm_device *dev)
 	unsigned long irqflags;
 	u32 reg_val = 0, mask = 0;
 
-	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_ONLY_IF_ON)) {
+	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
 		reg_val = REG_READ(PIPEBCONF);
 		ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 	}

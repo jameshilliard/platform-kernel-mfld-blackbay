@@ -255,7 +255,7 @@ static void mdfld_dsi_controller_shutdown(struct mdfld_dsi_config * dsi_config, 
 	
 	dev = dsi_config->dev;
 	
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_FORCE_POWER_ON)) {
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true)) {
 		DRM_ERROR("hw begin failed\n");
 		return;
 	}
@@ -311,7 +311,7 @@ static void mdfld_dsi_controller_startup(struct mdfld_dsi_config * dsi_config, i
 	
 	dev = dsi_config->dev;
 	
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, OSPM_UHB_FORCE_POWER_ON)) {
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true)) {
 		DRM_ERROR("hw begin failed\n");
 		return;
 	}

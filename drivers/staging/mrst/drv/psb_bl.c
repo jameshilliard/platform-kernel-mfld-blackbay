@@ -62,8 +62,7 @@ int psb_set_brightness(struct backlight_device *bd)
 	if (level < BRIGHTNESS_MIN_LEVEL)
 		level = BRIGHTNESS_MIN_LEVEL;
 
-	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND,
-					OSPM_UHB_ONLY_IF_ON)) {
+	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
 		u32 adjusted_level = 0;
 
 		/*

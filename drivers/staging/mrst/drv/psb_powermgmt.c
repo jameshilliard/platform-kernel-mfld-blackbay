@@ -1588,7 +1588,7 @@ bool ospm_power_is_hw_on(int hw_islands)
  * power state transition and the caller will be expected to handle that
  * even if force_on is set to true.
  */
-bool ospm_power_using_hw_begin(int hw_island, UHBUsage usage)
+bool ospm_power_using_hw_begin(int hw_island, bool force_on)
 {
 	struct drm_device *drm_dev = gpDrmDevice; /* FIXME: Pass as parameter */
 	bool ret = true;
@@ -1596,7 +1596,6 @@ bool ospm_power_using_hw_begin(int hw_island, UHBUsage usage)
 	bool b_atomic = (in_interrupt() || in_atomic());
 	bool locked = true;
 	IMG_UINT32 deviceID = 0;
-	bool force_on = usage ? true : false;
 
 	if (b_atomic)
 		pm_runtime_get(&drm_dev->pdev->dev);
