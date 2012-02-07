@@ -44,8 +44,6 @@
 
 struct drm_device *gpDrmDevice = NULL;
 static struct mutex g_ospm_mutex;
-static bool gbSuspendInProgress = false;
-static bool gbResumeInProgress = false;
 static int g_hw_power_status_mask;
 static atomic_t g_display_access_count;
 static atomic_t g_graphics_access_count;
@@ -261,12 +259,10 @@ void ospm_apm_power_down_msvdx(struct drm_device *dev)
 	if (psb_check_msvdx_idle(dev))
 		goto out;
 
-	gbSuspendInProgress = true;
 	psb_msvdx_save_context(dev);
 #ifdef FIXME_MRST_VIDEO_DEC
 	ospm_power_island_down(OSPM_VIDEO_DEC_ISLAND);
 #endif
-	gbSuspendInProgress = false;
 out:
 	mutex_unlock(&g_ospm_mutex);
 	return;
@@ -283,10 +279,8 @@ void ospm_apm_power_down_topaz(struct drm_device *dev)
 	if (lnc_check_topaz_idle(dev))
 		goto out;
 
-	gbSuspendInProgress = true;
 	lnc_topaz_save_mtx_state(dev);
 	ospm_power_island_down(OSPM_VIDEO_ENC_ISLAND);
-	gbSuspendInProgress = false;
 out:
 	mutex_unlock(&g_ospm_mutex);
 	return;
@@ -306,10 +300,8 @@ void ospm_apm_power_down_msvdx(struct drm_device *dev)
 	if (psb_check_msvdx_idle(dev))
 		goto out;
 
-	gbSuspendInProgress = true;
 	psb_msvdx_save_context(dev);
 	ospm_power_island_down(OSPM_VIDEO_DEC_ISLAND);
-	gbSuspendInProgress = false;
 	MSVDX_NEW_PMSTATE(dev, msvdx_priv, PSB_PMSTATE_POWERDOWN);
 out:
 	mutex_unlock(&g_ospm_mutex);
@@ -330,13 +322,11 @@ void ospm_apm_power_down_topaz(struct drm_device *dev)
 	if (pnw_check_topaz_idle(dev))
 		goto out;
 
-	gbSuspendInProgress = true;
 	psb_irq_uninstall_islands(dev, OSPM_VIDEO_ENC_ISLAND);
 	pnw_topaz_save_mtx_state(dev);
 	PNW_TOPAZ_NEW_PMSTATE(dev, pnw_topaz_priv, PSB_PMSTATE_POWERDOWN);
 
 	ospm_power_island_down(OSPM_VIDEO_ENC_ISLAND);
-	gbSuspendInProgress = false;
 out:
 	mutex_unlock(&g_ospm_mutex);
 	return;
@@ -1258,13 +1248,6 @@ int ospm_power_suspend(struct device *dev)
 	int display_access_count;
 	bool suspend_pci = true;
 
-	if (gbSuspendInProgress || gbResumeInProgress) {
-#ifdef OSPM_GFX_DPK
-		printk(KERN_ALERT "OSPM_GFX_DPK: %s system BUSY \n", __func__);
-#endif
-		return  -EBUSY;
-	}
-
 	mutex_lock(&g_ospm_mutex);
 
 	if (!gbSuspended) {
@@ -1280,8 +1263,6 @@ int ospm_power_suspend(struct device *dev)
 			ret = -EBUSY;
 
 		if (!ret) {
-			gbSuspendInProgress = true;
-
 			psb_irq_uninstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
 			ospm_suspend_display(drm_dev);
 #if 1
@@ -1298,7 +1279,6 @@ int ospm_power_suspend(struct device *dev)
 			if (suspend_pci == true) {
 				ospm_suspend_pci(pdev);
 			}
-			gbSuspendInProgress = false;
 		} else {
 			printk(KERN_ALERT "ospm_power_suspend: device busy: graphics %d videoenc %d videodec %d display %d\n", graphics_access_count, videoenc_access_count, videodec_access_count, display_access_count);
 		}
@@ -1395,28 +1375,17 @@ int ospm_power_resume(struct device *dev)
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct drm_device *drm_dev = pci_get_drvdata(pdev);
 
-	if (gbSuspendInProgress || gbResumeInProgress) {
-#ifdef OSPM_GFX_DPK
-		printk(KERN_ALERT "OSPM_GFX_DPK: %s hw_island: Suspend || gbResumeInProgress!!!! \n", __func__);
-#endif
-		return 0;
-	}
-
 	mutex_lock(&g_ospm_mutex);
 
 #ifdef OSPM_GFX_DPK
 	printk(KERN_ALERT "OSPM_GFX_DPK: ospm_power_resume \n");
 #endif
 
-	gbResumeInProgress = true;
-
 	ospm_resume_pci(pdev);
 
 	ospm_resume_display(drm_dev);
 	psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
 	psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
-
-	gbResumeInProgress = false;
 
 	mutex_unlock(&g_ospm_mutex);
 
@@ -1499,8 +1468,6 @@ bool ospm_power_using_hw_begin(int hw_island, bool force_on)
 	if (g_hw_power_status_mask & hw_island)
 		goto increase_count;
 
-	gbResumeInProgress = true;
-
 	switch (hw_island) {
 	case OSPM_DISPLAY_ISLAND:
 		ospm_resume_display(drm_dev);
@@ -1535,8 +1502,6 @@ bool ospm_power_using_hw_begin(int hw_island, bool force_on)
 	default:
 		BUG();
 	}
-
-	gbResumeInProgress = false;
 
 increase_count:
 	switch (hw_island) {
