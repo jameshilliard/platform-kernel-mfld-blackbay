@@ -1436,6 +1436,34 @@ bool ospm_power_is_hw_on(int hw_islands)
 	return ((g_hw_power_status_mask & hw_islands) == hw_islands) ? true : false;
 }
 
+bool ospm_power_using_hw_begin_atomic(int hw_island)
+{
+	struct drm_device *drm_dev = gpDrmDevice; /* FIXME: Pass as parameter */
+
+	/* fail if island is off, no can do in atomic context  */
+	if (!(g_hw_power_status_mask & hw_island))
+		return false;
+
+	pm_runtime_get(&drm_dev->pdev->dev);
+
+	switch (hw_island) {
+	case OSPM_GRAPHICS_ISLAND:
+		atomic_inc(&g_graphics_access_count);
+		break;
+	case OSPM_VIDEO_ENC_ISLAND:
+		atomic_inc(&g_videoenc_access_count);
+		break;
+	case OSPM_VIDEO_DEC_ISLAND:
+		atomic_inc(&g_videodec_access_count);
+		break;
+	case OSPM_DISPLAY_ISLAND:
+		atomic_inc(&g_display_access_count);
+		break;
+	}
+
+	return true;
+}
+
 /*
  * ospm_power_using_hw_begin
  *
@@ -1454,132 +1482,98 @@ bool ospm_power_using_hw_begin(int hw_island, bool force_on)
 {
 	struct drm_device *drm_dev = gpDrmDevice; /* FIXME: Pass as parameter */
 	bool ret = true;
-	bool island_is_off = false;
-	bool b_atomic = (in_interrupt() || in_atomic());
-	bool locked = true;
 
-	if (b_atomic)
-		pm_runtime_get(&drm_dev->pdev->dev);
-	else
-		pm_runtime_get_sync(&drm_dev->pdev->dev);
+	WARN(in_interrupt() || in_atomic(), "%s called in atomic context\n",
+		__func__);
 
-	/*quick path, not 100% race safe, but should be enough comapre to current other code in this file */
-	if (!force_on) {
-		if (hw_island & (OSPM_ALL_ISLANDS & ~g_hw_power_status_mask)) {
-			pm_runtime_put(&drm_dev->pdev->dev);
-			return false;
-		} else {
-			locked = false;
-			goto increase_count;
-		}
-	}
+	/* no force, increase count if island on, otherwise fail */
+	if (!force_on)
+		return ospm_power_using_hw_begin_atomic(hw_island);
 
-	if (!b_atomic)
-		mutex_lock(&g_ospm_mutex);
+	/* note: the runtime pm resume callback takes g_ospm_mutex */
+	pm_runtime_get_sync(&drm_dev->pdev->dev);
 
-	island_is_off = hw_island & (OSPM_ALL_ISLANDS & ~g_hw_power_status_mask);
+	mutex_lock(&g_ospm_mutex);
 
-	if (b_atomic && (gbSuspendInProgress || gbResumeInProgress || gbSuspended) && force_on && island_is_off)
-		ret = false;
+	/* our job here is done if island is already on */
+	if (g_hw_power_status_mask & hw_island)
+		goto increase_count;
 
-	if (ret && island_is_off && !force_on)
-		ret = false;
+	gbResumeInProgress = true;
 
-	if (ret && island_is_off && force_on) {
-		gbResumeInProgress = true;
-
-		ret = ospm_resume_pci(drm_dev->pdev);
-
-		if (ret) {
-			switch (hw_island) {
-			case OSPM_DISPLAY_ISLAND:
-				ospm_resume_display(drm_dev);
-				psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
-				psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
-				break;
-			case OSPM_GRAPHICS_ISLAND:
-				ospm_power_island_up(OSPM_GRAPHICS_ISLAND);
-				psb_irq_preinstall_islands(drm_dev, OSPM_GRAPHICS_ISLAND);
-				psb_irq_postinstall_islands(drm_dev, OSPM_GRAPHICS_ISLAND);
-				break;
-#if 1
-			case OSPM_VIDEO_DEC_ISLAND:
-				if (!ospm_power_is_hw_on(OSPM_DISPLAY_ISLAND)) {
-					//printk(KERN_ALERT "%s power on display for video decode use\n", __func__);
-					ospm_resume_display(drm_dev);
-					psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
-					psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
-				} else {
-					//printk(KERN_ALERT "%s display is already on for video decode use\n", __func__);
-				}
-
-				if (!ospm_power_is_hw_on(OSPM_VIDEO_DEC_ISLAND)) {
-					//printk(KERN_ALERT "%s power on video decode\n", __func__);
-					ospm_power_island_up(OSPM_VIDEO_DEC_ISLAND);
-					ospm_runtime_pm_msvdx_resume(drm_dev);
-					psb_irq_preinstall_islands(drm_dev, OSPM_VIDEO_DEC_ISLAND);
-					psb_irq_postinstall_islands(drm_dev, OSPM_VIDEO_DEC_ISLAND);
-				} else {
-					//printk(KERN_ALERT "%s video decode is already on\n", __func__);
-				}
-
-				break;
-			case OSPM_VIDEO_ENC_ISLAND:
-				if (!ospm_power_is_hw_on(OSPM_DISPLAY_ISLAND)) {
-					//printk(KERN_ALERT "%s power on display for video encode\n", __func__);
-					ospm_resume_display(drm_dev);
-					psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
-					psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
-				} else {
-					//printk(KERN_ALERT "%s display is already on for video encode use\n", __func__);
-				}
-
-				if (!ospm_power_is_hw_on(OSPM_VIDEO_ENC_ISLAND)) {
-					//printk(KERN_ALERT "%s power on video encode\n", __func__);
-					ospm_power_island_up(OSPM_VIDEO_ENC_ISLAND);
-					ospm_runtime_pm_topaz_resume(drm_dev);
-					psb_irq_preinstall_islands(drm_dev, OSPM_VIDEO_ENC_ISLAND);
-					psb_irq_postinstall_islands(drm_dev, OSPM_VIDEO_ENC_ISLAND);
-				} else {
-					//printk(KERN_ALERT "%s video decode is already on\n", __func__);
-				}
-#endif
-				break;
-
-			default:
-				printk(KERN_ALERT "%s unknown island !!!! \n", __func__);
-				break;
-			}
-
-		}
-
-		if (!ret)
-			printk(KERN_ALERT "ospm_power_using_hw_begin: forcing on %d failed\n", hw_island);
-
+	ret = ospm_resume_pci(drm_dev->pdev);
+	if (!ret) {
+		printk(KERN_ALERT "ospm_power_using_hw_begin: forcing on %d failed\n", hw_island);
 		gbResumeInProgress = false;
-	}
-increase_count:
-	if (ret) {
-		switch (hw_island) {
-		case OSPM_GRAPHICS_ISLAND:
-			atomic_inc(&g_graphics_access_count);
-			break;
-		case OSPM_VIDEO_ENC_ISLAND:
-			atomic_inc(&g_videoenc_access_count);
-			break;
-		case OSPM_VIDEO_DEC_ISLAND:
-			atomic_inc(&g_videodec_access_count);
-			break;
-		case OSPM_DISPLAY_ISLAND:
-			atomic_inc(&g_display_access_count);
-			break;
-		}
-	} else {
 		pm_runtime_put(&drm_dev->pdev->dev);
+		goto out_unlock;
 	}
 
-	if (!b_atomic && locked)
-		mutex_unlock(&g_ospm_mutex);
+	switch (hw_island) {
+	case OSPM_DISPLAY_ISLAND:
+		ospm_resume_display(drm_dev);
+		psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
+		psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
+		break;
+
+	case OSPM_GRAPHICS_ISLAND:
+		ospm_power_island_up(OSPM_GRAPHICS_ISLAND);
+		psb_irq_preinstall_islands(drm_dev, OSPM_GRAPHICS_ISLAND);
+		psb_irq_postinstall_islands(drm_dev, OSPM_GRAPHICS_ISLAND);
+		break;
+
+	case OSPM_VIDEO_DEC_ISLAND:
+		if (!ospm_power_is_hw_on(OSPM_DISPLAY_ISLAND)) {
+			ospm_resume_display(drm_dev);
+			psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
+			psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
+		}
+		if (!ospm_power_is_hw_on(OSPM_VIDEO_DEC_ISLAND)) {
+			ospm_power_island_up(OSPM_VIDEO_DEC_ISLAND);
+			ospm_runtime_pm_msvdx_resume(drm_dev);
+			psb_irq_preinstall_islands(drm_dev, OSPM_VIDEO_DEC_ISLAND);
+			psb_irq_postinstall_islands(drm_dev, OSPM_VIDEO_DEC_ISLAND);
+		}
+		break;
+
+	case OSPM_VIDEO_ENC_ISLAND:
+		if (!ospm_power_is_hw_on(OSPM_DISPLAY_ISLAND)) {
+			ospm_resume_display(drm_dev);
+			psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
+			psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
+		}
+		if (!ospm_power_is_hw_on(OSPM_VIDEO_ENC_ISLAND)) {
+			ospm_power_island_up(OSPM_VIDEO_ENC_ISLAND);
+			ospm_runtime_pm_topaz_resume(drm_dev);
+			psb_irq_preinstall_islands(drm_dev, OSPM_VIDEO_ENC_ISLAND);
+			psb_irq_postinstall_islands(drm_dev, OSPM_VIDEO_ENC_ISLAND);
+		}
+		break;
+
+	default:
+		BUG();
+	}
+
+	gbResumeInProgress = false;
+
+increase_count:
+	switch (hw_island) {
+	case OSPM_GRAPHICS_ISLAND:
+		atomic_inc(&g_graphics_access_count);
+		break;
+	case OSPM_VIDEO_ENC_ISLAND:
+		atomic_inc(&g_videoenc_access_count);
+		break;
+	case OSPM_VIDEO_DEC_ISLAND:
+		atomic_inc(&g_videodec_access_count);
+		break;
+	case OSPM_DISPLAY_ISLAND:
+		atomic_inc(&g_display_access_count);
+		break;
+	}
+
+out_unlock:
+	mutex_unlock(&g_ospm_mutex);
 
 	return ret;
 }

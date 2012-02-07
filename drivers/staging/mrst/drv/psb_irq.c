@@ -111,7 +111,7 @@ psb_enable_pipestat(struct drm_psb_private *dev_priv, int pipe, u32 mask)
 			trcmd_vblank_power(PVR_TRCMD_RESUME, pipe);
 		dev_priv->pipestat[pipe] |= mask;
 		/* Enable the interrupt, clear any pending status */
-		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
+		if (ospm_power_using_hw_begin_atomic(OSPM_DISPLAY_ISLAND)) {
 			u32 writeVal = PSB_RVDC32(reg);
 			writeVal |= (mask | (mask >> 16));
 			PSB_WVDC32(writeVal, reg);
@@ -129,7 +129,7 @@ psb_disable_pipestat(struct drm_psb_private *dev_priv, int pipe, u32 mask)
 		if (mask & PIPE_VBLANK_INTERRUPT_ENABLE)
 			trcmd_vblank_power(PVR_TRCMD_SUSPEND, pipe);
 		dev_priv->pipestat[pipe] &= ~mask;
-		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
+		if (ospm_power_using_hw_begin_atomic(OSPM_DISPLAY_ISLAND)) {
 			u32 writeVal = PSB_RVDC32(reg);
 			writeVal &= ~mask;
 			PSB_WVDC32(writeVal, reg);
@@ -142,7 +142,7 @@ psb_disable_pipestat(struct drm_psb_private *dev_priv, int pipe, u32 mask)
 static void
 mid_enable_pipe_event(struct drm_psb_private *dev_priv, int pipe)
 {
-	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
+	if (ospm_power_using_hw_begin_atomic(OSPM_DISPLAY_ISLAND)) {
 		u32 pipe_event = mid_pipe_event(pipe);
 		dev_priv->vdc_irq_mask |= pipe_event;
 		PSB_WVDC32(~dev_priv->vdc_irq_mask, PSB_INT_MASK_R);
@@ -155,7 +155,7 @@ static void
 mid_disable_pipe_event(struct drm_psb_private *dev_priv, int pipe)
 {
 	if (dev_priv->pipestat[pipe] == 0) {
-		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
+		if (ospm_power_using_hw_begin_atomic(OSPM_DISPLAY_ISLAND)) {
 			u32 pipe_event = mid_pipe_event(pipe);
 			dev_priv->vdc_irq_mask &= ~pipe_event;
 			PSB_WVDC32(~dev_priv->vdc_irq_mask, PSB_INT_MASK_R);
@@ -799,7 +799,7 @@ int psb_enable_vblank(struct drm_device *dev, int pipe)
 	if (!is_panel_vid_or_cmd(dev))
 		return mdfld_enable_te(dev, pipe);
 
-	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
+	if (ospm_power_using_hw_begin_atomic(OSPM_DISPLAY_ISLAND)) {
 		reg_val = REG_READ(pipeconf_reg);
 		ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 	}
@@ -868,7 +868,7 @@ u32 psb_get_vblank_counter(struct drm_device *dev, int pipe)
 		return 0;
 	}
 
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false))
+	if (!ospm_power_using_hw_begin_atomic(OSPM_DISPLAY_ISLAND))
 		return 0;
 
 	reg_val = REG_READ(pipeconf_reg);

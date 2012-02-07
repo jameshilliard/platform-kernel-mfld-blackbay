@@ -76,6 +76,7 @@ int ospm_power_resume(struct device *dev);
  * (i.e. register reads and writes)
  */
 bool ospm_power_using_hw_begin(int hw_island, bool force_on);
+bool ospm_power_using_hw_begin_atomic(int hw_island); /* force_on == false */
 void ospm_power_using_hw_end(int hw_island);
 
 /*
