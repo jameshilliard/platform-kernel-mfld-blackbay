@@ -375,10 +375,14 @@ static void gfx_late_resume(struct early_suspend *es)
 	list_for_each_entry(encoder, &dev->mode_config.encoder_list, head) {
 		struct drm_encoder_helper_funcs *ehf = encoder->helper_private;
 
-		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->dpms) {
+		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->mode_set
+		    && ehf->dpms) {
 			struct drm_crtc *crtc = encoder->crtc;
 
-			ehf->mode_set(encoder, &crtc->mode, &crtc->hwmode);
+			if (crtc)
+				ehf->mode_set(encoder,
+					      &crtc->mode,
+					      &crtc->hwmode);
 			ehf->dpms(encoder, DRM_MODE_DPMS_ON);
 		}
 	}
