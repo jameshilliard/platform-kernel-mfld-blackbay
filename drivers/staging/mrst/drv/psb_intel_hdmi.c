@@ -755,7 +755,12 @@ static int mdfld_hdmi_set_property(struct drm_connector *connector,
 				       struct drm_property *property,
 				       uint64_t value)
 {
+	struct drm_device *dev = connector->dev;
+	struct drm_psb_private *dev_priv = dev->dev_private;
 	struct drm_encoder *pEncoder = connector->encoder;
+	struct android_hdmi_priv *hdmi_priv = NULL;
+	static int prev_state;
+	int state = 0, audio_notify = 0;
 
 	PSB_DEBUG_ENTRY("connector info, type = %d, type_id=%d, base=0x%p, base.id=0x%x. \n", connector->connector_type, connector->connector_type_id, &connector->base, connector->base.id);
 	PSB_DEBUG_ENTRY("encoder info, base.id=%d, encoder_type=%d, dev=0x%p, base=0x%p, possible_clones=0x%x. \n", pEncoder->base.id, pEncoder->encoder_type, pEncoder->dev, &pEncoder->base, pEncoder->possible_clones);
@@ -767,6 +772,41 @@ static int mdfld_hdmi_set_property(struct drm_connector *connector,
 		PSB_DEBUG_ENTRY("backlight \n");
 	} else if (!strcmp(property->name, "DPMS") && pEncoder) {
 		PSB_DEBUG_ENTRY("DPMS \n");
+	}
+
+	if (!strcmp(property->name, "hdmi-send-uevent")) {
+		hdmi_priv = to_psb_intel_output(connector)->dev_priv;
+		if (hdmi_priv != NULL) {
+			/* user space expects:
+			 * '0' for disconnected, '1' for connected.
+			 * whereas: connector_status_connected is '1' and
+			 * connector_status_disconnected is '2'.
+			 * so, make proper conversion.
+			 */
+			state = (value == connector_status_connected) ? 1 : 0;
+
+			/* TODO: Use get/set attribute to get monitor_type */
+			if (hdmi_priv->monitor_type == MONITOR_TYPE_HDMI) {
+				/*
+				 * Notify the audio driver only if there is
+				 * a change in state.
+				 */
+				audio_notify = state ? HAD_EVENT_HOT_PLUG :
+					HAD_EVENT_HOT_UNPLUG;
+
+				if (state != prev_state &&
+				    dev_priv->mdfld_had_event_callbacks) {
+					(*dev_priv->mdfld_had_event_callbacks)
+						(audio_notify,
+						 dev_priv->had_pvt_data);
+				}
+
+				switch_set_state(&g_switch_hdmi_dev, state);
+			} else
+				switch_set_state(&g_switch_dvi_dev, state);
+
+			prev_state = state;
+		}
 	}
 
 	if (!strcmp(property->name, "scaling mode") && pEncoder) {

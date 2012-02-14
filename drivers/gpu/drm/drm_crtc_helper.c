@@ -972,6 +972,7 @@ static void output_poll_execute(struct work_struct *work)
 	struct drm_connector *connector;
 	enum drm_connector_status old_status;
 	bool repoll = false, changed = false;
+	struct drm_property property;
 
 	if (!drm_kms_helper_poll)
 		return;
@@ -1011,6 +1012,18 @@ static void output_poll_execute(struct work_struct *work)
 		drm_sysfs_hotplug_event(dev);
 		if (dev->mode_config.funcs->output_poll_changed)
 			dev->mode_config.funcs->output_poll_changed(dev);
+	}
+
+	list_for_each_entry(connector,
+			    &dev->mode_config.connector_list,
+			    head) {
+		if (connector->funcs->set_property) {
+			strncpy(property.name, "hdmi-send-uevent",
+				sizeof("hdmi-send-uevent"));
+			connector->funcs->set_property(connector,
+						       &property,
+						       connector->status);
+		}
 	}
 
 	if (repoll)

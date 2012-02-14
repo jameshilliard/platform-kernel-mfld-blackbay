@@ -105,6 +105,13 @@ typedef enum
 #define HDMI_CEA_EXTENSION_BLOCK_BYTE_3            3
 #define HDMI_FL_AND_FR_SPEAKERS_CONNECTED        0x1
 
+/*
+* HDMI Monitor Type
+* TODO: Use get/set attribute to get these values
+*/
+#define MONITOR_TYPE_HDMI 0x01
+#define MONITOR_TYPE_DVI  0x02
+
 //
 // HDMI buffer/information types
 //
