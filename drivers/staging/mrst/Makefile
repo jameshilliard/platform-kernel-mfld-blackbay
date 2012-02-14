@@ -17,7 +17,6 @@ ccflags-y += \
 	-I$(srctree)/$(src)/pvr/services4/system/include \
 	-I$(srctree)/$(src)/pvr/services4/system/unified \
 	-I$(srctree)/include/drm \
-	-I$(srctree)/$(src)/drv/otm_hdmi/os/android/include \
 	-Iinclude/linux
 
 ccflags-y += -DSGX540 -DSUPPORT_SGX540 -DSGX_CORE_REV=121
@@ -223,5 +222,5 @@ medfield_gfx-$(CONFIG_MDFD_GL3) += $(DRMDRVDIR)/mdfld_gl3.o
 medfield_gfx-$(CONFIG_DEBUG_FS) += $(PVRDIR)/pvr_debugfs.o
 medfield_gfx-$(CONFIG_PVR_TRACE_CMD) += $(PVRDIR)/pvr_trace_cmd.o
 
+include $(srctree)/$(src)/drv/otm_hdmi/Makefile
 obj-$(CONFIG_DRM_MDFLD) += medfield_gfx.o
-obj-$(CONFIG_MDFD_HDMI) += $(DRMDRVDIR)/otm_hdmi/
