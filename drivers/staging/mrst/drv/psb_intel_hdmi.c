@@ -303,6 +303,12 @@ static void mdfld_hdmi_dpms(struct drm_encoder *encoder, int mode)
 
 	PSB_DEBUG_ENTRY("%s\n", mode == DRM_MODE_DPMS_ON ? "on" : "off");
 
+	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND,
+				       true)) {
+		PSB_DEBUG_ENTRY("%s failed to power on\n", __func__);
+		return;
+	}
+
 	hdmib = REG_READ(hdmi_priv->hdmib_reg) | HDMIB_PIPE_B_SELECT | HDMIB_NULL_PACKET;
 	hdmi_phy_misc = REG_READ(HDMIPHYMISCCTL);
 
@@ -314,6 +320,8 @@ static void mdfld_hdmi_dpms(struct drm_encoder *encoder, int mode)
 		REG_WRITE(hdmi_priv->hdmib_reg, hdmib | HDMIB_PORT_EN);
 	}
 	REG_READ(hdmi_priv->hdmib_reg);
+
+	ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 }
 
 static void mdfld_hdmi_save(struct drm_connector *connector)
