@@ -154,7 +154,7 @@ typedef struct {
 	unsigned int io_address;
 
 	/* Base address of mapped interrupt registers */
-	unsigned int irq_io_address;
+	void __iomem *irq_io_address;
 
 	/* Pointer to register read routine */
 	unsigned int (*io_read) (void *uhandle,	/* User provided data */

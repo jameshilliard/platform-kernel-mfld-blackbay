@@ -670,7 +670,7 @@ int android_hdmi_mode_valid(struct drm_connector *connector,
 }
 
 static struct drm_display_mode
-*android_hdmi_get_drm_mode_from_pdt(otm_hdmi_timing_t *timings,
+*android_hdmi_get_drm_mode_from_pdt(const otm_hdmi_timing_t *timings,
 				    struct drm_device *dev)
 {
 	struct drm_display_mode *mode;
