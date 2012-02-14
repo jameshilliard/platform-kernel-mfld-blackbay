@@ -446,4 +446,40 @@ static inline void android_hdmi_dpms(struct drm_encoder *encoder,
 
 #endif /* CONFIG_MDFD_HDMI */
 
+/*
+ * Description: hdmi helper function to parse cmdline option
+ *		from hdmicmd tool
+ *
+ * @cmdoption:	cmdline option
+ *
+ * Returns:	error codes 0(success),-1(cmd option),-2(invalid input)
+ */
+int otm_cmdline_parse_option(char *cmdoption);
+
+/*
+ * Description: hdmi helper function to parse vic option
+ *		from hdmicmd tool
+ *
+ * @cmdoption:	cmdline option
+ *
+ * Returns:	error codes 0(success),-1(error)
+ */
+int otm_cmdline_set_vic_option(int vic);
+
+/*
+ * Description: hdmi helper function to print cmdline options
+ *		from hdmicmd tool
+ *
+ * Returns:	none
+ */
+void otm_print_cmdline_option(void);
+
+/*
+ * Description: hdmi helper function to print edid information
+ *		from report_edid tool
+ *
+ * Returns:	none
+ */
+void test_otm_hdmi_report_edid_full(void);
+
 #endif /* __ANDROID_HDMI_H */

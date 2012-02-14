@@ -167,9 +167,6 @@ typedef struct {
 			unsigned int offset, /* Register offset */
 			unsigned int value); /* Value */
 
-	/* Pointer to delay routine */
-	 /* Number of usec to sleep */
-	void (*usleep) (unsigned long usec);
 
 	/* Pointer to the data that will be
 	 * passed to both io_read and io_write */

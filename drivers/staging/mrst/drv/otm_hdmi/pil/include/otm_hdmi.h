@@ -191,6 +191,9 @@ otm_hdmi_ret_t otm_hdmi_setup_irq(void *context, struct pci_dev *pdev,
 /* init hdmi device driver */
 otm_hdmi_ret_t otm_hdmi_device_init(void **context, struct pci_dev *pdev);
 
+/*deinit hdmi device driver */
+void otm_hdmi_deinit(void *context);
+
 /* read edid information */
 unsigned char *otm_hdmi_read_edid(void);
 
@@ -354,5 +357,14 @@ typedef enum {
 #define PD_DTV_MODE           0x00000400 /* Digital Panel mode                */
 #define PD_SVBI               0x00000010 /* Software VBI supported timings    */
 #define PD_AR_16_BY_9         0x00000001 /* 16:9 aspect ratio                 */
+
+/*
+ * Description: report edid tool helper function
+ *
+ * Returns:	none
+ */
+#ifdef OTM_HDMI_UNIT_TEST
+void test_otm_hdmi_report_edid(void);
+#endif
 
 #endif /* _OTM_HDMI_H */

@@ -289,6 +289,7 @@ gdl_ret_t android_hdmi_audio_control(void *context, bool flag)
 }
 #endif
 
+#ifdef OTM_HDMI_HDCP_ENABLE
 static int hdmi_ddc_read_write(bool read,
 			uint8_t i2c_addr,
 			uint8_t offset,
@@ -319,6 +320,7 @@ static int hdmi_ddc_read_write(bool read,
 
 	return 0;
 }
+#endif
 
 #define android_hdmi_connector_funcs mdfld_hdmi_connector_funcs
 #define android_hdmi_connector_helper_funcs mdfld_hdmi_connector_helper_funcs
@@ -1122,15 +1124,17 @@ int android_hdmi_crtc_mode_set(struct drm_crtc *crtc,
 	struct drm_framebuffer *fb;
 	struct android_hdmi_priv *hdmi_priv;
 	struct drm_mode_config *mode_config;
+#ifdef MFLD_HDMI_PR3
 	struct psb_intel_output *psb_intel_output = NULL;
 	struct drm_encoder *encoder;
 	struct drm_connector *connector;
 	uint64_t scalingType = DRM_MODE_SCALE_CENTER;
+#endif
 	int pipe;
 	otm_hdmi_timing_t otm_mode, otm_adjusted_mode;
 	uint32_t clock_khz;
 	int fb_width, fb_height;
-#ifndef MFLD_HDMI_PR3
+#if !defined(MFLD_HDMI_PR3) && !defined(MFLD_HDMI_DV1)
 	u32 width_align, pipebstride;
 #endif
 	pr_debug("%s E", __func__);

@@ -571,6 +571,7 @@ exit:
  *
  *	Returns - check otm_hdmi_ret_t
  */
+#ifdef OTM_HDMI_FIXME
 static otm_hdmi_ret_t __hdmi_phy_enable(void *context, bool status)
 {
 	otm_hdmi_ret_t rc = OTM_HDMI_SUCCESS;
@@ -634,7 +635,6 @@ static otm_hdmi_ret_t __hdmi_enable(hdmi_context_t *ctx)
 	rc = __hdmi_phy_enable(ctx, false);
 	pr_debug("phy_enable returned with %d\n", rc);
 
-#ifdef OTM_HDMI_FIXME
 	/* Setup and enable I2C subunit */
 	rc = hdmi_i2c_reset_init_enable(ctx);
 	if (rc != OTM_HDMI_SUCCESS)
@@ -649,7 +649,6 @@ static otm_hdmi_ret_t __hdmi_enable(hdmi_context_t *ctx)
 	hdmi_general_audio_clock_enable(&ctx->dev);
 	hdmi_general_hdcp_clock_enable(&ctx->dev);
 	hdmi_general_5V_enable(&ctx->dev);
-#endif
 
 #ifdef SOC_HDCP_ENABLE
 	hdmi_hdcp_disable(ctx);
@@ -658,6 +657,7 @@ static otm_hdmi_ret_t __hdmi_enable(hdmi_context_t *ctx)
 exit:
 	return rc;
 }
+#endif /*OTM_HDMI_FIXME*/
 
 static void log_entry(void *uhandle, char *foo)
 {
@@ -719,7 +719,6 @@ static otm_hdmi_ret_t __hdmi_context_init(void *context, struct pci_dev *pdev)
 			(unsigned int)ctx->io_address);
 
 	/* Initialize HAL; It's important that ALL entries are initialized!!! */
-	ctx->dev.usleep = 0;
 	ctx->dev.log_entry = log_entry;
 	ctx->dev.log_exit = log_exit;
 	ctx->dev.poll_timer = &ctx->hal_timer;
