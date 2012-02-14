@@ -644,7 +644,7 @@ int android_hdmi_mode_valid(struct drm_connector *connector,
 		}
 	}
 
-#ifdef MFLD_HDMI_PR3
+#ifdef OTM_HDMI_UNIT_TEST
 	/* if cmdline_mode is set, prune all other modes.*/
 	if (1 == cmdline_mode.specified) {
 		if ((cmdline_mode.hdisplay != mode->hdisplay) ||
