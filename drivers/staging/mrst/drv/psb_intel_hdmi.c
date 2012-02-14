@@ -297,6 +297,7 @@ static bool mdfld_hdmi_mode_fixup(struct drm_encoder *encoder,
 static void mdfld_hdmi_dpms(struct drm_encoder *encoder, int mode)
 {
 	struct drm_device *dev = encoder->dev;
+	struct drm_psb_private *dev_priv = dev->dev_private;
 	struct psb_intel_output *output = enc_to_psb_intel_output(encoder);
 	struct android_hdmi_priv *hdmi_priv = output->dev_priv;
 	u32 hdmib, hdmi_phy_misc;
@@ -313,11 +314,17 @@ static void mdfld_hdmi_dpms(struct drm_encoder *encoder, int mode)
 	hdmi_phy_misc = REG_READ(HDMIPHYMISCCTL);
 
 	if (mode != DRM_MODE_DPMS_ON) {
+		if (dev_priv->mdfld_had_event_callbacks)
+			(*dev_priv->mdfld_had_event_callbacks)
+			(HAD_EVENT_HOT_UNPLUG, dev_priv->had_pvt_data);
 		REG_WRITE(hdmi_priv->hdmib_reg, hdmib & ~HDMIB_PORT_EN);
 		REG_WRITE(HDMIPHYMISCCTL, hdmi_phy_misc | HDMI_PHY_POWER_DOWN);
 	} else {
 		REG_WRITE(HDMIPHYMISCCTL, hdmi_phy_misc & ~HDMI_PHY_POWER_DOWN);
 		REG_WRITE(hdmi_priv->hdmib_reg, hdmib | HDMIB_PORT_EN);
+		if (dev_priv->mdfld_had_event_callbacks)
+			(*dev_priv->mdfld_had_event_callbacks)
+			(HAD_EVENT_HOT_PLUG, dev_priv->had_pvt_data);
 	}
 	REG_READ(hdmi_priv->hdmib_reg);
 

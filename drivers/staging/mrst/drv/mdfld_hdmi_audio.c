@@ -25,7 +25,7 @@
 #include "psb_intel_hdmi_edid.h"
 #include "psb_intel_hdmi.h"
 #include "mdfld_hdmi_audio_if.h"
-
+#include <asm/intel_scu_ipc.h>
 
 /*
  * Audio register range 0x69000 to 0x69117
@@ -227,10 +227,20 @@ int intel_hdmi_audio_query_capabilities (had_event_call_back audio_callbacks, st
 
 int display_register(struct snd_intel_had_interface *driver, void * had_data)
 {
-    struct drm_device *dev = hdmi_priv->dev;
-    struct drm_psb_private *dev_priv = (struct drm_psb_private *) dev->dev_private;
+	struct drm_device *dev = hdmi_priv->dev;
+	struct drm_psb_private *dev_priv = dev->dev_private;
+	u8 data = 0;
 	dev_priv->had_pvt_data = had_data;
 	dev_priv->had_interface = driver;
+
+	/* The Audio driver is loading now and we need to notify
+	 * it if there is an HDMI device attached */
+	intel_scu_ipc_ioread8(MSIC_HDMI_STATUS, &data);
+	if (data & HPD_SIGNAL_STATUS) {
+		if (dev_priv->mdfld_had_event_callbacks)
+			(*dev_priv->mdfld_had_event_callbacks)
+			(HAD_EVENT_HOT_PLUG, dev_priv->had_pvt_data);
+	}
 	return 0;
 }
 
