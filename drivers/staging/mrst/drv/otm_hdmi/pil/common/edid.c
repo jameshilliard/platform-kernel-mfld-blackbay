@@ -68,7 +68,6 @@
 #include "edid_internal.h"
 #include "hdmi_timings.h"
 
-
 /*
  * Macro for error checking
  */
@@ -121,6 +120,31 @@ typedef struct {
 	unsigned char *buffer;
 	int position;
 } read_context_t;
+
+static void fetch_generic_descriptor(generic_descriptor_t *gd,
+				read_context_t *rctx)
+				__attribute__((unused));
+
+static void fetch_timing_descriptor(timing_descriptor_t *td,
+				read_context_t *rctx)
+				__attribute__((unused));
+
+static void declare_mandatory_3d(edid_info_t *edid)
+				__attribute__((unused));
+
+static void declare_short_3d(unsigned int struc_3d,
+				unsigned int mask,
+				edid_info_t *edid)
+				__attribute__((unused));
+
+static void declare_explicit_3d(unsigned char *e,
+				unsigned int n,
+				edid_info_t *edid)
+				__attribute__((unused));
+
+static void decode_misc_modes(unsigned char *e,
+				int n, edid_info_t *edid)
+				__attribute__((unused));
 
 /*
  * fetch_next_field()
@@ -182,7 +206,8 @@ static void fetch_next_field(void *dst,
 /*
  * fetch_generic_descriptor()
  */
-static void fetch_generic_descriptor(generic_descriptor_t *gd,
+static void fetch_generic_descriptor(
+				generic_descriptor_t *gd,
 				read_context_t *rctx)
 {
 	fetch_next_field(&gd->flag_required, rctx, 2);
@@ -195,7 +220,8 @@ static void fetch_generic_descriptor(generic_descriptor_t *gd,
 /*
  * fetch_timing_descriptor()
  */
-static void fetch_timing_descriptor(timing_descriptor_t *td,
+static void fetch_timing_descriptor(
+				timing_descriptor_t *td,
 				read_context_t *rctx)
 {
 	fetch_next_field(&td->pixel_clock, rctx, 2);
@@ -637,8 +663,9 @@ static void add_3d_mode_via_2d(unsigned int vic, unsigned int struc_3d,
 /*
  * Processing of 3D modes declared via 3D_Struture_ALL and 3D_MASK
  */
-static void declare_short_3d(unsigned int struc_3d, unsigned int mask,
-						edid_info_t *edid)
+static void declare_short_3d(
+		unsigned int struc_3d, unsigned int mask,
+		edid_info_t *edid)
 {
 	unsigned int i, j, modes;
 
@@ -658,7 +685,8 @@ static void declare_short_3d(unsigned int struc_3d, unsigned int mask,
 /*
  * Processing of 3D modes declared via explicit list of 2D vics
  */
-static void declare_explicit_3d(unsigned char *e,
+static void declare_explicit_3d(
+			unsigned char *e,
 			unsigned int n,
 			edid_info_t *edid)
 {
@@ -674,7 +702,8 @@ static void declare_explicit_3d(unsigned char *e,
 /*
  * decode_misc_modes()
  */
-static void decode_misc_modes(unsigned char *e, int n, edid_info_t *edid)
+static void decode_misc_modes(unsigned char *e,
+			int n, edid_info_t *edid)
 {
 
 }

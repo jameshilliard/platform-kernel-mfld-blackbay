@@ -766,13 +766,13 @@ otm_hdmi_ret_t ipil_hdmi_enc_mode_set(hdmi_device_t *dev,
 						phsync ? '+' : '-',
 						pvsync ? '+' : '-');
 	if (phsync)
-		hdmib = SETBITS(hdmib, IPIL_HSYNC_POLARITY_MASK);
+		hdmib = SET_BITS(hdmib, IPIL_HSYNC_POLARITY_MASK);
 	else
-		hdmib = CLEARBITS(hdmib, IPIL_HSYNC_POLARITY_MASK);
+		hdmib = CLEAR_BITS(hdmib, IPIL_HSYNC_POLARITY_MASK);
 	if (pvsync)
-		hdmib = SETBITS(hdmib, IPIL_VSYNC_POLARITY_MASK);
+		hdmib = SET_BITS(hdmib, IPIL_VSYNC_POLARITY_MASK);
 	else
-		hdmib = CLEARBITS(hdmib, IPIL_VSYNC_POLARITY_MASK);
+		hdmib = CLEAR_BITS(hdmib, IPIL_VSYNC_POLARITY_MASK);
 
 	hdmi_phy_misc = hdmi_read32(IPIL_HDMIPHYMISCCTL) &
 					~IPIL_HDMI_PHY_POWER_DOWN;

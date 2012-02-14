@@ -110,6 +110,11 @@ static otm_hdmi_ret_t __pd_attr_declare(otm_hdmi_attribute_t *table,
 				unsigned int min,
 				unsigned int max);
 
+static otm_hdmi_ret_t __program_clocks(hdmi_context_t *ctx,
+					 unsigned int dclk)
+					__attribute__((unused));
+
+
 static unsigned int g_gpio = GPIO_MIN;
 static unsigned int g_dtv;
 static unsigned int g_dc = 1;

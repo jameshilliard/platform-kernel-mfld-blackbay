@@ -65,8 +65,7 @@
 #define __ANDROID_HDMI_H
 
 #include <linux/types.h>
-#include <drm/drm_mode.h>
-#include <drm/drm_crtc.h>
+#include <drm/drmP.h>
 
 #define CEA_EXT     0x02
 #define VTB_EXT     0x10

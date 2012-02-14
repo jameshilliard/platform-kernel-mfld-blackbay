@@ -133,8 +133,8 @@
 
 #define IPIL_HSYNC_POLARITY_MASK IPS_HSYNC_POLARITY_MASK
 #define IPIL_VSYNC_POLARITY_MASK IPS_VSYNC_POLARITY_MASK
-#define CLEARBITS(val, mask) (val & (~mask))
-#define SETBITS(val, mask)  (val | mask)
+#define CLEAR_BITS(val, mask) ((val) & (~mask))
+#define SET_BITS(val, mask)  ((val) | (mask))
 struct ipil_clock_t {
 	int dot;
 	int m;

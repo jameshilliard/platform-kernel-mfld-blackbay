@@ -77,13 +77,13 @@ static void ips_hdcp_read_an(uint8_t *an);
 static void ips_hdcp_write_rx_ri(uint16_t rx_ri);
 static void ips_hdcp_set_config(int val);
 static int ips_hdcp_get_config(void);
-static bool ips_hdcp_is_encrypting(void);
-static uint8_t ips_hdcp_get_repeater_control(void);
-static void ips_hdcp_set_repeater_control(int value);
+static bool ips_hdcp_is_encrypting(void) __attribute__((unused));
+static uint8_t ips_hdcp_get_repeater_control(void)__attribute__((unused));
+static void ips_hdcp_set_repeater_control(int value) __attribute__((unused));
 static uint8_t ips_hdcp_get_repeater_status(void);
-static int ips_hdcp_repeater_v_match_check(void);
-static bool ips_hdcp_repeater_is_busy(void);
-static int ips_hdcp_repeater_rdy_for_nxt_data(void);
+static int ips_hdcp_repeater_v_match_check(void) __attribute__((unused));
+static bool ips_hdcp_repeater_is_busy(void) __attribute__((unused));
+static int ips_hdcp_repeater_rdy_for_nxt_data(void) __attribute__((unused));
 
 static uint32_t ips_hdcp_get_status(void)
 {
