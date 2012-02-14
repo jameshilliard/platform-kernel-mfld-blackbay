@@ -486,12 +486,15 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 		INIT_LIST_HEAD(&new_pending_flip->uncompleted);
 	}
 
-	/* In page flip, change the psb_fb_helper.fb to the swapped fb.*/
+	/* In page flip, change the psb_fb_helper.fb
+	 * and fbdev to the swapped fb.
+	 */
 	if (dev->dev_private)
 		fbdev = ((struct drm_psb_private *)dev->dev_private)->fbdev;
-	if (fbdev)
+	if (fbdev) {
 		fbdev->psb_fb_helper.fb = fb;
-	else
+		fbdev->psb_fb_helper.fbdev = psbfb->fbdev;
+	} else
 		printk(KERN_ALERT "%s cannot find the fb\n", __func__);
 
 	crtc->fb = fb;
