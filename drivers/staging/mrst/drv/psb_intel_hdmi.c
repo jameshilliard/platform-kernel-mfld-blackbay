@@ -310,16 +310,21 @@ static void mdfld_hdmi_dpms(struct drm_encoder *encoder, int mode)
 		return;
 	}
 
-	hdmib = REG_READ(hdmi_priv->hdmib_reg) | HDMIB_PIPE_B_SELECT | HDMIB_NULL_PACKET;
+	hdmib = REG_READ(hdmi_priv->hdmib_reg) | HDMIB_PIPE_B_SELECT;
+	/*TODO: need logic for DVI here */
+	hdmib |= (HDMIB_NULL_PACKET | HDMI_AUDIO_ENABLE);
 	hdmi_phy_misc = REG_READ(HDMIPHYMISCCTL);
 
 	if (mode != DRM_MODE_DPMS_ON) {
+		/* Disabling HDMI audio Driver before powering off Phy */
 		if (dev_priv->mdfld_had_event_callbacks)
 			(*dev_priv->mdfld_had_event_callbacks)
 			(HAD_EVENT_HOT_UNPLUG, dev_priv->had_pvt_data);
-		REG_WRITE(hdmi_priv->hdmib_reg, hdmib & ~HDMIB_PORT_EN);
+		REG_WRITE(hdmi_priv->hdmib_reg,
+				hdmib & ~HDMIB_PORT_EN & ~HDMI_AUDIO_ENABLE);
 		REG_WRITE(HDMIPHYMISCCTL, hdmi_phy_misc | HDMI_PHY_POWER_DOWN);
 	} else {
+		/* Enabling HDMI audio Driver after powering on Phy */
 		REG_WRITE(HDMIPHYMISCCTL, hdmi_phy_misc & ~HDMI_PHY_POWER_DOWN);
 		REG_WRITE(hdmi_priv->hdmib_reg, hdmib | HDMIB_PORT_EN);
 		if (dev_priv->mdfld_had_event_callbacks)
