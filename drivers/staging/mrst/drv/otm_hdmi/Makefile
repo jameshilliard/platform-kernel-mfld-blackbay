@@ -60,181 +60,81 @@
 #
 ########################################################################
 
-DISP_ROOT=$(CURDIR)
-
 TARGET = otm_hdmi
 
-INCDIR = drivers/staging/mrst/
-OTM_HDMI_INCDIR = $(INCDIR)/drv/otm_hdmi
-
-include_dirs := \
-        -I$(INCDIR)/pvr/include4 \
-        -I$(INCDIR)/pvr/services4/include \
-        -I$(INCDIR)/pvr/services4/include/env/linux \
-        -I$(INCDIR)/pvr/services4/srvkm/env/linux \
-        -I$(INCDIR)/pvr/services4/srvkm/include \
-        -I$(INCDIR)/pvr/services4/srvkm/bridged \
-        -I$(INCDIR)/pvr/services4/system/include \
-        -I$(INCDIR)/pvr/services4/srvkm/hwdefs \
-        -I$(INCDIR)/pvr/services4/srvkm/bridged/sgx \
-        -I$(INCDIR)/pvr/services4/srvkm/devices/sgx \
-        -I$(INCDIR)/pvr/services4/srvkm/common \
-        -I$(INCDIR)/pvr/services4/3rdparty/linux_framebuffer_drm \
-        -I$(INCDIR)/ \
-        -I$(INCDIR)/drv \
-        -I$(INCDIR)/bc_video \
-        -I$(INCDIR)/imgv \
-        -Iinclude/linux \
-        -Iinclude/drm \
-	-I$(OTM_HDMI_INCDIR)/os/include \
-	-I$(OTM_HDMI_INCDIR)/os/android/include \
-	-I$(OTM_HDMI_INCDIR)/pil/include \
-	-I$(OTM_HDMI_INCDIR)/pil/common \
-	-I$(OTM_HDMI_INCDIR)/pil/specific/include \
-	-I$(OTM_HDMI_INCDIR)/ipil/include \
-	-I$(OTM_HDMI_INCDIR)/ipil/common \
-	-I$(OTM_HDMI_INCDIR)/ipil/specific/include \
-
-ccflags-y += $(include_dirs)
-ifeq ($(CONFIG_MDFD_HDMI_GREENRIDGE),y)
-   ccflags-y += -I$(INCDIR)/pvr/services4/system/intel_drm -DSGX535 -DSUPPORT_SGX535 -DSGX_CORE_REV=121 -DANDROID -D_linux_ -D__KERNEL__ -DMRST
-else ifeq ($(CONFIG_MDFD_HDMI_REDRIDGE),y)
-   ccflags-y += -I$(INCDIR)/pvr/services4/system/intel_drm -I$(INCDIR)/pvr/services4/system/unified -DSGX540 -DSUPPORT_SGX540 -DSGX_CORE_REV=121 -DANDROID -D_linux_ -D__KERNEL__
-else ifeq ($(CONFIG_MDFD_HDMI_PR2),y)
-   ccflags-y += -I$(INCDIR)/pvr/services4/system/intel_drm -DSGX540 -DSUPPORT_SGX540 -DSGX_CORE_REV=121 -DANDROID -D_linux_ -D__KERNEL__
-endif
+OTM_HDMI_INCDIR = drv/otm_hdmi
 
 ccflags-y += \
-        -DLINUX \
-    -DPVRSRV_MODNAME="\"pvrsrvkm\""
-ifeq ($(CONFIG_MDFD_HDMI_GREENRIDGE),y)
-ccflags-y += \
-	-DPVR_BUILD_DIR="\"pc_i686_moorestown_linux\""
-endif
-ifeq ($(CONFIG_MDFD_HDMI_REDRIDGE),y)
-ccflags-y += \
-        -DPVR_BUILD_DIR="\"pc_i686_medfield_linux\"" \
-	-DMFLD_HDMI_DV1 \
-	-UOTM_HDMI_HDCP_ENABLE # enable HDCP by defining this flag
-endif
-ifeq ($(CONFIG_MDFD_HDMI_PR2),y)
-ccflags-y += \
-        -DPVR_BUILD_DIR="\"pc_i686_medfield_linux\"" \
-	-DMFLD_HDMI_PR3 \
-	-UOTM_HDMI_HDCP_ENABLE # enable HDCP by defining this flag
-endif
-ccflags-y += \
-        -DPVR_LINUX_MISR_USING_WORKQUEUE \
-        -DSERVICES4 \
-        -D_XOPEN_SOURCE=600 \
-        -DPVR2D_VALIDATE_INPUT_PARAMS \
-        -DDISPLAY_CONTROLLER=mrstlfb \
-        -UDEBUG_LOG_PATH_TRUNCATE \
-        -DSUPPORT_LIBDRM_LITE \
-        -DOPK_FALLBACK="" \
-        -DSUPPORT_ANDROID_PLATFORM \
-        -DPROFILE_COMM \
-    -DSUPPORT_ANDROID_PLATFORM \
-        -DSUPPORT_GRAPHICS_HAL \
-        -DPVR_SECURE_FD_EXPORT \
-        -DSUPPORT_SRVINIT \
-        -DSUPPORT_SGX \
-        -DSUPPORT_PERCONTEXT_PB \
-        -DSUPPORT_LINUX_X86_WRITECOMBINE \
-        -DTRANSFER_QUEUE \
-        -DSUPPORT_DRI_DRM \
-        -DSUPPORT_DRI_DRM_EXT \
-    -DSUPPORT_DRI_DRM_NO_DROPMASTER \
-        -DSYS_USING_INTERRUPTS \
-        -DSUPPORT_HW_RECOVERY \
-        -DSUPPORT_ACTIVE_POWER_MANAGEMENT \
-        -DPVR_SECURE_HANDLES \
-        -DLDM_PCI \
-        -DUSE_PTHREADS \
-        -DSUPPORT_SGX_EVENT_OBJECT \
-        -DSUPPORT_SGX_HWPERF \
-        -DSUPPORT_SGX_LOW_LATENCY_SCHEDULING \
-        -DSUPPORT_LINUX_X86_PAT \
-        -DPVR_PROC_USE_SEQ_FILE \
-        -DSUPPORT_CPU_CACHED_BUFFERS \
-    -DDRM_PVR_RESERVED_INTEL_ORDER \
-    -DDRM_PVR_USE_INTEL_FB \
-        -DSUPPORT_MEMINFO_IDS \
-    -DSUPPORT_SGX_NEW_STATUS_VALS
+	-I$(srctree)/$(src)/drv/otm_hdmi/os/android/include \
+	-I$(srctree)/$(src)/drv/otm_hdmi/pil/include \
+	-I$(srctree)/$(src)/drv/otm_hdmi/pil/common \
+	-I$(srctree)/$(src)/drv/otm_hdmi/pil/specific/include \
+	-I$(srctree)/$(src)/drv/otm_hdmi/ipil/include \
+	-I$(srctree)/$(src)/drv/otm_hdmi/ipil/common \
+	-I$(srctree)/$(src)/drv/otm_hdmi/ipil/specific/include \
+	-I$(srctree)/$(src)/drv/otm_hdmi/ipil/specific/mfld \
+	-I$(srctree)/$(src)/drv/otm_hdmi/pil/specific/mfld \
 
-ccflags-$(CONFIG_DRM_MID_RELEASE) += -DBUILD="\"release\"" -DPVR_BUILD_TYPE="\"release\"" -DRELEASE
-ccflags-$(CONFIG_DRM_MID_DEBUG) += -DBUILD="\"debug\"" -DPVR_BUILD_TYPE="\"debug\"" -DDEBUG -DDEBUG_LINUX_MEM_AREAS -DDEBUG_LINUX_MEMORY_ALLOCATIONS -DDEBUG_LINUX_MMAP_AREAS -DDEBUG_BRIDGE_KM
-ccflags-$(CONFIG_PCI_MSI) += -DCONFIG_PCI_MSI
-
-ifeq ($(CONFIG_MDFD_HDMI_REDRIDGE),y)
-   GL3_EXTERNAL_SYSTEM_CACHE ?=1
-   ifeq ($(GL3_EXTERNAL_SYSTEM_CACHE),1)
-      SUPPORT_EXTERNAL_SYSTEM_CACHE = y
-      CONFIG_MDFD_GL3 = y
-   else
-      SUPPORT_EXTERNAL_SYSTEM_CACHE =
-      CONFIG_MDFD_GL3 =
-   endif
-endif
-
-ifeq ($(CONFIG_MDFD_HDMI_PR2),y)
-   GL3_EXTERNAL_SYSTEM_CACHE ?=1
-   ifeq ($(GL3_EXTERNAL_SYSTEM_CACHE),1)
-      SUPPORT_EXTERNAL_SYSTEM_CACHE = y
-      CONFIG_MDFD_GL3 = y
-   else
-      SUPPORT_EXTERNAL_SYSTEM_CACHE =
-      CONFIG_MDFD_GL3 =
-   endif
-endif
-
-ccflags-$(SUPPORT_EXTERNAL_SYSTEM_CACHE) += -DSUPPORT_EXTERNAL_SYSTEM_CACHE -DCONFIG_MDFD_GL3
-ccflags-y += $(INCLUDE_PATH) $(include_dirs)
 #uncomment for debug prints
 #ccflags-y += -DDEBUG
 
+#only for internal testing
+ccflags-y += -DOTM_HDMI_UNIT_TEST
+
 ifeq ($(CONFIG_MDFD_HDMI_GREENRIDGE),y)
-   INCLUDE_PATH += -I$(OTM_HDMI_INCDIR)/pil/specific/oktl
-   INCLUDE_PATH += -I$(OTM_HDMI_INCDIR)/ipil/specific/oktl-sdv
+ccflags-y += \
+	-I$(srctree)/$(src)/drv/otm_hdmi/pil/specific/oktl \
+	-I$(srctree)/$(src)/drv/otm_hdmi/ipil/specific/oktl-sdv
 else ifeq ($(CONFIG_MDFD_HDMI_REDRIDGE),y)
-      INCLUDE_PATH += -I$(OTM_HDMI_INCDIR)/pil/specific/mfld
-      INCLUDE_PATH += -I$(OTM_HDMI_INCDIR)/ipil/specific/mfld
+ccflags-y += \
+	-DMFLD_HDMI_DV1 \
+	-I$(srctree)/$(src)/drv/otm_hdmi/pil/specific/mfld \
+	-I$(srctree)/$(src)/drv/otm_hdmi/ipil/specific/mfld
 else ifeq ($(CONFIG_MDFD_HDMI_PR2),y)
-      INCLUDE_PATH += -I$(OTM_HDMI_INCDIR)/pil/specific/mfld
-      INCLUDE_PATH += -I$(OTM_HDMI_INCDIR)/ipil/specific/mfld
+ccflags-y += \
+	-DMFLD_HDMI_PR3 \
+	-I$(srctree)/$(src)/drv/otm_hdmi/pil/specific/mfld \
+	-I$(srctree)/$(src)/drv/otm_hdmi/ipil/specific/mfld
 endif
 
 # Platform independent library
-$(TARGET)-y := pil/common/otm_hdmi.o
-$(TARGET)-y += pil/common/mode_info.o
-$(TARGET)-y += pil/common/hdcp.o
-$(TARGET)-y += pil/common/edid.o
-$(TARGET)-y += pil/common/edid_print.o
-$(TARGET)-y += pil/common/infoframes.o
+$(TARGET)-y += \
+	$(OTM_HDMI_INCDIR)/pil/common/otm_hdmi.o \
+	$(OTM_HDMI_INCDIR)/pil/common/mode_info.o \
+	$(OTM_HDMI_INCDIR)/pil/common/hdcp.o \
+	$(OTM_HDMI_INCDIR)/pil/common/edid.o \
+	$(OTM_HDMI_INCDIR)/pil/common/edid_print.o \
+	$(OTM_HDMI_INCDIR)/pil/common/infoframes.o
 
 # IP independent library
-$(TARGET)-y += ipil/common/otm_ipil_main.o
-$(TARGET)-y += ipil/common/ipil_hdcp.o
+$(TARGET)-y += \
+	$(OTM_HDMI_INCDIR)/ipil/common/otm_ipil_main.o \
+	$(OTM_HDMI_INCDIR)/ipil/common/ipil_hdcp.o
 
 # OS specific library
-$(TARGET)-y += os/android/android_hdmi.o
+$(TARGET)-y += \
+	$(OTM_HDMI_INCDIR)/os/android/android_hdmi.o
 ifneq ($(CONFIG_MDFD_HDMI_REDRIDGE),y)
-$(TARGET)-y += os/android/android_hdmi_sw_scale.o
+$(TARGET)-y += \
+	$(OTM_HDMI_INCDIR)/os/android/android_hdmi_sw_scale.o
 endif
 
 ifeq ($(CONFIG_MDFD_HDMI_GREENRIDGE),y)
-   $(TARGET)-y += ipil/specific/oktl-sdv/ips_hdmi.o
-   $(TARGET)-y += ipil/specific/oktl-sdv/ips_hdcp.o
-   $(TARGET)-y += pil/specific/oktl/ps_hdmi.o
+$(TARGET)-y += \
+	$(OTM_HDMI_INCDIR)/ipil/specific/oktl-sdv/ips_hdmi.o \
+	$(OTM_HDMI_INCDIR)/ipil/specific/oktl-sdv/ips_hdcp.o \
+	$(OTM_HDMI_INCDIR)/pil/specific/oktl/ps_hdmi.o
 else ifeq ($(CONFIG_MDFD_HDMI_REDRIDGE),y)
-      $(TARGET)-y += ipil/specific/mfld/ips_hdmi.o
-      $(TARGET)-y += ipil/specific/mfld/ips_hdcp.o
-      $(TARGET)-y += pil/specific/mfld/ps_hdmi.o
-      $(TARGET)-y += pil/specific/mfld/ps_hdmi_tablet.o
+$(TARGET)-y += \
+	$(OTM_HDMI_INCDIR)/ipil/specific/mfld/ips_hdmi.o \
+	$(OTM_HDMI_INCDIR)/ipil/specific/mfld/ips_hdcp.o \
+	$(OTM_HDMI_INCDIR)/pil/specific/mfld/ps_hdmi.o \
+	$(OTM_HDMI_INCDIR)/pil/specific/mfld/ps_hdmi_tablet.o
 else ifeq ($(CONFIG_MDFD_HDMI_PR2),y)
-      $(TARGET)-y += ipil/specific/mfld/ips_hdmi.o
-      $(TARGET)-y += ipil/specific/mfld/ips_hdcp.o
-      $(TARGET)-y += pil/specific/mfld/ps_hdmi.o
-      $(TARGET)-y += pil/specific/mfld/ps_hdmi_phone.o
+$(TARGET)-y += \
+	$(OTM_HDMI_INCDIR)/ipil/specific/mfld/ips_hdmi.o \
+	$(OTM_HDMI_INCDIR)/ipil/specific/mfld/ips_hdcp.o \
+	$(OTM_HDMI_INCDIR)/pil/specific/mfld/ps_hdmi.o \
+	$(OTM_HDMI_INCDIR)/pil/specific/mfld/ps_hdmi_phone.o
 endif
 obj-$(CONFIG_MDFD_HDMI) += $(TARGET).o
