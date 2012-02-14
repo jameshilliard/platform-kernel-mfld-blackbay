@@ -62,6 +62,7 @@
 */
 #include "otm_hdmi_types.h"
 #include "hdmi_internal.h"
+#include "ps_hdmi.h"
 
 #define PS_PREF_SCALINGTYPE IPIL_TIMING_SCALE_FULLSCREEN
 

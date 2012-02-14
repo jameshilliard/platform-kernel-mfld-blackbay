@@ -125,13 +125,13 @@ static int calculate_refresh_rate(struct drm_display_mode *mode);
  *	 for established modes is implemented
  */
 #define DEBUG_MODES 100
-struct debug_modes__t {
+static struct debug_modes__t {
 	int clk;
 	int frq;
 	char name[DRM_DISPLAY_MODE_LEN + 1];
 } arr_modes[DEBUG_MODES];
 
-u32 debug_modes_count;
+static u32 debug_modes_count;
 
 #define SWITCH_DEV_HDMI_NAME "hdmi"
 #define SWITCH_DEV_DVI_NAME "dvi"
@@ -794,7 +794,7 @@ static bool android_hdmi_add_noedid_mode(
 				int hdisplay, int vdisplay, int vrefresh)
 {
 	struct drm_display_mode *newmode = NULL;
-	otm_hdmi_timing_t *pdt = NULL;
+	const otm_hdmi_timing_t *pdt = NULL;
 
 	if (!context || !connector || hdisplay < 0 ||
 			vdisplay < 0 || vrefresh < 0)

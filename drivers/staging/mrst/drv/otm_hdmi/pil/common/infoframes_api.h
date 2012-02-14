@@ -64,6 +64,10 @@
 #ifndef _INFOFRAMES_API_H
 #define _INFOFRAMES_API_H
 
+#include "hdmi_internal.h"
+#include "otm_hdmi_defs.h"
+
+
 /*
  * Description: set avi infoframe based on mode
  *
@@ -85,5 +89,17 @@ extern otm_hdmi_ret_t otm_hdmi_infoframes_set_avi(void *context,
  *		OTM_HDMI_SUCCESS on success
  */
 extern otm_hdmi_ret_t otm_hdmi_disable_all_infoframes(void *context);
+
+/*
+ * Description: hdmi_packet_check_type
+ *
+ * @p:			hdmi packet
+ * @type:               hdmi packet type
+ *
+ * Returns:     OTM_HDMI_SUCCESS on success
+ *              OTM_HDMI_ERR_FAILED on incorrect packet arguments
+ */
+extern otm_hdmi_ret_t hdmi_packet_check_type(otm_hdmi_packet_t *p,
+					hdmi_packet_type_t type);
 
 #endif /* _INFOFRAMES_API_H */

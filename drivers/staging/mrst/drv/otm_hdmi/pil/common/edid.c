@@ -98,12 +98,12 @@
  * disabled as they are invoked on every DRM get_mode query
  * and prove costly and add problems like slow, jittery playback */
 #ifndef OTM_HDMI_FIXME
-int EDID_PRINT(const char *fmt, ...)
+static int EDID_PRINT(const char *fmt, ...)
 {
 	return 0;
 }
 #else
-int EDID_PRINT(const char *fmt, ...)
+static int EDID_PRINT(const char *fmt, ...)
 {
 	va_list arg_list;
 
@@ -125,8 +125,9 @@ typedef struct {
 /*
  * fetch_next_field()
  */
-void fetch_next_field(void *dst, read_context_t *read_context,
-				unsigned int size)
+static void fetch_next_field(void *dst,
+			read_context_t *read_context,
+			unsigned int size)
 {
 	unsigned char *b = read_context->buffer + read_context->position;
 
@@ -181,7 +182,8 @@ void fetch_next_field(void *dst, read_context_t *read_context,
 /*
  * fetch_generic_descriptor()
  */
-void fetch_generic_descriptor(generic_descriptor_t *gd, read_context_t *rctx)
+static void fetch_generic_descriptor(generic_descriptor_t *gd,
+				read_context_t *rctx)
 {
 	fetch_next_field(&gd->flag_required, rctx, 2);
 	fetch_next_field(&gd->flag_reserved, rctx, 1);
@@ -193,7 +195,8 @@ void fetch_generic_descriptor(generic_descriptor_t *gd, read_context_t *rctx)
 /*
  * fetch_timing_descriptor()
  */
-void fetch_timing_descriptor(timing_descriptor_t *td, read_context_t *rctx)
+static void fetch_timing_descriptor(timing_descriptor_t *td,
+				read_context_t *rctx)
 {
 	fetch_next_field(&td->pixel_clock, rctx, 2);
 	fetch_next_field(&td->h_active, rctx, 1);
@@ -219,7 +222,8 @@ void fetch_timing_descriptor(timing_descriptor_t *td, read_context_t *rctx)
  * - ebz : structure representing edid block zero to be filled in
  * - data: buffer of 128 bytes containing raw edid data supplied by TV
  */
-otm_hdmi_ret_t fetch_block_zero(edid_block_zero_t *ebz, unsigned char *data)
+static otm_hdmi_ret_t fetch_block_zero(edid_block_zero_t *ebz,
+				unsigned char *data)
 {
 	otm_hdmi_ret_t rc = OTM_HDMI_SUCCESS;
 	read_context_t read_context = {data, 0};
@@ -307,7 +311,7 @@ exit:
 /*
  * fetch_extension_block_cea()
  */
-otm_hdmi_ret_t fetch_extension_block_cea(extention_block_cea_t *eb,
+static otm_hdmi_ret_t fetch_extension_block_cea(extention_block_cea_t *eb,
 				    unsigned char *data)
 {
 	otm_hdmi_ret_t rc = OTM_HDMI_SUCCESS;
@@ -360,7 +364,7 @@ static otm_hdmi_refresh_t encode_refresh(unsigned refresh)
 /*
  * Returns index of timing with given VIC in given table; -1 otherwise
  */
-int find_timing_by_vic_tp(const otm_hdmi_timing_t **set, int size,
+static int find_timing_by_vic_tp(const otm_hdmi_timing_t **set, int size,
 						unsigned int vic)
 {
 	int i, rc = -1;
@@ -412,7 +416,7 @@ exit:
  * Returns index of given timings in given table of timing pointers;
  * -1 otherwise
  */
-int find_timing_tp(const otm_hdmi_timing_t **set, int size,
+static int find_timing_tp(const otm_hdmi_timing_t **set, int size,
 					const otm_hdmi_timing_t *e)
 {
 	int i, rc = -1;
@@ -427,8 +431,9 @@ exit:
 /*
  * add_timings()
  */
-otm_hdmi_ret_t add_timings(edid_info_t *edid, const otm_hdmi_timing_t *pdt,
-						unsigned int order)
+static otm_hdmi_ret_t add_timings(edid_info_t *edid,
+				const otm_hdmi_timing_t *pdt,
+				unsigned int order)
 {
 	otm_hdmi_ret_t rc = OTM_HDMI_SUCCESS;
 	int i, j;
@@ -474,7 +479,7 @@ exit:
 /*
  * checksum_valid()
  */
-bool checksum_valid(unsigned char *buffer, int size)
+static bool checksum_valid(unsigned char *buffer, int size)
 {
 	unsigned char sum_computed = 0;
 
@@ -487,7 +492,7 @@ bool checksum_valid(unsigned char *buffer, int size)
 /*
  * decode_speaker_allocation_data_block()
  */
-void decode_speaker_allocation_data_block(unsigned char *e, int n,
+static void decode_speaker_allocation_data_block(unsigned char *e, int n,
 					edid_info_t *edid)
 {
 	int ne = n / 3;
@@ -506,7 +511,7 @@ void decode_speaker_allocation_data_block(unsigned char *e, int n,
 /*
  * decode_video_data_block()
  */
-void decode_video_data_block(unsigned char *e, int n, edid_info_t *edid)
+static void decode_video_data_block(unsigned char *e, int n, edid_info_t *edid)
 {
 	int vic, j, i = 0;
 
@@ -536,7 +541,7 @@ void decode_video_data_block(unsigned char *e, int n, edid_info_t *edid)
 /*
  * decode_audio_data_block()
  */
-void decode_audio_data_block(unsigned char *e, int n, edid_info_t *edid)
+static void decode_audio_data_block(unsigned char *e, int n, edid_info_t *edid)
 {
 	int ne = n / 3;
 	otm_hdmi_audio_cap_t *adb = (otm_hdmi_audio_cap_t *) &edid->audio_caps;
@@ -562,7 +567,7 @@ void decode_audio_data_block(unsigned char *e, int n, edid_info_t *edid)
 /*
  *
  */
-void declare_mandatory_3d(edid_info_t *edid)
+static void declare_mandatory_3d(edid_info_t *edid)
 {
 	if (true) {
 		add_timings(edid, &MODE_1920x1080p24__FP2, 0);
@@ -588,7 +593,7 @@ void declare_mandatory_3d(edid_info_t *edid)
 /*
  * Addition of 3D timing via 2D mode
  */
-void add_3d_mode_via_2d(unsigned int vic, unsigned int struc_3d,
+static void add_3d_mode_via_2d(unsigned int vic, unsigned int struc_3d,
 						edid_info_t *edid)
 {
 	unsigned int j, k, num_timings = edid->num_timings;
@@ -632,7 +637,7 @@ void add_3d_mode_via_2d(unsigned int vic, unsigned int struc_3d,
 /*
  * Processing of 3D modes declared via 3D_Struture_ALL and 3D_MASK
  */
-void declare_short_3d(unsigned int struc_3d, unsigned int mask,
+static void declare_short_3d(unsigned int struc_3d, unsigned int mask,
 						edid_info_t *edid)
 {
 	unsigned int i, j, modes;
@@ -653,7 +658,9 @@ void declare_short_3d(unsigned int struc_3d, unsigned int mask,
 /*
  * Processing of 3D modes declared via explicit list of 2D vics
  */
-void declare_explicit_3d(unsigned char *e, unsigned int n, edid_info_t *edid)
+static void declare_explicit_3d(unsigned char *e,
+			unsigned int n,
+			edid_info_t *edid)
 {
 	unsigned int i;
 
@@ -667,7 +674,7 @@ void declare_explicit_3d(unsigned char *e, unsigned int n, edid_info_t *edid)
 /*
  * decode_misc_modes()
  */
-void decode_misc_modes(unsigned char *e, int n, edid_info_t *edid)
+static void decode_misc_modes(unsigned char *e, int n, edid_info_t *edid)
 {
 
 }
@@ -714,14 +721,16 @@ void decode_3D_modes(unsigned char *e, int n, int layout, edid_info_t *edid)
 	}
 
 	/* Declare 3D modes based on present 2D VIC entries */
-	declare_explicit_3d(e + offset, (n >= offset) ? n - offset : 0, edid);
+	declare_explicit_3d(e + offset,
+			(n >= offset) ? n - offset : 0, edid);
 }
 #endif
 
 /*
  * decode_vendor_data_block()
  */
-void decode_vendor_data_block(unsigned char *e, int n, edid_info_t * edid)
+static void decode_vendor_data_block(unsigned char *e,
+				int n, edid_info_t *edid)
 {
 	unsigned int pos;
 #ifdef OTM_HDMI_FIXME
@@ -806,7 +815,8 @@ void decode_vendor_data_block(unsigned char *e, int n, edid_info_t * edid)
 /*
  * decode_extended_data_block()
  */
-void decode_extended_data_block(unsigned char *e, int n, edid_info_t * edid)
+static void decode_extended_data_block(unsigned char *e,
+				int n, edid_info_t *edid)
 {
 	EDID_PRINT("[extended data block.. length %d]\n", n);
 
@@ -846,7 +856,7 @@ void decode_extended_data_block(unsigned char *e, int n, edid_info_t * edid)
 typedef void (*short_block_decoder_t)(unsigned char *e, int n,
 					edid_info_t *edid);
 
-short_block_decoder_t short_block_decoders[] = {
+static short_block_decoder_t short_block_decoders[] = {
 	/* Reserved */
 	NULL,
 	/* Audio data block decoder */
@@ -869,7 +879,8 @@ short_block_decoder_t short_block_decoders[] = {
  * decode_block_collection()
  * See section 7.5 of CEA-861-C for details
  */
-void decode_block_collection(extention_block_cea_t *eb, edid_info_t *edid)
+static void decode_block_collection(extention_block_cea_t *eb,
+				edid_info_t *edid)
 {
 	unsigned char *c = eb->data;
 	int block_type, payload_size;
@@ -905,7 +916,7 @@ void decode_block_collection(extention_block_cea_t *eb, edid_info_t *edid)
  * decode_standard_timings()
  * Section 3.9.1 of EDID STD
  */
-void decode_standard_timings(unsigned short st, edid_info_t *edid)
+static void decode_standard_timings(unsigned short st, edid_info_t *edid)
 {
 	struct {
 		int h;
@@ -945,7 +956,7 @@ void decode_standard_timings(unsigned short st, edid_info_t *edid)
  * decode_detailed_timings()
  * Table 3.16 of EDID STD
  */
-bool decode_detailed_timings(timing_descriptor_t *td,
+static bool decode_detailed_timings(timing_descriptor_t *td,
 					otm_hdmi_timing_t *pdt)
 {
 	bool rc = true;
@@ -1033,7 +1044,8 @@ exit:
  * decode_generic_descriptor()
  * Table 3.19. Table 3.20 of EDID STD
  */
-void decode_generic_descriptor(generic_descriptor_t *gd, edid_info_t *edid)
+static void decode_generic_descriptor(generic_descriptor_t *gd,
+				edid_info_t *edid)
 {
 	int i;
 
@@ -1135,7 +1147,8 @@ exit:
  * decode_extention_block_cea()
  * Refer to section A.2.13 of CEA-861-C document for additional details
  */
-void decode_extention_block_cea(extention_block_cea_t *eb, edid_info_t *edid)
+static void decode_extention_block_cea(extention_block_cea_t *eb,
+				edid_info_t *edid)
 {
 	int i;
 	generic_descriptor_t gd;
@@ -1184,7 +1197,8 @@ void decode_extention_block_cea(extention_block_cea_t *eb, edid_info_t *edid)
 /*
  * fetch_block_map()
  */
-otm_hdmi_ret_t fetch_block_map(edid_block_map_t *ebm, unsigned char *data)
+static otm_hdmi_ret_t fetch_block_map(edid_block_map_t *ebm,
+				unsigned char *data)
 {
 	otm_hdmi_ret_t rc = OTM_HDMI_SUCCESS;
 	read_context_t read_context = { data, 0 };
@@ -1205,7 +1219,7 @@ exit:
 /*
  * block_decode()
  */
-otm_hdmi_ret_t block_decode(edid_info_t *edid_info, unsigned int type,
+static otm_hdmi_ret_t block_decode(edid_info_t *edid_info, unsigned int type,
 					unsigned char *buffer)
 {
 	otm_hdmi_ret_t rc = OTM_HDMI_SUCCESS;

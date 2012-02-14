@@ -71,6 +71,7 @@
 #include "otm_hdmi_types.h"
 
 #include "ips_hdmi.h"
+#include "ipil_hdmi.h"
 
 static hdmi_device_t *hdmi_dev;
 

@@ -67,6 +67,8 @@
 #include "hdcp_rx_defs.h"
 #include "mfld_hdcp_reg.h"
 #include "mfld_utils.h"
+#include "ipil_hdcp_api.h"
+#include "ips_hdcp_api.h"
 
 static void ips_hdcp_capture_an(void);
 static bool ips_hdcp_is_hdcp_on(void);

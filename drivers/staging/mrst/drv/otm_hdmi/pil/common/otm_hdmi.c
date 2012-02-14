@@ -462,12 +462,12 @@ int otm_hdmi_timing_from_cea_modes(unsigned char *buffer,
  *
  * Returns matching mode, NULL otherwise.
  */
-otm_hdmi_timing_t *otm_hdmi_get_mode_timings(void *context,
+const otm_hdmi_timing_t *otm_hdmi_get_mode_timings(void *context,
 						int hdisplay,
 						int vdisplay,
 						int vrefresh)
 {
-	otm_hdmi_timing_t *mode = NULL;
+	const otm_hdmi_timing_t *mode = NULL;
 	int i, refresh_rate;
 
 	if (hdisplay < 0 || vdisplay < 0 || vrefresh < 0)
@@ -571,7 +571,7 @@ exit:
  *
  *	Returns - check otm_hdmi_ret_t
  */
-otm_hdmi_ret_t __hdmi_phy_enable(void *context, bool status)
+static otm_hdmi_ret_t __hdmi_phy_enable(void *context, bool status)
 {
 	otm_hdmi_ret_t rc = OTM_HDMI_SUCCESS;
 	hdmi_context_t *ctx = (hdmi_context_t *)context;
@@ -1088,7 +1088,9 @@ bool otm_hdmi_is_monitor_hdmi(void *context)
 /*
  * HDMI video mute handling
  */
-void hdmi_mute(hdmi_context_t *ctx, otm_hdmi_mute_t type, mute_source_t source)
+static void hdmi_mute(hdmi_context_t *ctx,
+			otm_hdmi_mute_t type,
+			mute_source_t source)
 {
 #ifdef OTM_HDMI_FIXME
 	unsigned int color = PD_ATTR_UINT(ATTRS[OTM_HDMI_ATTR_ID_BG_COLOR]);

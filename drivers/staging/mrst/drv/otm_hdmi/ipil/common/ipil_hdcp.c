@@ -65,6 +65,7 @@
 #include <linux/types.h>
 #include "hdcp_rx_defs.h"
 #include "ips_hdcp_api.h"
+#include "ipil_hdcp_api.h"
 
 
 bool ipil_hdcp_is_ready(void)

@@ -69,6 +69,7 @@
 
 #include "hdmi_internal.h"
 #include "hdmi_timings.h"
+#include "infoframes_api.h"
 
 
 /**

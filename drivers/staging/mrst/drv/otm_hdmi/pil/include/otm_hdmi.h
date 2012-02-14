@@ -175,7 +175,7 @@ int otm_hdmi_timing_from_cea_modes(unsigned char *buffer,
 				   otm_hdmi_timing_t *pdts);
 
 /* get timings of a mode */
-otm_hdmi_timing_t *otm_hdmi_get_mode_timings(void *context,
+const otm_hdmi_timing_t *otm_hdmi_get_mode_timings(void *context,
 					int hdisplay,
 					int vdisplay,
 					int vrefresh);

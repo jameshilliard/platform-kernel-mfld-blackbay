@@ -68,6 +68,7 @@
 #include <linux/string.h>
 #include "otm_hdmi.h"
 #include "ipil_hdmi.h"
+#include "ps_hdmi.h"
 
 #define PS_HDMI_MMIO_RESOURCE 0
 #define PS_VDC_OFFSET 0x00000000
