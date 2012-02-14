@@ -64,7 +64,7 @@
 #include "hdmi_internal.h"
 #include "ps_hdmi.h"
 
-#define PS_PREF_SCALINGTYPE IPIL_TIMING_SCALE_FULLSCREEN
+#define PS_PREF_SCALINGTYPE IPIL_TIMING_SCALE_ASPECT
 
 /*
  * Description: fetches the preferred scaling type for a aprticular platfrom.

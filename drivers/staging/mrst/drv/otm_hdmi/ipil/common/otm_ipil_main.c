@@ -294,6 +294,49 @@ otm_hdmi_ret_t ipil_hdmi_disable_all_infoframes(hdmi_device_t *dev)
 	return ips_hdmi_disable_all_infoframes(dev);
 }
 
+static void pfit_landscape(int hsrc_sz, int vsrc_sz,
+			int hdst_sz, int vdst_sz)
+{
+	int hmsb, vmsb, hratio, vratio;
+
+	hdmi_write32(IPIL_PFIT_CONTROL,
+			IPIL_PFIT_ENABLE |
+			IPIL_PFIT_PIPE_SELECT_B |
+			IPIL_PFIT_SCALING_PROGRAM);
+
+	/* handling scaling up and down */
+	if (hsrc_sz >= hdst_sz) {
+		/* scaling down: msb = 1 */
+		hratio = IPIL_PFIT_FRACTIONAL_VALUE * (hsrc_sz - hdst_sz) /
+							(hdst_sz + 1);
+		hmsb = 1;
+	} else {
+		/* scaling up: msb = 0 */
+		hratio = IPIL_PFIT_FRACTIONAL_VALUE * (hsrc_sz + 1) /
+							(hdst_sz + 1);
+		hmsb = 0;
+	}
+	if (vsrc_sz >= vdst_sz) {
+		/* scaling down: msb = 1 */
+		vratio = IPIL_PFIT_FRACTIONAL_VALUE * (vsrc_sz - vdst_sz) /
+							(vdst_sz + 1);
+		vmsb = 1;
+	} else {
+		/* scaling up: msb = 0 */
+		vratio = IPIL_PFIT_FRACTIONAL_VALUE * (vsrc_sz + 1) /
+							(vdst_sz + 1);
+		vmsb = 0;
+	}
+
+	pr_debug("\nhdisp = %d, vdisp = %d\n", hdst_sz, vdst_sz);
+	pr_debug("\nhratio = %d, vratio = %d\n", hratio, vratio);
+	hdmi_write32(IPIL_PFIT_PGM_RATIOS,
+		vmsb << IPIL_PFIT_VERT_MSB_SHIFT |
+		hmsb << IPIL_PFIT_HORIZ_MSB_SHIFT |
+		vratio << IPIL_PFIT_VERT_SCALE_SHIFT |
+		hratio << IPIL_PFIT_HORIZ_SCALE_SHIFT);
+}
+
 /*
  * Description: programs hdmi pipe src and size of the input.
  *
@@ -323,62 +366,117 @@ otm_hdmi_ret_t ipil_hdmi_crtc_mode_set_program_dspregs(hdmi_device_t *dev,
 	}
 
 	/*
-	 * TODO: update these values based on scaling type,
-	 * rotation and HDMI mode.
+	 * Frame buffer size may beyond active region in case of
+	 * panning mode.
 	 */
-	sprite_width = fb_width;
-	sprite_height = fb_height;
-	src_image_hor = fb_width;
-	src_image_vert = fb_height;
-	sprite_pos_x = 0;
-	sprite_pos_y = 0;
+	sprite_width = min(fb_width, adjusted_mode->width);
+	sprite_height = min(fb_height, adjusted_mode->height);
 
-	/*
-	 * pipesrc and dspsize control the size that is scaled from,
-	 * which should always be the user's requested size.
-	 */
 	switch (scalingtype) {
 	case IPIL_TIMING_SCALE_NONE:
 	case IPIL_TIMING_SCALE_CENTER:
-		/* TODO: implement this */
+		/*
+		 * This mode is used to support centering the screen
+		 * by setting reg in DISPLAY controller
+		 */
+		src_image_hor = adjusted_mode->width;
+		src_image_vert = adjusted_mode->height;
+		sprite_pos_x = (src_image_hor - sprite_width) / 2;
+		sprite_pos_y = (src_image_vert - sprite_height) / 2;
+
+		hdmi_write32(IPIL_PFIT_CONTROL,
+				hdmi_read32(IPIL_PFIT_CONTROL) &
+						~IPIL_PFIT_ENABLE);
 		break;
 
 	case IPIL_TIMING_SCALE_FULLSCREEN:
-		if ((adjusted_mode->width != sprite_width) ||
-			(adjusted_mode->height != sprite_height))
-			hdmi_write32(IPIL_PFIT_CONTROL,
-				IPIL_PFIT_ENABLE |
-				IPIL_PFIT_PIPE_SELECT_B |
-				IPIL_PFIT_SCALING_AUTO);
+		src_image_hor = sprite_width;
+		src_image_vert = sprite_height;
+		sprite_pos_x = 0;
+		sprite_pos_y = 0;
 
+		if ((adjusted_mode->width > sprite_width) ||
+			(adjusted_mode->height > sprite_height))
+			hdmi_write32(IPIL_PFIT_CONTROL,
+					IPIL_PFIT_ENABLE |
+					IPIL_PFIT_PIPE_SELECT_B |
+					IPIL_PFIT_SCALING_AUTO);
 		break;
 
 	case IPIL_TIMING_SCALE_ASPECT:
+		sprite_pos_x = 0;
+		sprite_pos_y = 0;
+		sprite_height = fb_height;
+		sprite_width = fb_width;
+		src_image_hor = fb_width;
+		src_image_vert = fb_height;
+
+		/* Use panel fitting when the display does not match
+		 * with the framebuffer size */
 		if ((adjusted_mode->width != fb_width) ||
-			(adjusted_mode->height != fb_height)) {
-			if ((adjusted_mode->width * fb_height) ==
-			    (fb_width * adjusted_mode->height))
-				hdmi_write32(IPIL_PFIT_CONTROL,
-					IPIL_PFIT_ENABLE |
-					IPIL_PFIT_PIPE_SELECT_B);
-			else if ((adjusted_mode->width *
-				fb_height) > (fb_width *
-				adjusted_mode->height))
-				hdmi_write32(IPIL_PFIT_CONTROL,
-					IPIL_PFIT_ENABLE |
-					IPIL_PFIT_PIPE_SELECT_B |
-					IPIL_PFIT_SCALING_PILLARBOX);
-			else
-				hdmi_write32(IPIL_PFIT_CONTROL,
-					IPIL_PFIT_ENABLE |
-					IPIL_PFIT_PIPE_SELECT_B |
-					IPIL_PFIT_SCALING_LETTERBOX);
+		    (adjusted_mode->height != fb_height)) {
+			if (fb_width > fb_height) {
+				pr_debug("[hdmi]: Landscape mode...\n");
+				/* Landscape mode: program ratios is
+				 * used because 480p does not work with
+				 * auto */
+				if (adjusted_mode->height == 480)
+					pfit_landscape(sprite_width,
+						sprite_height,
+						adjusted_mode->width,
+						adjusted_mode->height);
+				else
+					hdmi_write32(IPIL_PFIT_CONTROL,
+						IPIL_PFIT_ENABLE |
+						IPIL_PFIT_PIPE_SELECT_B |
+						IPIL_PFIT_SCALING_AUTO);
+			} else {
+				/* Portrait mode */
+				pr_debug("[hdmi]: Portrait mode...\n");
+				if (adjusted_mode->height == 768 &&
+					adjusted_mode->width == 1024) {
+					src_image_hor = adjusted_mode->width *
+							fb_height /
+							adjusted_mode->height;
+					src_image_vert = fb_height;
+					sprite_pos_x = (src_image_hor -
+								fb_width) / 2;
+					hdmi_write32(IPIL_PFIT_CONTROL,
+						IPIL_PFIT_ENABLE |
+						IPIL_PFIT_PIPE_SELECT_B |
+						IPIL_PFIT_SCALING_AUTO);
+				} else
+					hdmi_write32(IPIL_PFIT_CONTROL,
+						IPIL_PFIT_ENABLE |
+						IPIL_PFIT_PIPE_SELECT_B |
+						IPIL_PFIT_SCALING_PILLARBOX);
+			}
+		} else {
+			/* Disable panel fitting */
+			hdmi_write32(IPIL_PFIT_CONTROL, 0);
 		}
+
 		break;
 
 	default:
+		/* Android will not change mode, however ,we have tools
+		to change HDMI timing so there is some cases frame
+		buffer no change ,but timing changed mode setting, in
+		this case. mode information for source size is not
+		right, so here use fb information for source/sprite
+		size*/
+
+		/* The defined sprite rectangle must always be
+		completely contained within the displayable area of the
+		screen image (frame buffer). */
+		sprite_pos_x = 0;
+		sprite_pos_y = 0;
+		sprite_height = fb_height;
+		sprite_width = fb_width;
+		src_image_hor = fb_width;
+		src_image_vert = fb_height;
 		if ((adjusted_mode->width != fb_width) ||
-			(adjusted_mode->height != fb_height))
+				(adjusted_mode->height != fb_height))
 			hdmi_write32(IPIL_PFIT_CONTROL,
 					IPIL_PFIT_ENABLE |
 					IPIL_PFIT_PIPE_SELECT_B);
@@ -386,13 +484,18 @@ otm_hdmi_ret_t ipil_hdmi_crtc_mode_set_program_dspregs(hdmi_device_t *dev,
 		break;
 	}
 
-	hdmi_write32(IPIL_DSPBSIZE, ((sprite_height - 1) << 16) |
-				 (sprite_width - 1));
-
-	hdmi_write32(IPIL_PIPEBSRC, ((src_image_hor - 1) << 16) |
-				(src_image_vert - 1));
+	pr_debug("Sprite position: (%d, %d)\n", sprite_pos_x,
+			sprite_pos_y);
+	pr_debug("Sprite size: %d x %d\n", sprite_width,
+			sprite_height);
+	pr_debug("Pipe source image size: %d x %d\n",
+			src_image_hor, src_image_vert);
 
 	hdmi_write32(IPIL_DSPBPOS, (sprite_pos_y << 16) | sprite_pos_x);
+	hdmi_write32(IPIL_DSPBSIZE, ((sprite_height - 1) << 16) |
+				 (sprite_width - 1));
+	hdmi_write32(IPIL_PIPEBSRC, ((src_image_hor - 1) << 16) |
+				(src_image_vert - 1));
 
 	return OTM_HDMI_SUCCESS;
 }
