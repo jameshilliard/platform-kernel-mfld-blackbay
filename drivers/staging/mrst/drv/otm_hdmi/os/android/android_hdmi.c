@@ -1302,6 +1302,17 @@ void android_hdmi_enc_mode_set(struct drm_encoder *encoder,
 	__android_hdmi_drm_mode_to_otm_timing(&otm_adjusted_mode,
 						adjusted_mode);
 
+	/* FIXME: After the mode sets, the adjusted_mode values will be
+	 * copied to crtc->hwmode. crtc->hwmode will be used while playing
+	 * video, to config overlay about the clip region. As the current
+	 * video mode is clone for HDMI, HDMI crtc also need to present
+	 * the local display dimensions for overlay clip, as the same FB
+	 * is used between local and HDMI. This should eventually
+	 * go away with HDMI extended video implementation.
+	 */
+	adjusted_mode->crtc_hdisplay = OTM_HDMI_MDFLD_MIPI_NATIVE_HDISPLAY;
+	adjusted_mode->crtc_vdisplay = OTM_HDMI_MDFLD_MIPI_NATIVE_VDISPLAY;
+
 	if (otm_hdmi_enc_mode_set(hdmi_priv->context, &otm_mode,
 				&otm_adjusted_mode)) {
 		pr_err("%s: failed to perform hdmi enc mode set",
