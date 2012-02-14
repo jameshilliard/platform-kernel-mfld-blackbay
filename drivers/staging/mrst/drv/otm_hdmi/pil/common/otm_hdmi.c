@@ -940,7 +940,6 @@ otm_hdmi_ret_t otm_hdmi_device_init(void **context, struct pci_dev *pdev)
 	otm_hdmi_ret_t rc = OTM_HDMI_SUCCESS;
 	hdmi_context_t *ctx = NULL;
 	int n;
-	int ret;
 
 	PD_LOG_ENTRY(PD_LOG_LEVEL_HIGH);
 
@@ -1748,7 +1747,7 @@ static otm_hdmi_ret_t __pd_attr_declare(otm_hdmi_attribute_t *table,
 		return  OTM_HDMI_ERR_FAILED;
 
 	if ((name != NULL) && (strlen(name) < OTM_HDMI_MAX_STRING_LENGTH))
-		strncpy(table[id].name, name, strlen(name));
+		strncpy(table[id].name, name, strlen(table[id].name));
 	else if (strlen(table[id].name) == 0)
 		PD_LOG_ERROR("set default name\n");
 		/* TODO: set default name */
@@ -1770,8 +1769,8 @@ static otm_hdmi_ret_t __pd_attr_declare(otm_hdmi_attribute_t *table,
 			if ((value != NULL) &&
 			strlen(value) < OTM_HDMI_MAX_STRING_LENGTH)
 				strncpy(table[id].content.string.value,
-							(char *) value,
-							strlen(value));
+					(char *) value,
+					strlen(table[id].content.string.value));
 			else
 				rc = OTM_HDMI_ERR_FAILED;
 			break;

@@ -151,6 +151,8 @@ static bool wq_send_message_delayed(int msg,
 		return true;
 	else
 		pr_debug("hdcp: failed to add messge to delayed wq\n");
+
+	kfree(msg_data);
 	return false;
 }
 
@@ -817,7 +819,6 @@ bool otm_hdmi_hdcp_init(hdmi_context_t *hdmi_context,
 	}
 
 	hdcp_context = kmalloc(sizeof(struct hdcp_context_t), GFP_KERNEL);
-	hdcp_context->hdcp_wq = NULL;
 
 	if (hdcp_context != NULL)
 		hdcp_context->hdcp_wq = create_workqueue("HDCP_WQ");

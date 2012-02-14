@@ -1413,10 +1413,9 @@ void android_disable_hdmi(struct drm_device *dev)
  */
 enum drm_connector_status android_hdmi_detect(struct drm_connector *connector)
 {
-	struct drm_device *dev = connector->dev;
-	struct drm_psb_private *dev_priv =
-		(struct drm_psb_private *)dev->dev_private;
-	struct android_hdmi_priv *hdmi_priv = dev_priv->hdmi_priv;
+	struct drm_device *dev = NULL;
+	struct drm_psb_private *dev_priv = NULL;
+	struct android_hdmi_priv *hdmi_priv = NULL;
 	u8 data = 0;
 
 #ifndef OTM_HDMI_FIXME
@@ -1427,6 +1426,10 @@ enum drm_connector_status android_hdmi_detect(struct drm_connector *connector)
 
 	if (NULL == connector || NULL == adapter)
 		return connector_status_disconnected;
+
+	dev = connector->dev;
+	dev_priv = (struct drm_psb_private *)dev->dev_private;
+	hdmi_priv = dev_priv->hdmi_priv;
 
 	/* Check if monitor is attached to HDMI connector. */
 	intel_scu_ipc_ioread8(MSIC_HDMI_STATUS, &data);
