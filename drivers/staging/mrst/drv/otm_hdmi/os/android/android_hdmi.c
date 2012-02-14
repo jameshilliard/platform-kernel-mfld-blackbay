@@ -133,6 +133,9 @@ static struct debug_modes__t {
 
 static u32 debug_modes_count;
 
+/*OTM_HDMI_FIXME: this should be from get attribute interface*/
+#define OTM_HDMI_I2C_ADAPTER_NUM 8
+
 #define SWITCH_DEV_HDMI_NAME "hdmi"
 #define SWITCH_DEV_DVI_NAME "dvi"
 
@@ -195,10 +198,6 @@ static irqreturn_t __hdmi_irq_handler_bottomhalf(void *data)
 		struct drm_connector *connector = NULL;
 		struct i2c_adapter *adapter = NULL;
 		u8 hdmi_status = 0;
-#ifndef OTM_HDMI_FIXME
-		/*OTM_HDMI_FIXME: this should be from get attribute interface*/
-		int adapter_num = 3;
-#endif
 
 		if (!hdmi_priv->dev)
 			return IRQ_HANDLED;
@@ -212,7 +211,7 @@ static irqreturn_t __hdmi_irq_handler_bottomhalf(void *data)
 		if (!(hdmi_status & HPD_SIGNAL_STATUS))
 			goto exit;
 
-		adapter = i2c_get_adapter(adapter_num);
+		adapter = i2c_get_adapter(OTM_HDMI_I2C_ADAPTER_NUM);
 		if (!adapter) {
 			pr_err("Unable to get i2c adapter for HDMI");
 			goto exit;
@@ -296,11 +295,7 @@ static int hdmi_ddc_read_write(bool read,
 			uint8_t *buffer,
 			int size)
 {
-#ifndef OTM_HDMI_FIXME
-	/* OTM_HDMI_FIXME: this should be from get attribute interface */
-	int adapter_num = 3;
-#endif
-	struct i2c_adapter *adapter = i2c_get_adapter(adapter_num);
+	struct i2c_adapter *adapter = i2c_get_adapter(OTM_HDMI_I2C_ADAPTER_NUM);
 	struct i2c_msg msgs[] = {
 		{
 			.addr   = i2c_addr,
@@ -373,12 +368,11 @@ void android_hdmi_driver_init(struct drm_device *dev,
 	/* Enable polling */
 	connector->polled = DRM_CONNECTOR_POLL_HPD;
 
-	/* hard-coded the HDMI_I2C_ADAPTER_ID to be 3, Should get from GCT*/
 	/* TODO: remove this once all code moved into OTM */
-	psb_intel_output->hdmi_i2c_adapter = i2c_get_adapter(3);
+	psb_intel_output->hdmi_i2c_adapter =
+				i2c_get_adapter(OTM_HDMI_I2C_ADAPTER_NUM);
 
 	if (psb_intel_output->hdmi_i2c_adapter)
-		/* HACKS_JLIU7 */
 		pr_debug("Enter mdfld_hdmi_init, i2c_adapter is availabe.\n");
 	else
 		printk(KERN_ALERT "No ddc adapter available!\n");
@@ -846,10 +840,7 @@ int android_hdmi_get_modes(struct drm_connector *connector)
 	int refresh_rate = 0;
 	int pref_mode_found = -1;
 	struct i2c_adapter *adapter = NULL;
-#ifndef OTM_HDMI_FIXME
-	/* OTM_HDMI_FIXME: this should be from get attribute interface */
-	int adapter_num = 3;
-#endif
+
 	debug_modes_count = 0;
 	pr_debug("%s E\n", __func__);
 
@@ -860,7 +851,7 @@ int android_hdmi_get_modes(struct drm_connector *connector)
 	if (edid_ready_in_hpd)
 		goto edid_is_ready;
 
-	adapter = i2c_get_adapter(adapter_num);
+	adapter = i2c_get_adapter(OTM_HDMI_I2C_ADAPTER_NUM);
 
 	/* FIXME: drm_get_edid cause the system hung at DV1 boot up */
 	/* Read edid blocks from i2c device */
@@ -1431,11 +1422,7 @@ enum drm_connector_status android_hdmi_detect(struct drm_connector *connector)
 	struct android_hdmi_priv *hdmi_priv = NULL;
 	u8 data = 0;
 
-#ifndef OTM_HDMI_FIXME
-	/* OTM_HDMI_FIXME: this should be from get attribute interface */
-	int adapter_num = 3;
-#endif
-	struct i2c_adapter *adapter = i2c_get_adapter(adapter_num);
+	struct i2c_adapter *adapter = i2c_get_adapter(OTM_HDMI_I2C_ADAPTER_NUM);
 
 	if (NULL == connector || NULL == adapter)
 		return connector_status_disconnected;
