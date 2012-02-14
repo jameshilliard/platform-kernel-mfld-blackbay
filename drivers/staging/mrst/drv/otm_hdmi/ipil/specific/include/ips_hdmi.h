@@ -104,6 +104,10 @@
 #define IPS_HDMIB_CONTROL    (0x61140)
 #define IPS_PFIT_ENABLE		(1 << 31)
 
+/* HSYNC and VSYNC Polarity Mask Bits */
+#define IPS_HSYNC_POLARITY_MASK (1 << 3)
+#define IPS_VSYNC_POLARITY_MASK (1 << 4)
+
 otm_hdmi_ret_t ips_hdmi_decide_I2C_HW(hdmi_context_t *ctx);
 
 otm_hdmi_ret_t ips_hdmi_general_5V_enable(hdmi_device_t *dev);

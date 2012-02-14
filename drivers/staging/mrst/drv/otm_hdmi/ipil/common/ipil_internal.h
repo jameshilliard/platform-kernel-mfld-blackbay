@@ -131,6 +131,10 @@
 #define IPIL_TIMING_FLAG_PVSYNC	(1<<2)
 #define IPIL_TIMING_FLAG_NVSYNC	(1<<3)
 
+#define IPIL_HSYNC_POLARITY_MASK IPS_HSYNC_POLARITY_MASK
+#define IPIL_VSYNC_POLARITY_MASK IPS_VSYNC_POLARITY_MASK
+#define CLEARBITS(val, mask) (val & (~mask))
+#define SETBITS(val, mask)  (val | mask)
 struct ipil_clock_t {
 	int dot;
 	int m;
