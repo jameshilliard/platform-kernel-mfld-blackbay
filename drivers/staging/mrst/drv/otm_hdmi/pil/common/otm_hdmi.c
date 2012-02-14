@@ -841,7 +841,7 @@ void hdmi_timing_edid_to_vdc(otm_hdmi_timing_t *t)
 #endif
 
 /* turn HDMI power rails on */
-bool otm_hdmi_power_rails_on()
+bool otm_hdmi_power_rails_on(void)
 {
 	return ipil_hdmi_power_rails_on();
 }
@@ -1229,7 +1229,7 @@ static otm_hdmi_ret_t otm_hdmi_attr_set_validate(otm_hdmi_attribute_id_t id,
 	char *_string = NULL;
 	int str_len = 0;
 
-	if (id < 0 || id > OTM_HDMI_MAX_SUPPORTED_ATTRIBUTES) {
+	if (id < 0 || id >= OTM_HDMI_MAX_SUPPORTED_ATTRIBUTES) {
 		PD_LOG_ERROR("Invalid argument passed (id): %d\n", id);
 		rc = OTM_HDMI_ERR_FAILED;
 		goto exit;
@@ -1653,7 +1653,7 @@ EXPORT_SYMBOL(otm_hdmi_set_attribute);
 static otm_hdmi_ret_t otm_hdmi_attr_get_validate(otm_hdmi_attribute_id_t id)
 {
 	otm_hdmi_ret_t rc = OTM_HDMI_SUCCESS;
-	if (id < 0 || id > OTM_HDMI_MAX_SUPPORTED_ATTRIBUTES) {
+	if (id < 0 || id >= OTM_HDMI_MAX_SUPPORTED_ATTRIBUTES) {
 		PD_LOG_ERROR("Invalid argument passed (id): %d\n", id);
 		rc = OTM_HDMI_ERR_FAILED;
 		goto exit;
@@ -2214,7 +2214,7 @@ void otm_disable_hdmi(void *context)
  *
  *	Returns - nothing
  */
-void test_otm_hdmi_report_edid()
+void test_otm_hdmi_report_edid(void)
 {
 	edid_info_t *edid = NULL;
 	if (NULL == g_context) {

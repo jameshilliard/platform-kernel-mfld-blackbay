@@ -222,8 +222,6 @@ static irqreturn_t __hdmi_irq_handler_bottomhalf(void *data)
 		list_for_each_entry(connector,
 					&mode_config->connector_list,
 					head) {
-			if (!connector)
-				continue;
 			if (DRM_MODE_CONNECTOR_DVID ==
 				connector->connector_type) {
 				edid = (struct edid *)
@@ -592,7 +590,7 @@ int otm_cmdline_set_vic_option(int vic)
 }
 EXPORT_SYMBOL_GPL(otm_cmdline_set_vic_option);
 
-void otm_print_cmdline_option()
+void otm_print_cmdline_option(void)
 {
 	if (1 == cmdline_mode.specified) {
 		if (1 == cmdline_mode.vic_specified)
@@ -845,12 +843,12 @@ int android_hdmi_get_modes(struct drm_connector *connector)
 	int i = 0, j = 0, ret = 0;
 	int refresh_rate = 0;
 	int pref_mode_found = -1;
-	debug_modes_count = 0;
 	struct i2c_adapter *adapter = NULL;
 #ifndef OTM_HDMI_FIXME
 	/* OTM_HDMI_FIXME: this should be from get attribute interface */
 	int adapter_num = 3;
 #endif
+	debug_modes_count = 0;
 	pr_debug("%s E\n", __func__);
 
 	/* Lazy edid read feature, which can save I2C transactions largely.
@@ -1525,7 +1523,7 @@ void android_hdmi_dpms(struct drm_encoder *encoder, int mode)
  *
  *	Returns - nothing
  */
-void test_otm_hdmi_report_edid_full()
+void test_otm_hdmi_report_edid_full(void)
 {
 	int i = 0;
 	printk(KERN_ALERT "\n*** Supported Modes ***\n");

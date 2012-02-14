@@ -197,7 +197,7 @@ otm_hdmi_ret_t ips_hdmi_i2c_disable(hdmi_device_t *dev)
 	return rc;
 }
 
-bool ips_hdmi_power_rails_on()
+bool ips_hdmi_power_rails_on(void)
 {
 	/* Turn on HDMI power rails. These will be on in all non-S0iX
 	 * states so that HPD and connection status will work. VCC330

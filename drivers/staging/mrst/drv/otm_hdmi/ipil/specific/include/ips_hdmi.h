@@ -139,7 +139,7 @@ otm_hdmi_ret_t ips_hdmi_general_tdms_clock_disable(hdmi_device_t *dev);
 
 otm_hdmi_ret_t ips_hdmi_i2c_disable(hdmi_device_t *dev);
 
-bool ips_hdmi_power_rails_on();
+bool ips_hdmi_power_rails_on(void);
 
 irqreturn_t ips_hdmi_irq_handler(void *io_address);
 

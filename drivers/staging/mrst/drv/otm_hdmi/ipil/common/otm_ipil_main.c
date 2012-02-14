@@ -184,7 +184,7 @@ otm_hdmi_ret_t ipil_hdmi_i2c_disable(hdmi_device_t *dev)
 	return ips_hdmi_i2c_disable(dev);
 }
 
-bool ipil_hdmi_power_rails_on()
+bool ipil_hdmi_power_rails_on(void)
 {
 	return ips_hdmi_power_rails_on();
 }

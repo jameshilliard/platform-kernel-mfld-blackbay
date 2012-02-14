@@ -134,7 +134,7 @@ otm_hdmi_ret_t ipil_hdmi_general_unit_disable(hdmi_device_t *dev);
 /*
  * Description: Turn HDMI power rails on
  */
-bool ipil_hdmi_power_rails_on();
+bool ipil_hdmi_power_rails_on(void);
 
 /*
  * Description: hdmi interrupt handler (upper half).

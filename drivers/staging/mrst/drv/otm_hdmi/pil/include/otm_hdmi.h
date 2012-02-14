@@ -195,7 +195,7 @@ otm_hdmi_ret_t otm_hdmi_device_init(void **context, struct pci_dev *pdev);
 unsigned char *otm_hdmi_read_edid(void);
 
 /* turn HDMI power rails on */
-bool otm_hdmi_power_rails_on();
+bool otm_hdmi_power_rails_on(void);
 
 /* get pixel clock range */
 otm_hdmi_ret_t otm_hdmi_get_pixel_clock_range(unsigned int *pc_min,
