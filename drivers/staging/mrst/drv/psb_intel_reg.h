@@ -721,6 +721,8 @@ struct dpst_guardband {
 # define HDMIB_PIPE_B_SELECT		(1 << 30)
 # define HDMIB_NULL_PACKET		(1 << 9)
 #define HDMIB_HDCP_PORT (1 << 5)
+#define AUDIO_DIP_CTL		0x69060
+#define VIDEO_DIP_CTL		0x61170
 
 /* #define LVDS			0x61180 */
 # define MRST_PANEL_8TO6_DITHER_ENABLE		(1 << 25)

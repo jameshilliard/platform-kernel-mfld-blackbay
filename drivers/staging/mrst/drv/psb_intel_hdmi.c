@@ -311,8 +311,12 @@ static void mdfld_hdmi_dpms(struct drm_encoder *encoder, int mode)
 	}
 
 	hdmib = REG_READ(hdmi_priv->hdmib_reg) | HDMIB_PIPE_B_SELECT;
-	/*TODO: need logic for DVI here */
-	hdmib |= (HDMIB_NULL_PACKET | HDMI_AUDIO_ENABLE);
+	if (hdmi_priv->monitor_type == MONITOR_TYPE_DVI) {
+		hdmib &= ~(HDMIB_NULL_PACKET | HDMI_AUDIO_ENABLE);
+		REG_WRITE(VIDEO_DIP_CTL, 0x0);
+		REG_WRITE(AUDIO_DIP_CTL, 0x0);
+	} else
+		hdmib |= (HDMIB_NULL_PACKET | HDMI_AUDIO_ENABLE);
 	hdmi_phy_misc = REG_READ(HDMIPHYMISCCTL);
 
 	if (mode != DRM_MODE_DPMS_ON) {
