@@ -75,7 +75,6 @@ void MRSTLFBFreeKernelMem(void *pvMem)
 	kfree(pvMem);
 }
 
-
 MRST_ERROR MRSTLFBGetLibFuncAddr (char *szFunctionName, PFN_DC_GET_PVRJTABLE *ppfnFuncTable)
 {
 	if(strcmp("PVRGetDisplayClassJTable", szFunctionName) != 0)
@@ -88,97 +87,6 @@ MRST_ERROR MRSTLFBGetLibFuncAddr (char *szFunctionName, PFN_DC_GET_PVRJTABLE *pp
 
 	return (MRST_OK);
 }
-
-static void MRSTLFBVSyncWriteReg(MRSTLFB_DEVINFO *psDevInfo, unsigned long ulOffset, unsigned long ulValue)
-{
-
-	void *pvRegAddr = (void *)(psDevInfo->pvRegs + ulOffset);
-	mb();
-	iowrite32(ulValue, pvRegAddr);
-}
-
-unsigned long MRSTLFBVSyncReadReg(MRSTLFB_DEVINFO * psDevinfo, unsigned long ulOffset)
-{
-	mb();
-	return ioread32((char *)psDevinfo->pvRegs + ulOffset);
-}
-
-void MRSTLFBEnableVSyncInterrupt(MRSTLFB_DEVINFO * psDevinfo)
-{
-#if defined(MRST_USING_INTERRUPTS)
-    struct drm_psb_private *dev_priv =
-	(struct drm_psb_private *) psDevinfo->psDrmDevice->dev_private;
-    dev_priv->vblanksEnabledForFlips = true;
-    psb_enable_vblank(psDevinfo->psDrmDevice, 0);
-
-#endif
-}
-
-void MRSTLFBDisableVSyncInterrupt(MRSTLFB_DEVINFO * psDevinfo)
-{
-#if defined(MRST_USING_INTERRUPTS)
-    struct drm_device * dev = psDevinfo->psDrmDevice;
-    struct drm_psb_private *dev_priv =
-	(struct drm_psb_private *) psDevinfo->psDrmDevice->dev_private;
-    dev_priv->vblanksEnabledForFlips = false;
-    //Only turn off if DRM isn't currently using vblanks, otherwise, leave on.
-    if (!dev->vblank_enabled[0])
-    psb_disable_vblank(psDevinfo->psDrmDevice, 0);
-#endif
-}
-
-#if defined(MRST_USING_INTERRUPTS)
-MRST_ERROR MRSTLFBInstallVSyncISR(MRSTLFB_DEVINFO *psDevInfo, MRSTLFB_VSYNC_ISR_PFN pVsyncHandler)
-{
-	struct drm_psb_private *dev_priv =
-	    (struct drm_psb_private *) psDevInfo->psDrmDevice->dev_private;
-	dev_priv->psb_vsync_handler = pVsyncHandler;
-	return (MRST_OK);
-}
-
-
-MRST_ERROR MRSTLFBUninstallVSyncISR(MRSTLFB_DEVINFO	*psDevInfo)
-{
-	struct drm_psb_private *dev_priv =
-	    (struct drm_psb_private *) psDevInfo->psDrmDevice->dev_private;
-	dev_priv->psb_vsync_handler = NULL;
-	return (MRST_OK);
-}
-#endif 
-
-
-void MRSTLFBFlipToSurface(MRSTLFB_DEVINFO *psDevInfo,  unsigned long uiAddr)
-{
-	int dspbase = (psDevInfo->ui32MainPipe == 0 ? DSPABASE : DSPBBASE);
-	int dspsurf = (psDevInfo->ui32MainPipe == 0 ? DSPASURF : DSPBSURF);
-	int panel_type;
-
-	panel_type = is_panel_vid_or_cmd(psDevInfo->psDrmDevice);
-
-	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true))
-	{
-		dspsurf = DSPASURF;
-		MRSTLFBVSyncWriteReg(psDevInfo, dspsurf, uiAddr);
-#if defined(CONFIG_MDFD_DUAL_MIPI)
-		dspsurf = DSPCSURF;
-		MRSTLFBVSyncWriteReg(psDevInfo, dspsurf, uiAddr);
-#endif
-
-		if (panel_type == MDFLD_DSI_ENCODER_DBI) {
-#if defined(CONFIG_MDFLD_DSI_DPU)
-			mdfld_dbi_dpu_report_fullscreen_damage(psDevInfo->psDrmDevice);
-#elif defined(CONFIG_MDFLD_DSI_DSR)
-			/*if in DSR mode, exit it!*/
-			mdfld_dsi_dbi_exit_dsr (psDevInfo->psDrmDevice, MDFLD_DSR_2D_3D);
-#endif
-		}
-
-		dspsurf = DSPBSURF;
-		MRSTLFBVSyncWriteReg(psDevInfo, dspsurf, uiAddr);
-		ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
-	}
-}
-
 
 int PVR_DRM_MAKENAME(DISPLAY_CONTROLLER, _Init)(struct drm_device unref__ *dev)
 {
@@ -201,14 +109,10 @@ void PVR_DRM_MAKENAME(DISPLAY_CONTROLLER, _Cleanup)(struct drm_device unref__ *d
 
 int PVR_DRM_MAKENAME(DISPLAY_CONTROLLER, _Suspend)(struct drm_device unref__ *dev)
 {
-	MRSTLFBSuspend();
-
 	return 0;
 }
 
 int PVR_DRM_MAKENAME(DISPLAY_CONTROLLER, _Resume)(struct drm_device unref__ *dev)
 {
-	MRSTLFBResume();
-
 	return 0;
 }

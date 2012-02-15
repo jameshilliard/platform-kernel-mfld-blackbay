@@ -26,7 +26,6 @@ ccflags-y += \
 	-DDEBUG_MESA_OGL_TRACE \
 	-DDISABLE_PM \
 	-DDISPLAY_CONTROLLER=mrstlfb \
-	-DDRM_PVR_USE_INTEL_FB	\
 	-DLINUX \
 	-DPVR2D_VALIDATE_INPUT_PARAMS \
 	-DPVR_BUILD_DIR="\"pc_i686_moorestown_linux\"" \
