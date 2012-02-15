@@ -254,6 +254,8 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 
 	DRM_DEBUG("Got Kernel MemInfo for handle %p\n", hKernelMemInfo);
 
+	psKernelMemInfo = PVRSRVGetSrcMemInfo(psKernelMemInfo);
+
 	sizes[0] = psKernelMemInfo->ui32AllocSize;
 
 	for (i = 1; i < drm_format_num_planes(r->pixel_format); i++) {
