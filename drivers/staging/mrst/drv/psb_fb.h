@@ -52,8 +52,9 @@ struct psb_fbdev {
 
 extern int psb_intel_connector_clones(struct drm_device *dev, int type_mask);
 
-void psb_fb_ref(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
-void psb_fb_unref(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
+int psb_fb_ref(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
+void psb_fb_unref(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo,
+		  uint32_t tgid);
 
 int psb_fb_gtt_ref(struct drm_device *dev,
 		   PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);

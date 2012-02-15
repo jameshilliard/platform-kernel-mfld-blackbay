@@ -865,7 +865,11 @@ static int ref_fbs(struct drm_plane *plane,
 		 * that we can manipulate the reads ops
 		 * counters during page flip.
 		 */
-		psb_fb_ref(old_mem_info);
+		r = psb_fb_ref(old_mem_info);
+		if (r) {
+			psb_fb_gtt_unref(dev, mem_info, tgid);
+			return r;
+		}
 	}
 
  skip:
@@ -873,7 +877,7 @@ static int ref_fbs(struct drm_plane *plane,
 	psb_fb_gtt_unref(dev, ovl->mem_info, ovl->tgid);
 	ovl->mem_info = mem_info;
 
-	psb_fb_unref(ovl->old_mem_info);
+	psb_fb_unref(ovl->old_mem_info, ovl->tgid);
 	ovl->old_mem_info = old_mem_info;
 
 	ovl->tgid = tgid;
@@ -1672,7 +1676,7 @@ static void ovl_flip_finish(struct drm_flip *pending_flip)
 	struct mfld_overlay_flip *oflip =
 		container_of(pending_flip, struct mfld_overlay_flip, base);
 
-	psb_fb_unref(oflip->old_mem_info);
+	psb_fb_unref(oflip->old_mem_info, oflip->tgid);
 }
 
 static void ovl_flip_cleanup(struct drm_flip *pending_flip)

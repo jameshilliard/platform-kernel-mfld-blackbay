@@ -226,7 +226,7 @@ static void crtc_flip_finish(struct drm_flip *flip)
 	struct pending_flip *crtc_flip =
 		container_of(flip, struct pending_flip, base);
 
-	psb_fb_unref(crtc_flip->old_mem_info);
+	psb_fb_unref(crtc_flip->old_mem_info, crtc_flip->tgid);
 }
 
 static void psb_flip_driver_flush(struct drm_flip_driver *driver)
@@ -464,7 +464,12 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 	current_fb_mem_info = to_psb_fb(crtc->fb)->pvrBO;
 
 	/* keep a reference to the old fb, for read ops manipulations */
-	psb_fb_ref(current_fb_mem_info);
+	ret = psb_fb_ref(current_fb_mem_info);
+	if (ret) {
+		psb_fb_gtt_unref(dev, psbfb->pvrBO, tgid);
+		kfree(new_pending_flip);
+		return ret;
+	}
 
 	drm_flip_init(&new_pending_flip->base, &to_psb_intel_crtc(crtc)->flip_helper);
 

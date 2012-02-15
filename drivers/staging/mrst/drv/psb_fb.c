@@ -784,23 +784,44 @@ void psb_modeset_cleanup(struct drm_device *dev)
 	mutex_unlock(&dev->struct_mutex);
 }
 
-void psb_fb_ref(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
+int psb_fb_ref(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 {
+	int ret = 0;
+	u32 tgid = psb_get_tgid();
+
 	if (!psKernelMemInfo)
-		return;
+		return 0;
 
 	mutex_lock(&gPVRSRVLock);
+
+	/*
+	 * Make sure we have per process data. If we just call
+	 * PVRSRVPerProcessDataConnect() w/o per process data,
+	 * it will allocate the data for us, which is not what
+	 * we want.
+	 */
+	if (!PVRSRVPerProcessData(tgid) ||
+	    PVRSRVPerProcessDataConnect(tgid, 0) != PVRSRV_OK) {
+		ret = -ESRCH;
+		goto unlock;
+	}
+
 	PVRSRVRefDeviceMemKM(psKernelMemInfo);
+
+ unlock:
 	mutex_unlock(&gPVRSRVLock);
+
+	return ret;
 }
 
-void psb_fb_unref(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
+void psb_fb_unref(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo, u32 tgid)
 {
 	if (!psKernelMemInfo)
 		return;
 
 	mutex_lock(&gPVRSRVLock);
 	PVRSRVUnrefDeviceMemKM(psKernelMemInfo);
+	PVRSRVPerProcessDataDisconnect(tgid);
 	mutex_unlock(&gPVRSRVLock);
 }
 
@@ -815,11 +836,18 @@ int psb_fb_gtt_ref(struct drm_device *dev,
 
 	ret = psb_gtt_map_meminfo(dev, psKernelMemInfo, &offset);
 	if (ret)
-		return ret;
+		goto out;
 
-	psb_fb_ref(psKernelMemInfo);
+	ret = psb_fb_ref(psKernelMemInfo);
+	if (ret)
+		goto unref_gtt;
 
 	return 0;
+
+ unref_gtt:
+	psb_gtt_unmap_meminfo(dev, psKernelMemInfo, psb_get_tgid());
+ out:
+	return ret;
 }
 
 void psb_fb_gtt_unref(struct drm_device *dev,
@@ -831,7 +859,7 @@ void psb_fb_gtt_unref(struct drm_device *dev,
 
 	psb_gtt_unmap_meminfo(dev, psKernelMemInfo, tgid);
 
-	psb_fb_unref(psKernelMemInfo);
+	psb_fb_unref(psKernelMemInfo, tgid);
 }
 
 void
