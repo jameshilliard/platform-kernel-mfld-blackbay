@@ -401,9 +401,8 @@ void psb_gtt_mm_takedown(void)
 	return;
 }
 
-static int psb_gtt_mm_get_ht_by_pid_locked(struct psb_gtt_mm *mm,
-		u32 tgid,
-		struct psb_gtt_hash_entry **hentry)
+static struct psb_gtt_hash_entry *
+psb_gtt_mm_get_ht_by_pid_locked(struct psb_gtt_mm *mm, u32 tgid)
 {
 	struct drm_hash_item *entry;
 	struct psb_gtt_hash_entry *psb_entry;
@@ -412,17 +411,16 @@ static int psb_gtt_mm_get_ht_by_pid_locked(struct psb_gtt_mm *mm,
 	ret = drm_ht_find_item(&mm->hash, tgid, &entry);
 	if (ret) {
 		DRM_DEBUG("Cannot find entry pid=%u\n", tgid);
-		return ret;
+		return ERR_PTR(ret);
 	}
 
 	psb_entry = container_of(entry, struct psb_gtt_hash_entry, item);
 	if (!psb_entry) {
 		DRM_DEBUG("Invalid entry");
-		return -EINVAL;
+		return ERR_PTR(-EINVAL);
 	}
 
-	*hentry = psb_entry;
-	return 0;
+	return psb_entry;
 }
 
 
@@ -462,22 +460,20 @@ static int psb_gtt_mm_insert_ht_locked(struct psb_gtt_mm *mm,
 	return 0;
 }
 
-static int psb_gtt_mm_alloc_insert_ht(struct psb_gtt_mm *mm,
-				      u32 tgid,
-				      struct psb_gtt_hash_entry **entry)
+static struct psb_gtt_hash_entry *
+psb_gtt_mm_alloc_insert_ht(struct psb_gtt_mm *mm, u32 tgid)
 {
 	struct psb_gtt_hash_entry *hentry;
 	int ret;
 
 	/*if the hentry for this tgid exists, just get it and return*/
 	spin_lock(&mm->lock);
-	ret = psb_gtt_mm_get_ht_by_pid_locked(mm, tgid, &hentry);
-	if (!ret) {
+	hentry = psb_gtt_mm_get_ht_by_pid_locked(mm, tgid);
+	if (!IS_ERR(hentry)) {
 		DRM_DEBUG("Entry for tgid %u exist, hentry %p\n",
 			  tgid, hentry);
-		*entry = hentry;
 		spin_unlock(&mm->lock);
-		return 0;
+		return hentry;
 	}
 	spin_unlock(&mm->lock);
 
@@ -486,13 +482,13 @@ static int psb_gtt_mm_alloc_insert_ht(struct psb_gtt_mm *mm,
 	hentry = kzalloc(sizeof(struct psb_gtt_hash_entry), GFP_KERNEL);
 	if (!hentry) {
 		DRM_DEBUG("Kmalloc failled\n");
-		return -ENOMEM;
+		return ERR_PTR(-ENOMEM);
 	}
 
 	ret = drm_ht_create(&hentry->ht, 20);
 	if (ret) {
 		DRM_DEBUG("Create hash table failed\n");
-		return ret;
+		return ERR_PTR(ret);
 	}
 
 	spin_lock(&mm->lock);
@@ -500,18 +496,17 @@ static int psb_gtt_mm_alloc_insert_ht(struct psb_gtt_mm *mm,
 	spin_unlock(&mm->lock);
 
 	if (!ret)
-		*entry = hentry;
+		return hentry;
 
-	return ret;
+	return ERR_PTR(ret);
 }
 
 static struct psb_gtt_hash_entry *
 psb_gtt_mm_remove_ht_locked(struct psb_gtt_mm *mm, u32 tgid) {
 	struct psb_gtt_hash_entry *tmp;
-	int ret;
 
-	ret = psb_gtt_mm_get_ht_by_pid_locked(mm, tgid, &tmp);
-	if (ret) {
+	tmp = psb_gtt_mm_get_ht_by_pid_locked(mm, tgid);
+	if (IS_ERR(tmp)) {
 		DRM_DEBUG("Cannot find entry pid %u\n", tgid);
 		return NULL;
 	}
@@ -543,10 +538,8 @@ static int psb_gtt_mm_remove_free_ht_locked(struct psb_gtt_mm *mm, u32 tgid)
 	return 0;
 }
 
-static int
-psb_gtt_mm_get_mem_mapping_locked(struct drm_open_hash *ht,
-				  u32 key,
-				  struct psb_gtt_mem_mapping **hentry)
+static struct psb_gtt_mem_mapping *
+psb_gtt_mm_get_mem_mapping_locked(struct drm_open_hash *ht, u32 key)
 {
 	struct drm_hash_item *entry;
 	struct psb_gtt_mem_mapping *mapping;
@@ -555,17 +548,16 @@ psb_gtt_mm_get_mem_mapping_locked(struct drm_open_hash *ht,
 	ret = drm_ht_find_item(ht, key, &entry);
 	if (ret) {
 		DRM_DEBUG("Cannot find key %u\n", key);
-		return ret;
+		return ERR_PTR(ret);
 	}
 
 	mapping =  container_of(entry, struct psb_gtt_mem_mapping, item);
 	if (!mapping) {
 		DRM_DEBUG("Invalid entry\n");
-		return -EINVAL;
+		return ERR_PTR(-EINVAL);
 	}
 
-	*hentry = mapping;
-	return 0;
+	return mapping;
 }
 
 static int
@@ -598,30 +590,28 @@ psb_gtt_mm_insert_mem_mapping_locked(struct drm_open_hash *ht,
 	return 0;
 }
 
-static int
+static struct psb_gtt_mem_mapping *
 psb_gtt_mm_alloc_insert_mem_mapping(struct psb_gtt_mm *mm,
 				    struct drm_open_hash *ht,
 				    u32 key,
-				    struct drm_mm_node *node,
-				    struct psb_gtt_mem_mapping **entry)
+				    struct drm_mm_node *node)
 {
 	struct psb_gtt_mem_mapping *mapping;
 	int ret;
 
 	if (!node || !ht) {
 		DRM_DEBUG("parameter error\n");
-		return -EINVAL;
+		return ERR_PTR(-EINVAL);
 	}
 
 	/*try to get this mem_map */
 	spin_lock(&mm->lock);
-	ret = psb_gtt_mm_get_mem_mapping_locked(ht, key, &mapping);
-	if (!ret) {
+	mapping = psb_gtt_mm_get_mem_mapping_locked(ht, key);
+	if (!IS_ERR(mapping)) {
 		DRM_DEBUG("mapping entry for key %u exists, entry %p\n",
 			  key, mapping);
-		*entry = mapping;
 		spin_unlock(&mm->lock);
-		return 0;
+		return mapping;
 	}
 	spin_unlock(&mm->lock);
 
@@ -631,7 +621,7 @@ psb_gtt_mm_alloc_insert_mem_mapping(struct psb_gtt_mm *mm,
 	mapping = kzalloc(sizeof(struct psb_gtt_mem_mapping), GFP_KERNEL);
 	if (!mapping) {
 		DRM_DEBUG("kmalloc failed\n");
-		return -ENOMEM;
+		return ERR_PTR(-ENOMEM);
 	}
 
 	mapping->node = node;
@@ -641,19 +631,18 @@ psb_gtt_mm_alloc_insert_mem_mapping(struct psb_gtt_mm *mm,
 	spin_unlock(&mm->lock);
 
 	if (!ret)
-		*entry = mapping;
+		return mapping;
 
-	return ret;
+	return ERR_PTR(ret);
 }
 
 static struct psb_gtt_mem_mapping *
 psb_gtt_mm_remove_mem_mapping_locked(struct drm_open_hash *ht, u32 key) {
 	struct psb_gtt_mem_mapping *tmp;
 	struct psb_gtt_hash_entry *entry;
-	int ret;
 
-	ret = psb_gtt_mm_get_mem_mapping_locked(ht, key, &tmp);
-	if (ret) {
+	tmp = psb_gtt_mm_get_mem_mapping_locked(ht, key);
+	if (IS_ERR(tmp)) {
 		DRM_DEBUG("Cannot find key %u\n", key);
 		return NULL;
 	}
@@ -667,82 +656,70 @@ psb_gtt_mm_remove_mem_mapping_locked(struct drm_open_hash *ht, u32 key) {
 	return tmp;
 }
 
-static int psb_gtt_mm_remove_free_mem_mapping_locked(struct drm_open_hash *ht,
-		u32 key,
-		struct drm_mm_node **node)
+static struct drm_mm_node *
+psb_gtt_mm_remove_free_mem_mapping_locked(struct drm_open_hash *ht, u32 key)
 {
 	struct psb_gtt_mem_mapping *entry;
+	struct drm_mm_node *node;
 
 	entry = psb_gtt_mm_remove_mem_mapping_locked(ht, key);
 	if (!entry) {
 		DRM_DEBUG("entry is NULL\n");
-		return -EINVAL;
+		return ERR_PTR(-EINVAL);
 	}
 
-	*node = entry->node;
+	node = entry->node;
 
 	kfree(entry);
-	return 0;
+	return node;
 }
 
-static int psb_gtt_add_node(struct psb_gtt_mm *mm,
-			    u32 tgid,
-			    u32 key,
-			    struct drm_mm_node *node,
-			    struct psb_gtt_mem_mapping **entry)
+static struct psb_gtt_mem_mapping *
+psb_gtt_add_node(struct psb_gtt_mm *mm, u32 tgid, u32 key,
+		 struct drm_mm_node *node)
 {
 	struct psb_gtt_hash_entry *hentry;
 	struct psb_gtt_mem_mapping *mapping;
-	int ret;
 
-	ret = psb_gtt_mm_alloc_insert_ht(mm, tgid, &hentry);
-	if (ret) {
+	hentry = psb_gtt_mm_alloc_insert_ht(mm, tgid);
+	if (IS_ERR(hentry)) {
 		DRM_DEBUG("alloc_insert failed\n");
-		return ret;
+		return ERR_CAST(hentry);
 	}
 
-	ret = psb_gtt_mm_alloc_insert_mem_mapping(mm, &hentry->ht, key,
-						  node, &mapping);
-	if (ret) {
+	mapping = psb_gtt_mm_alloc_insert_mem_mapping(mm, &hentry->ht, key,
+						      node);
+	if (IS_ERR(mapping)) {
 		DRM_DEBUG("mapping alloc_insert failed\n");
-		return ret;
+		return ERR_CAST(mapping);
 	}
 
-	*entry = mapping;
-
-	return 0;
+	return mapping;
 }
 
-static int psb_gtt_remove_node(struct psb_gtt_mm *mm,
-			       u32 tgid,
-			       u32 key,
-			       struct drm_mm_node **node)
+static struct drm_mm_node *
+psb_gtt_remove_node(struct psb_gtt_mm *mm, u32 tgid, u32 key)
 {
 	struct psb_gtt_hash_entry *hentry;
 	struct drm_mm_node *tmp;
-	int ret;
 
 	spin_lock(&mm->lock);
-	ret = psb_gtt_mm_get_ht_by_pid_locked(mm, tgid, &hentry);
-	if (ret) {
+	hentry = psb_gtt_mm_get_ht_by_pid_locked(mm, tgid);
+	if (IS_ERR(hentry)) {
 		DRM_DEBUG("Cannot find entry for pid %u\n", tgid);
 		spin_unlock(&mm->lock);
-		return ret;
+		return ERR_CAST(hentry);
 	}
 	spin_unlock(&mm->lock);
 
 	/*remove mapping entry*/
 	spin_lock(&mm->lock);
-	ret = psb_gtt_mm_remove_free_mem_mapping_locked(&hentry->ht,
-			key,
-			&tmp);
-	if (ret) {
+	tmp = psb_gtt_mm_remove_free_mem_mapping_locked(&hentry->ht, key);
+	if (IS_ERR(tmp)) {
 		DRM_DEBUG("remove_free failed\n");
 		spin_unlock(&mm->lock);
-		return ret;
+		return ERR_CAST(tmp);
 	}
-
-	*node = tmp;
 
 	/*check the count of mapping entry*/
 	if (!hentry->count) {
@@ -752,43 +729,40 @@ static int psb_gtt_remove_node(struct psb_gtt_mm *mm,
 
 	spin_unlock(&mm->lock);
 
-	return 0;
+	return tmp;
 }
 
-static int psb_gtt_mm_alloc_mem(struct psb_gtt_mm *mm,
-				uint32_t pages,
-				uint32_t align,
-				struct drm_mm_node **node)
+static struct drm_mm_node *
+psb_gtt_mm_alloc_mem(struct psb_gtt_mm *mm, uint32_t pages, uint32_t align)
 {
-	struct drm_mm_node *tmp_node;
+	struct drm_mm_node *node;
 	int ret;
 
 	do {
 		ret = drm_mm_pre_get(&mm->base);
 		if (unlikely(ret)) {
 			DRM_DEBUG("drm_mm_pre_get error\n");
-			return ret;
+			return ERR_PTR(ret);
 		}
 
 		spin_lock(&mm->lock);
-		tmp_node = drm_mm_search_free(&mm->base, pages, align, 1);
-		if (unlikely(!tmp_node)) {
+		node = drm_mm_search_free(&mm->base, pages, align, 1);
+		if (unlikely(!node)) {
 			DRM_DEBUG("No free node found\n");
 			spin_unlock(&mm->lock);
 			break;
 		}
 
-		tmp_node = drm_mm_get_block_atomic(tmp_node, pages, align);
+		node = drm_mm_get_block_atomic(node, pages, align);
 		spin_unlock(&mm->lock);
-	} while (!tmp_node);
+	} while (!node);
 
-	if (!tmp_node) {
+	if (!node) {
 		DRM_DEBUG("Node allocation failed\n");
-		return -ENOMEM;
+		return ERR_PTR(-ENOMEM);
 	}
 
-	*node = tmp_node;
-	return 0;
+	return node;
 }
 
 static void psb_gtt_mm_free_mem(struct psb_gtt_mm *mm, struct drm_mm_node *node)
@@ -845,17 +819,19 @@ int psb_gtt_map_meminfo(struct drm_device *dev,
 	DRM_DEBUG("get %u pages\n", pages);
 
 	/*alloc memory in TT apeture*/
-	ret = psb_gtt_mm_alloc_mem(mm, pages, 0, &node);
-	if (ret) {
+	node = psb_gtt_mm_alloc_mem(mm, pages, 0);
+	if (IS_ERR(node)) {
 		DRM_DEBUG("alloc TT memory error\n");
+		ret = PTR_ERR(node);
 		goto failed_pages_alloc;
 	}
 
 	/*update psb_gtt_mm*/
-	ret = psb_gtt_add_node(mm, psb_get_tgid(), (u32) hKernelMemInfo,
-			       node, &mapping);
-	if (ret) {
+	mapping = psb_gtt_add_node(mm, psb_get_tgid(), (u32) hKernelMemInfo,
+				   node);
+	if (IS_ERR(mapping)) {
 		DRM_DEBUG("add_node failed");
+		ret = PTR_ERR(mapping);
 		goto failed_add_node;
 	}
 
@@ -885,13 +861,11 @@ int psb_gtt_unmap_meminfo(struct drm_device *dev, IMG_HANDLE hKernelMemInfo)
 	struct psb_gtt *pg = dev_priv->pg;
 	uint32_t pages, offset_pages;
 	struct drm_mm_node *node;
-	int ret;
 
-	ret = psb_gtt_remove_node(mm, psb_get_tgid(), (u32) hKernelMemInfo,
-				  &node);
-	if (ret) {
+	node = psb_gtt_remove_node(mm, psb_get_tgid(), (u32) hKernelMemInfo);
+	if (IS_ERR(node)) {
 		DRM_DEBUG("remove node failed\n");
-		return ret;
+		return PTR_ERR(node);
 	}
 
 	/*remove gtt entries*/
@@ -952,16 +926,18 @@ int psb_gtt_map_pvr_memory(struct drm_device *dev,
 	pages = 0;
 
 	/*alloc memory in TT apeture*/
-	ret = psb_gtt_mm_alloc_mem(mm, ui32PagesNum, ui32Align, &node);
-	if (ret) {
+	node = psb_gtt_mm_alloc_mem(mm, ui32PagesNum, ui32Align);
+	if (IS_ERR(node)) {
 		DRM_DEBUG("alloc TT memory error\n");
+		ret = PTR_ERR(node);
 		goto failed_pages_alloc;
 	}
 
 	/*update psb_gtt_mm*/
-	ret = psb_gtt_add_node(mm, ui32TaskId, (u32) hHandle, node, &mapping);
-	if (ret) {
+	mapping = psb_gtt_add_node(mm, ui32TaskId, (u32) hHandle, node);
+	if (IS_ERR(mapping)) {
 		DRM_DEBUG("add_node failed");
+		ret = PTR_ERR(mapping);
 		goto failed_add_node;
 	}
 
@@ -992,12 +968,11 @@ int psb_gtt_unmap_pvr_memory(struct drm_device *dev, void *hHandle,
 	struct psb_gtt * pg = dev_priv->pg;
 	uint32_t pages, offset_pages;
 	struct drm_mm_node * node;
-	int ret;
 
-	ret = psb_gtt_remove_node(mm, ui32TaskId, (u32) hHandle, &node);
-	if (ret) {
+	node = psb_gtt_remove_node(mm, ui32TaskId, (u32) hHandle);
+	if (IS_ERR(node)) {
 		printk("remove node failed\n");
-		return ret;
+		return PTR_ERR(node);
 	}
 
 	/*remove gtt entries*/
