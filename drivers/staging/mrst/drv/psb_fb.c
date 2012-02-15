@@ -44,6 +44,8 @@
 #include "mdfld_dsi_output.h"
 #include "mdfld_output.h"
 
+extern struct mutex gPVRSRVLock;
+
 extern int MRSTLFBHandleChangeFB(struct drm_device* dev, struct psb_framebuffer *psbfb);
 
 static void psb_user_framebuffer_destroy(struct drm_framebuffer *fb);
@@ -336,7 +338,9 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 	fbdev->psb_fb_helper.fbdev = info;
 	MRSTLFBHandleChangeFB(dev, psbfb);
 
+	mutex_lock(&gPVRSRVLock);
 	PVRSRVRefDeviceMemKM(psKernelMemInfo);
+	mutex_unlock(&gPVRSRVLock);
 
 	return fb;
 }
@@ -590,7 +594,9 @@ static void psb_user_framebuffer_destroy(struct drm_framebuffer *fb)
 	/*ummap gtt pages*/
 	psb_gtt_unmap_meminfo(dev, psbfb->pvrBO);
 
+	mutex_lock(&gPVRSRVLock);
 	PVRSRVUnrefDeviceMemKM(psbfb->pvrBO);
+	mutex_unlock(&gPVRSRVLock);
 
 	if (psbfb->fbdev)
 		psbfb_remove(dev, fb);
