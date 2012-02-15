@@ -52,6 +52,7 @@ struct pending_flip {
 	struct pvr_pending_sync pending_sync;
 	struct drm_flip base;
 	u32 vbl_count;
+	struct list_head companions;
 	u32 tgid;
 	bool vblank_ref;
 };
@@ -348,10 +349,20 @@ void psb_page_flip_crtc_fini(struct psb_intel_crtc *psb_intel_crtc)
 void
 psb_intel_crtc_process_vblank(struct drm_crtc *crtc)
 {
+	struct drm_psb_private *dev_priv = crtc->dev->dev_private;
 	struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(crtc);
+	int pipe = psb_intel_crtc->pipe;
+	int i;
 
 	psb_intel_crtc->vbl_received = true;
 	wake_up(&psb_intel_crtc->vbl_wait);
+
+	for (i = 0; i < ARRAY_SIZE(dev_priv->overlays); i++) {
+		if (!dev_priv->overlays[i])
+			continue;
+
+		mdfld_overlay_process_vblank(dev_priv->overlays[i], pipe);
+	}
 
 	drm_flip_helper_vblank(&psb_intel_crtc->flip_helper);
 }
@@ -364,10 +375,16 @@ sync_callback(struct pvr_pending_sync *pending_sync, bool from_misr)
 	struct drm_crtc* crtc = pending_flip->crtc;
 	struct drm_device *dev = crtc->dev;
 	struct drm_psb_private *dev_priv = dev->dev_private;
+	struct drm_flip *flip, *next;
 	LIST_HEAD(flips);
 	bool pipe_enabled = false;
 
 	list_add_tail(&pending_flip->base.list, &flips);
+
+	list_for_each_entry_safe(flip, next, &pending_flip->companions, list)
+		list_move_tail(&flip->list, &flips);
+
+	WARN_ON(!list_empty(&pending_flip->companions));
 
 	/* prevent DPMS and whatnot from shooting us in the foot */
 	if (from_misr)
@@ -420,6 +437,7 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
                          struct drm_pending_vblank_event *event)
 {
 	struct drm_device *dev = crtc->dev;
+	struct drm_psb_private *dev_priv = dev->dev_private;
 	struct psb_framebuffer *psbfb = to_psb_fb(fb);
 	PVRSRV_KERNEL_MEM_INFO *current_fb_mem_info;
 	struct pending_flip *new_pending_flip;
@@ -429,6 +447,8 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 	struct pvr_trcmd_flpreq *fltrace;
 	u32 tgid = psb_get_tgid();
 	int ret;
+	int pipe = to_psb_intel_crtc(crtc)->pipe;
+	int i;
 
 	if (!psbfb->pvrBO)
 		return -EINVAL;
@@ -490,6 +510,21 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 	pvr_trcmd_commit(fltrace);
 
 	new_pending_flip->tgid = tgid;
+
+	INIT_LIST_HEAD(&new_pending_flip->companions);
+
+	for (i = 0; i < ARRAY_SIZE(dev_priv->overlays); i++) {
+		struct drm_flip *flip;
+
+		if (!dev_priv->overlays[i])
+			continue;
+
+		flip = mdfld_overlay_atomic_flip(dev_priv->overlays[i], pipe);
+		if (!flip)
+			continue;
+
+		list_add_tail(&flip->list, &new_pending_flip->companions);
+	}
 
 	PVRSRVCallbackOnSync(psbfb->pvrBO->psKernelSyncInfo,
 			     PVRSRV_SYNC_WRITE, sync_callback,

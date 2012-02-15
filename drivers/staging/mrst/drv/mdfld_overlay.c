@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Intel Corporation
+ * Copyright (C) 2011-2012 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -19,6 +19,9 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
+ *
+ * Authors:
+ * Ville Syrjälä <ville.syrjala@linux.intel.com>
  */
 
 #include <linux/debugfs.h>
@@ -32,8 +35,11 @@
 #include "psb_drm.h"
 #include "psb_gtt.h"
 #include "psb_fb.h"
+#include "psb_pvr_glue.h"
 
 #include "fp_trig.h"
+
+#include "drm_flip.h"
 
 enum {
 	OVL_DIRTY_REGS  = 0x1,
@@ -133,6 +139,12 @@ struct mfld_overlay {
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *debugfs_dentry;
 #endif
+
+	struct drm_flip_helper flip_helper;
+	bool atomic;
+	PVRSRV_KERNEL_MEM_INFO *mem_info;
+	PVRSRV_KERNEL_MEM_INFO *old_mem_info;
+	u32 tgid;
 };
 
 #define to_mfld_overlay(plane) container_of(plane, struct mfld_overlay, base)
@@ -242,6 +254,10 @@ static void write_ovadd(struct mfld_overlay *ovl)
 		ovadd |= OVL_OVADD_COEF;
 
 	OVL_REG_WRITE(ovl, OVL_OVADD, ovadd);
+
+	if (ovl->atomic)
+		return;
+
 	OVL_REG_READ(ovl, OVL_OVADD);
 
 	/*
@@ -283,14 +299,16 @@ static int ovl_wait(struct mfld_overlay *ovl)
 	return 0;
 }
 
-static void ovl_update_regs(struct mfld_overlay *ovl)
+static void ovl_update_regs(struct mfld_overlay *ovl,
+			    const struct mfld_overlay_regs *regs,
+			    int pipe)
 {
 	struct mfld_overlay_regs_page *page = &ovl->page[!ovl->curr_page];
 	static const u8 pipe_map[] = { 0, 2, 1, };
 
-	page->ovadd = page->gtt | (pipe_map[ovl->pipe] << 6);
+	page->ovadd = page->gtt | (pipe_map[pipe] << 6);
 
-	memcpy(page->virt, &ovl->regs, sizeof ovl->regs);
+	memcpy(page->virt, regs, sizeof *regs);
 
 	/*
 	 * Guarantee ordering between shadow register memory and write to OVADD.
@@ -306,13 +324,20 @@ static void ovl_commit(struct mfld_overlay *ovl, unsigned int dirty)
 	if (!dirty)
 		return;
 
+	if (ovl->atomic) {
+		spin_lock_irq(&ovl->regs_lock);
+		ovl->dirty |= dirty;
+		spin_unlock_irq(&ovl->regs_lock);
+		return;
+	}
+
 	/*
 	 * Can be done safely outside the spinlock since we know
 	 * curr_page will only be modified just below, and ovl_commit()
 	 * won't be called from two threads simultaneosly due to locking
 	 * in upper layers.
 	 */
-	ovl_update_regs(ovl);
+	ovl_update_regs(ovl, &ovl->regs, ovl->pipe);
 
 	spin_lock_irq(&ovl->regs_lock);
 
@@ -327,6 +352,7 @@ static void ovl_commit(struct mfld_overlay *ovl, unsigned int dirty)
 
 	spin_lock_irq(&ovl->regs_lock);
 
+	/* FIXME cook up something like this when using atomic flips. */
 	if (ovl->dirty & OVL_DIRTY_COEFS && !(dirty & OVL_DIRTY_COEFS)) {
 		/* No pending updates, coefficients have been loaded for sure. */
 		if (OVL_REG_READ(ovl, OVL_DOVSTA) & OVL_DOVSTA_OVR_UPDT)
@@ -808,6 +834,51 @@ static void ovl_disable(struct mfld_overlay *ovl)
 	ovl_commit(ovl, OVL_DIRTY_REGS);
 }
 
+static int ref_fbs(struct drm_plane *plane,
+		   struct drm_framebuffer *fb)
+{
+	struct drm_device *dev = plane->dev;
+	struct mfld_overlay *ovl = to_mfld_overlay(plane);
+	PVRSRV_KERNEL_MEM_INFO *mem_info = NULL;
+	PVRSRV_KERNEL_MEM_INFO *old_mem_info = NULL;
+	int r;
+	u32 tgid = psb_get_tgid();
+
+	/* Skip ref counting w/o atomic flips, for now. */
+	if (!ovl->atomic)
+		goto skip;
+
+	if (fb)
+		mem_info = to_psb_fb(fb)->pvrBO;
+
+	r = psb_fb_gtt_ref(dev, mem_info);
+	if (r)
+		return r;
+
+	if (plane->fb && plane->fb != fb) {
+		old_mem_info = to_psb_fb(plane->fb)->pvrBO;
+
+		/*
+		 * Need to keep a reference to the old fb so
+		 * that we can manipulate the reads ops
+		 * counters during page flip.
+		 */
+		psb_fb_ref(old_mem_info);
+	}
+
+ skip:
+	/* Release old references */
+	psb_fb_gtt_unref(dev, ovl->mem_info, ovl->tgid);
+	ovl->mem_info = mem_info;
+
+	psb_fb_unref(ovl->old_mem_info);
+	ovl->old_mem_info = old_mem_info;
+
+	ovl->tgid = tgid;
+
+	return 0;
+}
+
 static int
 mfld_overlay_update_plane(struct drm_plane *plane, struct drm_crtc *crtc, struct drm_framebuffer *fb,
 			  int crtc_x, int crtc_y, unsigned int crtc_w, unsigned int crtc_h,
@@ -834,6 +905,10 @@ mfld_overlay_update_plane(struct drm_plane *plane, struct drm_crtc *crtc, struct
 			    0, 0, crtc->hwmode.crtc_hdisplay,
 			    crtc->hwmode.crtc_vdisplay,
 			    plane->opts.chroma_siting, fb);
+	if (r)
+		return r;
+
+	r = ref_fbs(plane, fb);
 	if (r)
 		return r;
 
@@ -1001,6 +1076,11 @@ static int
 mfld_overlay_disable_plane(struct drm_plane *plane)
 {
 	struct mfld_overlay *ovl = to_mfld_overlay(plane);
+	int r;
+
+	r = ref_fbs(plane, NULL);
+	if (r)
+		return r;
 
 	ovl_disable(ovl);
 
@@ -1505,6 +1585,110 @@ static void ovl_debugfs_init(struct drm_device *dev, struct mfld_overlay *ovl) {
 static void ovl_debugfs_fini(struct mfld_overlay *ovl) {}
 #endif
 
+struct mfld_overlay_flip {
+	struct drm_flip base;
+	struct drm_plane *plane;
+	PVRSRV_KERNEL_MEM_INFO *mem_info;
+	PVRSRV_KERNEL_MEM_INFO *old_mem_info;
+	int pipe;
+	u32 tgid;
+	struct mfld_overlay_regs regs;
+	bool vblank_ref;
+};
+
+static void ovl_prepare(struct drm_flip *flip)
+{
+	struct mfld_overlay_flip *oflip =
+		container_of(flip, struct mfld_overlay_flip, base);
+	struct drm_plane *plane = oflip->plane;
+	struct mfld_overlay *ovl = to_mfld_overlay(plane);
+
+	ovl_update_regs(ovl, &oflip->regs, oflip->pipe);
+}
+
+static bool ovl_flip(struct drm_flip *flip,
+		     struct drm_flip *pending_flip)
+{
+	struct mfld_overlay_flip *oflip =
+		container_of(flip, struct mfld_overlay_flip, base);
+	struct drm_plane *plane = oflip->plane;
+	struct mfld_overlay *ovl = to_mfld_overlay(plane);
+	struct drm_device *dev = plane->dev;
+	u32 dovsta;
+	unsigned long flags;
+
+	oflip->vblank_ref = drm_vblank_get(dev, oflip->pipe) == 0;
+
+	spin_lock_irqsave(&ovl->regs_lock, flags);
+
+	ovl->curr_page = !ovl->curr_page;
+
+	dovsta = OVL_REG_READ(ovl, OVL_DOVSTA);
+
+	write_ovadd(ovl);
+
+	spin_unlock_irqrestore(&ovl->regs_lock, flags);
+
+	if (pending_flip)
+		return (dovsta & OVL_DOVSTA_OVR_UPDT) != 0;
+
+	return false;
+}
+
+static bool ovl_flip_vblank(struct drm_flip *pending_flip)
+{
+	struct mfld_overlay *ovl =
+		container_of(pending_flip->helper, struct mfld_overlay, flip_helper);
+	struct drm_plane *plane = &ovl->base;
+	struct drm_device *dev = plane->dev;
+
+	return (OVL_REG_READ(ovl, OVL_DOVSTA) & OVL_DOVSTA_OVR_UPDT) != 0;
+}
+
+static void ovl_flip_complete(struct drm_flip *pending_flip)
+{
+	struct mfld_overlay_flip *oflip =
+		container_of(pending_flip, struct mfld_overlay_flip, base);
+	struct drm_device *dev = oflip->plane->dev;
+	int pipe = oflip->pipe;
+
+	if (oflip->vblank_ref)
+		drm_vblank_put(dev, pipe);
+
+	psb_fb_increase_read_ops_completed(oflip->old_mem_info);
+	PVRSRVScheduleDeviceCallbacks();
+}
+
+static void ovl_flip_finish(struct drm_flip *pending_flip)
+{
+	struct mfld_overlay_flip *oflip =
+		container_of(pending_flip, struct mfld_overlay_flip, base);
+
+	psb_fb_unref(oflip->old_mem_info);
+}
+
+static void ovl_flip_cleanup(struct drm_flip *pending_flip)
+{
+	struct mfld_overlay_flip *oflip =
+		container_of(pending_flip, struct mfld_overlay_flip, base);
+	struct drm_device *dev = oflip->plane->dev;
+
+	mutex_lock(&dev->mode_config.mutex);
+	psb_fb_gtt_unref(dev, oflip->mem_info, oflip->tgid);
+	mutex_unlock(&dev->mode_config.mutex);
+
+	kfree(oflip);
+}
+
+static const struct drm_flip_helper_funcs ovl_flip_funcs = {
+	.prepare = ovl_prepare,
+	.flip = ovl_flip,
+	.vblank = ovl_flip_vblank,
+	.complete = ovl_flip_complete,
+	.finish = ovl_flip_finish,
+	.cleanup = ovl_flip_cleanup,
+};
+
 int mdfld_overlay_init(struct drm_device *dev, int id)
 {
 	struct drm_psb_private *dev_priv = dev->dev_private;
@@ -1562,6 +1746,9 @@ int mdfld_overlay_init(struct drm_device *dev, int id)
 	ovl_set_src_key(ovl, &ovl->base.opts);
 	ovl_set_dst_key(ovl, &ovl->base.opts);
 
+	drm_flip_helper_init(&ovl->flip_helper, &dev_priv->flip_driver, &ovl_flip_funcs);
+	ovl->atomic = true;
+
 	drm_plane_init(dev, &ovl->base, possible_crtcs, &mfld_overlay_funcs,
 		       mfld_overlay_formats, ARRAY_SIZE(mfld_overlay_formats));
 
@@ -1581,6 +1768,8 @@ static void mfld_overlay_destroy(struct drm_plane *plane)
 {
 	struct mfld_overlay *ovl = to_mfld_overlay(plane);
 	struct drm_device *dev = ovl->dev;
+
+	drm_flip_helper_fini(&ovl->flip_helper);
 
 	ovl_debugfs_fini(ovl);
 
@@ -1619,4 +1808,62 @@ void mdfld_overlay_resume(struct drm_plane *plane)
 	write_ovadd(ovl);
 
 	spin_unlock_irqrestore(&ovl->regs_lock, flags);
+}
+
+void mdfld_overlay_process_vblank(struct drm_plane *plane, int pipe)
+{
+	struct mfld_overlay *ovl = to_mfld_overlay(plane);
+
+	if (ovl->pipe != pipe)
+		return;
+
+	drm_flip_helper_vblank(&ovl->flip_helper);
+}
+
+struct drm_flip *mdfld_overlay_atomic_flip(struct drm_plane *plane, int pipe)
+{
+	struct mfld_overlay *ovl = to_mfld_overlay(plane);
+	struct mfld_overlay_flip *oflip;
+
+	if (ovl->pipe != pipe || !ovl->atomic)
+		return NULL;
+
+	spin_lock_irq(&ovl->regs_lock);
+
+	if (!(ovl->dirty & OVL_DIRTY_REGS)) {
+		spin_unlock_irq(&ovl->regs_lock);
+		return NULL;
+	}
+
+	ovl->dirty &= ~OVL_DIRTY_REGS;
+
+	spin_unlock_irq(&ovl->regs_lock);
+
+	oflip = kmalloc(sizeof *oflip, GFP_KERNEL);
+	if (!oflip)
+		return NULL;
+
+	drm_flip_init(&oflip->base, &ovl->flip_helper);
+
+	oflip->mem_info = ovl->mem_info;
+	/* reference ownership moved to the flip */
+	ovl->mem_info = NULL;
+
+	oflip->old_mem_info = ovl->old_mem_info;
+	/* reference ownership moved to the flip */
+	ovl->old_mem_info = NULL;
+
+	oflip->tgid = ovl->tgid;
+
+	oflip->vblank_ref = false;
+
+	psb_fb_increase_read_ops_pending(oflip->old_mem_info);
+
+	/* we must pipeline the register changes */
+	memcpy(&oflip->regs, &ovl->regs, sizeof ovl->regs);
+
+	oflip->plane = plane;
+	oflip->pipe = pipe;
+
+	return &oflip->base;
 }
