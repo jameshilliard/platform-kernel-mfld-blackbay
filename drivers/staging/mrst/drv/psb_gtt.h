@@ -97,15 +97,15 @@ extern int psb_gtt_mm_init(struct psb_gtt *pg);
 extern void psb_gtt_mm_takedown(void);
 
 extern int psb_gtt_map_pvr_memory(struct drm_device *dev,
-                                                                  unsigned int hHandle,
-                                                                  unsigned int ui32TaskId,
-                                                                  IMG_CPU_PHYADDR *pPages,
-                                                                  unsigned int ui32PagesNum,
-								  unsigned int *ui32Offset,
-								  unsigned int ui32Align);
+				  unsigned int hHandle,
+				  unsigned int ui32TaskId,
+				  IMG_CPU_PHYADDR *pPages,
+				  unsigned int ui32PagesNum,
+				  unsigned int *ui32Offset,
+				  unsigned int ui32Align);
 
 extern int psb_gtt_unmap_pvr_memory(struct drm_device *dev,
-                                                                        unsigned int hHandle,
-                                                                        unsigned int ui32TaskId);
+				    unsigned int hHandle,
+				    unsigned int ui32TaskId);
 
 #endif
