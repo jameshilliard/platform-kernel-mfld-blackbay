@@ -855,7 +855,7 @@ int psb_gtt_map_meminfo(struct drm_device *dev,
 
 	/*update psb_gtt_mm*/
 	ret = psb_gtt_add_node(mm,
-			       (u32)psb_get_tgid(),
+			       psb_get_tgid(),
 			       (u32)hKernelMemInfo,
 			       node,
 			       &mapping);
@@ -898,7 +898,7 @@ int psb_gtt_unmap_meminfo(struct drm_device *dev, IMG_HANDLE hKernelMemInfo)
 	int ret;
 
 	ret = psb_gtt_remove_node(mm,
-				  (u32)psb_get_tgid(),
+				  psb_get_tgid(),
 				  (u32)hKernelMemInfo,
 				  &node);
 	if (ret) {
