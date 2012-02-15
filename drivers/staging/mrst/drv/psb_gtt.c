@@ -971,7 +971,7 @@ int psb_gtt_unmap_pvr_memory(struct drm_device *dev, void *hHandle,
 
 	node = psb_gtt_remove_node(mm, ui32TaskId, (u32) hHandle);
 	if (IS_ERR(node)) {
-		printk("remove node failed\n");
+		DRM_DEBUG("remove node failed\n");
 		return PTR_ERR(node);
 	}
 
