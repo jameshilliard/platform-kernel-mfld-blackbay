@@ -52,6 +52,8 @@ struct psb_fbdev {
 
 extern int psb_intel_connector_clones(struct drm_device *dev, int type_mask);
 
+void psb_fb_increase_read_ops_pending(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
+void psb_fb_increase_read_ops_completed(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
 
 #endif
 

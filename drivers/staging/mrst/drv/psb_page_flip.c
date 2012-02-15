@@ -129,22 +129,6 @@ write_scanout_regs(struct pending_flip *pending_flip, uint32_t offset)
 }
 
 static void
-increase_read_ops_pending(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
-{
-	if (psKernelMemInfo && psKernelMemInfo->psKernelSyncInfo)
-		psKernelMemInfo->psKernelSyncInfo
-			->psSyncData->ui32ReadOpsPending++;
-}
-
-static void
-increase_read_ops_completed(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
-{
-	if (psKernelMemInfo && psKernelMemInfo->psKernelSyncInfo)
-		psKernelMemInfo->psKernelSyncInfo
-			->psSyncData->ui32ReadOpsComplete++;
-}
-
-static void
 psb_intel_flip_complete(struct pending_flip *pending_flip,
 		bool failed_vblank_get)
 {
@@ -157,7 +141,7 @@ psb_intel_flip_complete(struct pending_flip *pending_flip,
 		send_page_flip_event(dev, pipe, pending_flip);
 		if (!failed_vblank_get)
 			drm_vblank_put(dev, pipe);
-		increase_read_ops_completed(pending_flip->old_mem_info);
+		psb_fb_increase_read_ops_completed(pending_flip->old_mem_info);
 		pvr_trcmd_check_syn_completions(PVR_TRCMD_FLPCOMP);
 		PVRSRVScheduleDeviceCallbacks();
 
@@ -245,7 +229,7 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 
 	new_pending_flip->old_mem_info = current_fb_mem_info;
 
-	increase_read_ops_pending(current_fb_mem_info);
+	psb_fb_increase_read_ops_pending(current_fb_mem_info);
 
 	fltrace = pvr_trcmd_reserve(PVR_TRCMD_FLPREQ, task_tgid_nr(current),
 				  current->comm, sizeof(*fltrace));

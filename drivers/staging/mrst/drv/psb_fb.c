@@ -782,3 +782,19 @@ void psb_modeset_cleanup(struct drm_device *dev)
 
 	mutex_unlock(&dev->struct_mutex);
 }
+
+void
+psb_fb_increase_read_ops_pending(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
+{
+	if (psKernelMemInfo && psKernelMemInfo->psKernelSyncInfo)
+		psKernelMemInfo->psKernelSyncInfo
+			->psSyncData->ui32ReadOpsPending++;
+}
+
+void
+psb_fb_increase_read_ops_completed(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
+{
+	if (psKernelMemInfo && psKernelMemInfo->psKernelSyncInfo)
+		psKernelMemInfo->psKernelSyncInfo
+			->psSyncData->ui32ReadOpsComplete++;
+}
