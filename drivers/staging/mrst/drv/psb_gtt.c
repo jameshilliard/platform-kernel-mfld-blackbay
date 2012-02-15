@@ -796,13 +796,15 @@ psb_gtt_find_mapping_for_key(struct drm_device *dev, u32 tgid, u32 key)
 }
 
 static struct psb_gtt_mem_mapping *
-psb_gtt_add_mapping(struct psb_gtt_mm *mm, uint32_t size, u32 tgid, u32 key, u32 align)
+psb_gtt_add_mapping(struct drm_device *dev, uint32_t pages, u32 tgid, u32 key, u32 align)
 {
+	struct drm_psb_private *dev_priv = dev->dev_private;
+	struct psb_gtt_mm *mm = dev_priv->gtt_mm;
 	struct drm_mm_node *node;
 	struct psb_gtt_mem_mapping *mapping;
 
 	/* alloc memory in TT apeture */
-	node = psb_gtt_mm_alloc_mem(mm, size, align);
+	node = psb_gtt_mm_alloc_mem(mm, pages, align);
 	if (IS_ERR(node)) {
 		DRM_DEBUG("alloc TT memory error\n");
 		return ERR_CAST(node);
@@ -816,6 +818,8 @@ psb_gtt_add_mapping(struct psb_gtt_mm *mm, uint32_t size, u32 tgid, u32 key, u32
 		return mapping;
 	}
 
+	kref_init(&mapping->refcount);
+	mapping->dev = dev;
 	mapping->tgid = tgid;
 
 	return mapping;
@@ -844,7 +848,6 @@ psb_gtt_insert_meminfo(struct drm_device *dev, IMG_HANDLE hKernelMemInfo)
 {
 	struct drm_psb_private *dev_priv = dev->dev_private;
 	PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo;
-	struct psb_gtt_mm *mm = dev_priv->gtt_mm;
 	struct psb_gtt *pg = dev_priv->pg;
 	uint32_t size, pages, offset_pages;
 	void *kmem;
@@ -883,7 +886,7 @@ psb_gtt_insert_meminfo(struct drm_device *dev, IMG_HANDLE hKernelMemInfo)
 	DRM_DEBUG("get %u pages\n", pages);
 
 	/* create mapping with node for handle */
-	mapping = psb_gtt_add_mapping(mm, pages, psb_get_tgid(),
+	mapping = psb_gtt_add_mapping(dev, pages, psb_get_tgid(),
 				      (u32) hKernelMemInfo, 0);
 	if (IS_ERR(mapping))
 		return ERR_CAST(mapping);
@@ -907,6 +910,8 @@ int psb_gtt_map_meminfo(struct drm_device *dev,
 					       (u32) hKernelMemInfo);
 	if (IS_ERR(mapping))
 		mapping = psb_gtt_insert_meminfo(dev, hKernelMemInfo);
+	else
+		kref_get(&mapping->refcount);
 
 	if (IS_ERR(mapping))
 		return PTR_ERR(mapping);
@@ -915,13 +920,30 @@ int psb_gtt_map_meminfo(struct drm_device *dev,
 	return 0;
 }
 
+static void do_unmap_meminfo(struct kref *kref)
+{
+	struct drm_psb_private *dev_priv;
+	struct psb_gtt_mm *mm;
+	struct psb_gtt *pg;
+	uint32_t pages, offset_pages;
+	struct psb_gtt_mem_mapping *mapping;
+
+	mapping = container_of(kref, struct psb_gtt_mem_mapping, refcount);
+	mm = container_of(mapping->node->mm, struct psb_gtt_mm, base);
+	dev_priv = mapping->dev->dev_private;
+	pg = dev_priv->pg;
+
+	/* remove gtt entries */
+	offset_pages = mapping->node->start;
+	pages = mapping->node->size;
+
+	psb_gtt_remove_pages(pg, offset_pages, pages, 0, 0);
+
+	psb_gtt_remove_mapping(mm, mapping);
+}
+
 int psb_gtt_unmap_meminfo(struct drm_device *dev, IMG_HANDLE hKernelMemInfo)
 {
-	struct drm_psb_private *dev_priv
-	= (struct drm_psb_private *)dev->dev_private;
-	struct psb_gtt_mm *mm = dev_priv->gtt_mm;
-	struct psb_gtt *pg = dev_priv->pg;
-	uint32_t pages, offset_pages;
 	struct psb_gtt_mem_mapping *mapping;
 
 	mapping = psb_gtt_find_mapping_for_key(dev, psb_get_tgid(),
@@ -931,16 +953,11 @@ int psb_gtt_unmap_meminfo(struct drm_device *dev, IMG_HANDLE hKernelMemInfo)
 		return PTR_ERR(mapping);
 	}
 
-	/* remove gtt entries */
-	offset_pages = mapping->node->start;
-	pages = mapping->node->size;
-
-	psb_gtt_remove_pages(pg, offset_pages, pages, 0, 0);
-
-	psb_gtt_remove_mapping(mm, mapping);
+	kref_put(&mapping->refcount, do_unmap_meminfo);
 
 	return 0;
 }
+
 
 int psb_gtt_map_meminfo_ioctl(struct drm_device *dev, void *data,
 			      struct drm_file *file_priv)
@@ -975,7 +992,6 @@ int psb_gtt_map_pvr_memory(struct drm_device *dev,
 			   unsigned int ui32Align)
 {
 	struct drm_psb_private * dev_priv = (struct drm_psb_private *)dev->dev_private;
-	struct psb_gtt_mm * mm = dev_priv->gtt_mm;
 	struct psb_gtt * pg = dev_priv->pg;
 
 	uint32_t size, pages, offset_pages;
@@ -989,10 +1005,11 @@ int psb_gtt_map_pvr_memory(struct drm_device *dev,
 					       (u32) hHandle);
 	if (!IS_ERR(mapping)) {
 		*ui32Offset = mapping->node->start;
+		kref_get(&mapping->refcount);
 		return 0;
 	}
 
-	mapping = psb_gtt_add_mapping(mm, ui32PagesNum, ui32TaskId,
+	mapping = psb_gtt_add_mapping(dev, ui32PagesNum, ui32TaskId,
 				      (u32) hHandle, ui32Align);
 	if (IS_ERR(mapping))
 		return PTR_ERR(mapping);
@@ -1010,13 +1027,31 @@ int psb_gtt_map_pvr_memory(struct drm_device *dev,
 }
 
 
+static void do_unmap_pvr_memory(struct kref *kref)
+{
+	struct drm_psb_private *dev_priv;
+	struct psb_gtt_mm *mm;
+	struct psb_gtt *pg;
+	uint32_t pages, offset_pages;
+	struct psb_gtt_mem_mapping *mapping;
+
+	mapping = container_of(kref, struct psb_gtt_mem_mapping, refcount);
+	mm = container_of(mapping->node->mm, struct psb_gtt_mm, base);
+	dev_priv = (struct drm_psb_private *) mapping->dev->dev_private;
+	pg = dev_priv->pg;
+
+	/* remove gtt entries */
+	offset_pages = mapping->node->start;
+	pages = mapping->node->size;
+
+	psb_gtt_remove_pages(pg, offset_pages, pages, 0, 0);
+
+	psb_gtt_remove_mapping(mm, mapping);
+}
+
 int psb_gtt_unmap_pvr_memory(struct drm_device *dev, void *hHandle,
 			     uint32_t ui32TaskId)
 {
-	struct drm_psb_private * dev_priv = (struct drm_psb_private *)dev->dev_private;
-	struct psb_gtt_mm * mm = dev_priv->gtt_mm;
-	struct psb_gtt * pg = dev_priv->pg;
-	uint32_t pages, offset_pages;
 	struct psb_gtt_mem_mapping *mapping;
 
 	mapping = psb_gtt_find_mapping_for_key(dev, ui32TaskId,
@@ -1026,13 +1061,7 @@ int psb_gtt_unmap_pvr_memory(struct drm_device *dev, void *hHandle,
 		return PTR_ERR(mapping);
 	}
 
-	/* remove gtt entries */
-	offset_pages = mapping->node->start;
-	pages = mapping->node->size;
-
-	psb_gtt_remove_pages(pg, offset_pages, pages, 0, 0);
-
-	psb_gtt_remove_mapping(mm, mapping);
+	kref_put(&mapping->refcount, do_unmap_pvr_memory);
 
 	return 0;
 }
