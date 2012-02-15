@@ -286,6 +286,8 @@ PVRSRVMapMemInfoMem(const PVRSRV_CONNECTION *psConnection,
 PVRSRV_KERNEL_MEM_INFO* PVRSRVGetMapMemInfo(IMG_VOID *psMap);
 #endif
 
+PVRSRV_KERNEL_MEM_INFO *PVRSRVGetSrcMemInfo(PVRSRV_KERNEL_MEM_INFO *psMemInfo);
+
 #if defined (__cplusplus)
 }
 #endif

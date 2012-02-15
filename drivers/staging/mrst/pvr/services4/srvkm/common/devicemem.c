@@ -30,6 +30,7 @@
 #include "buffer_manager.h"
 #include "pdump_km.h"
 #include "pvr_bridge_km.h"
+#include "resman.h"
 
 #include "pvr_trace_cmd.h"
 
@@ -1599,3 +1600,15 @@ PVRSRV_KERNEL_MEM_INFO* PVRSRVGetMapMemInfo(IMG_VOID *psMap)
 		return IMG_NULL;
 }
 #endif
+
+PVRSRV_KERNEL_MEM_INFO *PVRSRVGetSrcMemInfo(PVRSRV_KERNEL_MEM_INFO *psMemInfo)
+{
+	RESMAN_MAP_DEVICE_MEM_DATA *psMapData;
+
+	while (psMemInfo->memType == PVRSRV_MEMTYPE_MAPPED) {
+		psMapData = PVRSRVGetResData(psMemInfo->sMemBlk.hResItem);
+		psMemInfo = psMapData->psSrcMemInfo;
+	}
+
+	return psMemInfo;
+}
