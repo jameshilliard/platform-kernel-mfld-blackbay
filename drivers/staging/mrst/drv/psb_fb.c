@@ -633,7 +633,7 @@ static void psb_user_framebuffer_destroy(struct drm_framebuffer *fb)
 	/* JB: TODO not drop, refcount buffer */
 	drm_framebuffer_cleanup(fb);
 
-	kfree(fb);
+	kfree(psbfb);
 }
 
 static const struct drm_mode_config_funcs psb_mode_funcs = {
