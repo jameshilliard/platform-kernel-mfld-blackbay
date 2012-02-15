@@ -1121,6 +1121,8 @@ static IMG_VOID PVRSRVMISR_ForEachCb(PVRSRV_DEVICE_NODE *psDeviceNode)
 	}
 }
 
+extern struct mutex gPVRSRVLock;
+
 IMG_VOID IMG_CALLCONV PVRSRVMISR(IMG_VOID *pvSysData)
 {
 	SYS_DATA			*psSysData = pvSysData;
@@ -1130,6 +1132,7 @@ IMG_VOID IMG_CALLCONV PVRSRVMISR(IMG_VOID *pvSysData)
 		return;
 	}
 
+	mutex_lock(&gPVRSRVLock);
 	
 	List_PVRSRV_DEVICE_NODE_ForEach(psSysData->psDeviceNodeList,
 									&PVRSRVMISR_ForEachCb);
@@ -1149,6 +1152,8 @@ IMG_VOID IMG_CALLCONV PVRSRVMISR(IMG_VOID *pvSysData)
 			OSEventObjectSignal(hOSEventKM);
 		}
 	}
+
+	mutex_unlock(&gPVRSRVLock);
 
 	PVRSRVCheckPendingSyncs();
 }
