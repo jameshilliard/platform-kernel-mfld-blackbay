@@ -1316,6 +1316,31 @@ ErrorExit:
 }
 
 
+void PVRSRVRefDeviceMemKM(PVRSRV_KERNEL_MEM_INFO *psMemInfo)
+{
+	if (!psMemInfo)
+		return;
+
+	/* Reference count is ignored on PVRSRV_MEMTYPE_MAPPED and may be busted
+	 * on other memory types too, so don't try to support all cases.
+	 */
+	if (psMemInfo->memType != PVRSRV_MEMTYPE_DEVICE) {
+		PVR_DPF((PVR_DBG_ERROR, "PVRSRVRefDeviceMemKM: only PVRSRV_MEMTYPE_DEVICE is supported"));
+		return;
+	}
+
+	psMemInfo->ui32RefCount++;
+	BM_Reference(psMemInfo->sMemBlk.hBuffer);
+}
+
+void PVRSRVUnrefDeviceMemKM(PVRSRV_KERNEL_MEM_INFO *psMemInfo)
+{
+	if (!psMemInfo || psMemInfo->memType != PVRSRV_MEMTYPE_DEVICE)
+		return;
+
+	FreeMemCallBackCommon(psMemInfo, 0, IMG_TRUE);
+}
+
 IMG_EXPORT
 PVRSRV_ERROR IMG_CALLCONV PVRSRVUnmapDeviceClassMemoryKM(PVRSRV_KERNEL_MEM_INFO *psMemInfo)
 {

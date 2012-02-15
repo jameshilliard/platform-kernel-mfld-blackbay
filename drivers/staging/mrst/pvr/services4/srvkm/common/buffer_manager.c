@@ -1490,6 +1490,14 @@ BM_FreeExport(BM_HANDLE hBuf,
 }
 
 IMG_VOID
+BM_Reference(BM_HANDLE hBuf)
+{
+	BM_BUF *pBuf = (BM_BUF *)hBuf;
+
+	pBuf->ui32RefCount++;
+}
+
+IMG_VOID
 BM_Free (BM_HANDLE hBuf,
 		IMG_UINT32 ui32Flags)
 {

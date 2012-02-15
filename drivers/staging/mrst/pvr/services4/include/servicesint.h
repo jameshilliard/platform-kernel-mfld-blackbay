@@ -282,6 +282,12 @@ PVRSRVMapMemInfoMem(const PVRSRV_CONNECTION *psConnection,
                     IMG_HANDLE hKernelMemInfo,
                     PVRSRV_CLIENT_MEM_INFO **ppsClientMemInfo);
 
+IMG_IMPORT
+IMG_VOID PVRSRVRefDeviceMemKM(PVRSRV_KERNEL_MEM_INFO *psMemInfo);
+
+IMG_IMPORT
+IMG_VOID PVRSRVUnrefDeviceMemKM(PVRSRV_KERNEL_MEM_INFO *psMemInfo);
+
 #if defined(PVRSRV_RESOURCE_PROFILING)
 PVRSRV_KERNEL_MEM_INFO* PVRSRVGetMapMemInfo(IMG_VOID *psMap);
 #endif

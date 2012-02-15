@@ -204,6 +204,8 @@ IMG_VOID BM_Export(BM_HANDLE hBuf);
 
 IMG_VOID BM_FreeExport(BM_HANDLE hBuf, IMG_UINT32 ui32Flags);
 
+IMG_VOID BM_Reference(BM_HANDLE hBuf);
+
 #if defined(__cplusplus)
 }
 #endif
