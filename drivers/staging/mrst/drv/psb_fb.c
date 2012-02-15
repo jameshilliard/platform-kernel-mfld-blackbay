@@ -862,18 +862,20 @@ int psb_fb_gtt_ref(struct drm_device *dev,
 	if (!psKernelMemInfo)
 		return 0;
 
-	ret = psb_gtt_map_meminfo(dev, psKernelMemInfo, &offset);
+	ret = psb_fb_ref(psKernelMemInfo);
 	if (ret)
 		goto out;
 
-	ret = psb_fb_ref(psKernelMemInfo);
-	if (ret)
-		goto unref_gtt;
+	if (need_gtt(dev, psKernelMemInfo)) {
+		ret = psb_gtt_map_meminfo(dev, psKernelMemInfo, &offset);
+		if (ret)
+			goto unref_fb;
+	}
 
 	return 0;
 
- unref_gtt:
-	psb_gtt_unmap_meminfo(dev, psKernelMemInfo, psb_get_tgid());
+ unref_fb:
+	psb_fb_unref(psKernelMemInfo, psb_get_tgid());
  out:
 	return ret;
 }
@@ -885,7 +887,8 @@ void psb_fb_gtt_unref(struct drm_device *dev,
 	if (!psKernelMemInfo)
 		return;
 
-	psb_gtt_unmap_meminfo(dev, psKernelMemInfo, tgid);
+	if (need_gtt(dev, psKernelMemInfo))
+		psb_gtt_unmap_meminfo(dev, psKernelMemInfo, tgid);
 
 	psb_fb_unref(psKernelMemInfo, tgid);
 }
