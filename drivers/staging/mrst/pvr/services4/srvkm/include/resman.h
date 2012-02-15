@@ -31,9 +31,7 @@
 extern "C" {
 #endif
 
-#ifdef RES_MAN_EXTEND
 #include <stdarg.h>
-#endif
 #include "servicesext.h"
 
 enum {
@@ -111,7 +109,6 @@ PVRSRV_ERROR PVRSRVResManConnect(IMG_HANDLE			hPerProc,
 								 PRESMAN_CONTEXT	*phResManContext);
 IMG_VOID PVRSRVResManDisconnect(PRESMAN_CONTEXT hResManContext,
 								IMG_BOOL		bKernelContext);
-#ifdef RES_MAN_EXTEND
 PVRSRV_ERROR PVRSRVResManAnyByCriteria(PRESMAN_CONTEXT psResManContext,
 					IMG_UINT32 ui32SearchCriteria,
 					IMG_UINT32		ui32ResType,
@@ -119,7 +116,6 @@ PVRSRV_ERROR PVRSRVResManAnyByCriteria(PRESMAN_CONTEXT psResManContext,
 					IMG_UINT32		ui32Param,
 					PVRSRV_ERROR(*pfnCallBack)(PRESMAN_ITEM psRes, va_list va), ...);
 IMG_PVOID PVRSRVGetResData(PRESMAN_ITEM psResItem);
-#endif
 
 #if defined (__cplusplus)
 }

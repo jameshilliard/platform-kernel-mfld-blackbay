@@ -731,8 +731,6 @@ static IMG_VOID ValidateResList(PRESMAN_LIST psResList)
 }
 #endif 
 
-#ifdef RES_MAN_EXTEND
-
 IMG_PVOID PVRSRVGetResData(PRESMAN_ITEM psResItem)
 {
 	if (psResItem)
@@ -805,4 +803,3 @@ PVRSRV_ERROR PVRSRVResManAnyByCriteria(PRESMAN_CONTEXT psResManContext,
 
 	return eError;
 }
-#endif
