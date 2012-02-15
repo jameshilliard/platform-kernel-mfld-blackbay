@@ -933,11 +933,12 @@ static void do_unmap_meminfo(struct kref *kref)
 }
 
 int psb_gtt_unmap_meminfo(struct drm_device *dev,
-			  PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
+			  PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo,
+			  uint32_t tgid)
 {
 	struct psb_gtt_mem_mapping *mapping;
 
-	mapping = psb_gtt_find_mapping_for_key(dev, psb_get_tgid(),
+	mapping = psb_gtt_find_mapping_for_key(dev, tgid,
 					       (u32) psKernelMemInfo);
 	if (IS_ERR(mapping)) {
 		DRM_DEBUG("handle is not mapped\n");
@@ -987,7 +988,7 @@ int psb_gtt_unmap_meminfo_ioctl(struct drm_device *dev, void *data,
 		return -EINVAL;
 	}
 
-	return psb_gtt_unmap_meminfo(dev, psKernelMemInfo);
+	return psb_gtt_unmap_meminfo(dev, psKernelMemInfo, psb_get_tgid());
 }
 
 int psb_gtt_map_pvr_memory(struct drm_device *dev,

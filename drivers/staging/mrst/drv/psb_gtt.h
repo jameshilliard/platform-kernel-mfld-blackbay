@@ -91,7 +91,8 @@ extern int psb_gtt_map_meminfo(struct drm_device *dev,
 				PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo,
 				uint32_t *offset);
 extern int psb_gtt_unmap_meminfo(struct drm_device *dev,
-				 PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
+				 PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo,
+				 uint32_t tgid);
 extern int psb_gtt_map_meminfo_ioctl(struct drm_device *dev, void *data,
 				     struct drm_file *file_priv);
 extern int psb_gtt_unmap_meminfo_ioctl(struct drm_device *dev, void *data,

@@ -592,7 +592,7 @@ static void psb_user_framebuffer_destroy(struct drm_framebuffer *fb)
 	struct psb_framebuffer *psbfb = to_psb_fb(fb);
 
 	/*ummap gtt pages*/
-	psb_gtt_unmap_meminfo(dev, psbfb->pvrBO);
+	psb_gtt_unmap_meminfo(dev, psbfb->pvrBO, psb_get_tgid());
 
 	mutex_lock(&gPVRSRVLock);
 	PVRSRVUnrefDeviceMemKM(psbfb->pvrBO);
