@@ -336,6 +336,8 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 	fbdev->psb_fb_helper.fbdev = info;
 	MRSTLFBHandleChangeFB(dev, psbfb);
 
+	PVRSRVRefDeviceMemKM(psKernelMemInfo);
+
 	return fb;
 }
 
@@ -587,6 +589,9 @@ static void psb_user_framebuffer_destroy(struct drm_framebuffer *fb)
 
 	/*ummap gtt pages*/
 	psb_gtt_unmap_meminfo(dev, psbfb->pvrBO);
+
+	PVRSRVUnrefDeviceMemKM(psbfb->pvrBO);
+
 	if (psbfb->fbdev)
 		psbfb_remove(dev, fb);
 
