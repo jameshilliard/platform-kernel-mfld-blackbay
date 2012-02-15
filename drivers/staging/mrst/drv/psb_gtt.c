@@ -370,7 +370,7 @@ int psb_gtt_mm_init(struct psb_gtt *pg)
 
 	mm = &gtt_mm->base;
 
-	/*will use tt_start ~ 128M for IMG TT buffers*/
+	/* will use tt_start ~ 128M for IMG TT buffers */
 	ret = drm_mm_init(mm, tt_start, ((tt_size / 2) - tt_start));
 	if (ret) {
 		DRM_DEBUG("drm_mm_int error(%d)\n", ret);
@@ -448,7 +448,7 @@ static int psb_gtt_mm_insert_ht_locked(struct psb_gtt_mm *mm,
 	}
 	*/
 
-	/*Insert the given entry*/
+	/* Insert the given entry */
 	ret = drm_ht_insert_item(&mm->hash, item);
 	if (ret) {
 		DRM_DEBUG("Insert failure\n");
@@ -466,7 +466,7 @@ psb_gtt_mm_alloc_insert_ht(struct psb_gtt_mm *mm, u32 tgid)
 	struct psb_gtt_hash_entry *hentry;
 	int ret;
 
-	/*if the hentry for this tgid exists, just get it and return*/
+	/* if the hentry for this tgid exists, just get it and return */
 	spin_lock(&mm->lock);
 	hentry = psb_gtt_mm_get_ht_by_pid_locked(mm, tgid);
 	if (!IS_ERR(hentry)) {
@@ -511,7 +511,7 @@ psb_gtt_mm_remove_ht_locked(struct psb_gtt_mm *mm, u32 tgid) {
 		return NULL;
 	}
 
-	/*remove it from ht*/
+	/* remove it from ht */
 	drm_ht_remove_item(&mm->hash, &tmp->item);
 
 	mm->count--;
@@ -530,10 +530,10 @@ static int psb_gtt_mm_remove_free_ht_locked(struct psb_gtt_mm *mm, u32 tgid)
 		return -EINVAL;
 	}
 
-	/*delete ht*/
+	/* delete ht */
 	drm_ht_remove(&entry->ht);
 
-	/*free this entry*/
+	/* free this entry */
 	kfree(entry);
 	return 0;
 }
@@ -604,7 +604,7 @@ psb_gtt_mm_alloc_insert_mem_mapping(struct psb_gtt_mm *mm,
 		return ERR_PTR(-EINVAL);
 	}
 
-	/*try to get this mem_map */
+	/* try to get this mem_map */
 	spin_lock(&mm->lock);
 	mapping = psb_gtt_mm_get_mem_mapping_locked(ht, key);
 	if (!IS_ERR(mapping)) {
@@ -712,7 +712,7 @@ psb_gtt_remove_node(struct psb_gtt_mm *mm, u32 tgid, u32 key)
 	}
 	spin_unlock(&mm->lock);
 
-	/*remove mapping entry*/
+	/* remove mapping entry */
 	spin_lock(&mm->lock);
 	tmp = psb_gtt_mm_remove_free_mem_mapping_locked(&hentry->ht, key);
 	if (IS_ERR(tmp)) {
@@ -721,7 +721,7 @@ psb_gtt_remove_node(struct psb_gtt_mm *mm, u32 tgid, u32 key)
 		return ERR_CAST(tmp);
 	}
 
-	/*check the count of mapping entry*/
+	/* check the count of mapping entry */
 	if (!hentry->count) {
 		DRM_DEBUG("count of mapping entry is zero, tgid=%u\n", tgid);
 		psb_gtt_mm_remove_free_ht_locked(mm, tgid);
@@ -808,7 +808,7 @@ int psb_gtt_map_meminfo(struct drm_device *dev,
 	if (!kmem)
 		DRM_DEBUG("kmem is NULL");
 
-	/*get pages*/
+	/* get pages */
 	ret = psb_get_pages_by_mem_handle(psKernelMemInfo->sMemBlk.hOSMemHandle,
 					  &page_list);
 	if (ret) {
@@ -818,7 +818,7 @@ int psb_gtt_map_meminfo(struct drm_device *dev,
 
 	DRM_DEBUG("get %u pages\n", pages);
 
-	/*alloc memory in TT apeture*/
+	/* alloc memory in TT apeture */
 	node = psb_gtt_mm_alloc_mem(mm, pages, 0);
 	if (IS_ERR(node)) {
 		DRM_DEBUG("alloc TT memory error\n");
@@ -826,7 +826,7 @@ int psb_gtt_map_meminfo(struct drm_device *dev,
 		goto failed_pages_alloc;
 	}
 
-	/*update psb_gtt_mm*/
+	/* update psb_gtt_mm */
 	mapping = psb_gtt_add_node(mm, psb_get_tgid(), (u32) hKernelMemInfo,
 				   node);
 	if (IS_ERR(mapping)) {
@@ -841,7 +841,7 @@ int psb_gtt_map_meminfo(struct drm_device *dev,
 	DRM_DEBUG("get free node for %u pages, offset %u pages",
 		  pages, offset_pages);
 
-	/*update gtt*/
+	/* update gtt */
 	psb_gtt_insert_pages(pg, page_list, offset_pages, pages, 0, 0, 0);
 
 	*offset = offset_pages;
@@ -868,14 +868,14 @@ int psb_gtt_unmap_meminfo(struct drm_device *dev, IMG_HANDLE hKernelMemInfo)
 		return PTR_ERR(node);
 	}
 
-	/*remove gtt entries*/
+	/* remove gtt entries */
 	offset_pages = node->start;
 	pages = node->size;
 
 	psb_gtt_remove_pages(pg, offset_pages, pages, 0, 0);
 
 
-	/*free tt node*/
+	/* free tt node */
 
 	psb_gtt_mm_free_mem(mm, node);
 	return 0;
@@ -925,7 +925,7 @@ int psb_gtt_map_pvr_memory(struct drm_device *dev,
 	size = ui32PagesNum * PAGE_SIZE;
 	pages = 0;
 
-	/*alloc memory in TT apeture*/
+	/* alloc memory in TT apeture */
 	node = psb_gtt_mm_alloc_mem(mm, ui32PagesNum, ui32Align);
 	if (IS_ERR(node)) {
 		DRM_DEBUG("alloc TT memory error\n");
@@ -933,7 +933,7 @@ int psb_gtt_map_pvr_memory(struct drm_device *dev,
 		goto failed_pages_alloc;
 	}
 
-	/*update psb_gtt_mm*/
+	/* update psb_gtt_mm */
 	mapping = psb_gtt_add_node(mm, ui32TaskId, (u32) hHandle, node);
 	if (IS_ERR(mapping)) {
 		DRM_DEBUG("add_node failed");
@@ -946,7 +946,7 @@ int psb_gtt_map_pvr_memory(struct drm_device *dev,
 
 	DRM_DEBUG("get free node for %u pages, offset %u pages", pages, offset_pages);
 
-	/*update gtt*/
+	/* update gtt */
 	psb_gtt_insert_phys_addresses(pg, pPages, offset_pages,
 				      ui32PagesNum, 0);
 
@@ -975,13 +975,13 @@ int psb_gtt_unmap_pvr_memory(struct drm_device *dev, void *hHandle,
 		return PTR_ERR(node);
 	}
 
-	/*remove gtt entries*/
+	/* remove gtt entries */
 	offset_pages = node->start;
 	pages = node->size;
 
 	psb_gtt_remove_pages(pg, offset_pages, pages, 0, 0);
 
-	/*free tt node*/
+	/* free tt node */
 	psb_gtt_mm_free_mem(mm, node);
 	return 0;
 }
