@@ -390,6 +390,7 @@ static void psb_intel_crtc_destroy(struct drm_crtc *crtc)
 {
 	struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(crtc);
 
+	psb_page_flip_crtc_fini(psb_intel_crtc);
 	kfree(psb_intel_crtc->crtc_state);
 	drm_crtc_cleanup(crtc);
 	kfree(psb_intel_crtc);
@@ -491,6 +492,8 @@ void psb_intel_crtc_init(struct drm_device *dev, int pipe,
 	psb_intel_crtc->mode_set.num_connectors = 0;
 
 	psb_intel_cursor_init(dev, pipe);
+
+	psb_page_flip_crtc_init(psb_intel_crtc);
 }
 
 int psb_intel_get_pipe_from_crtc_id(struct drm_device *dev, void *data,

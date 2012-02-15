@@ -22,6 +22,12 @@
 #ifndef _PSB_PAGE_FLIP_H_
 #define _PSB_PAGE_FLIP_H_
 
+void psb_page_flip_init(struct drm_device *dev);
+void psb_page_flip_fini(struct drm_device *dev);
+
+void psb_page_flip_crtc_init(struct psb_intel_crtc *psb_intel_crtc);
+void psb_page_flip_crtc_fini(struct psb_intel_crtc *psb_intel_crtc);
+
 void psb_intel_crtc_process_vblank(struct drm_crtc *crtc);
 int psb_intel_crtc_page_flip(struct drm_crtc *crtc,
                              struct drm_framebuffer *fb,

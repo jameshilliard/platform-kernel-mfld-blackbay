@@ -50,6 +50,8 @@
 
 #include "mdfld_hdmi_audio_if.h"
 
+#include "drm_flip.h"
+
 /*Append new drm mode definition here, align with libdrm definition*/
 #define DRM_MODE_SCALE_NO_SCALE   2
 
@@ -959,6 +961,7 @@ struct drm_psb_private {
 	uint8_t saveBKLTBRTL;
 
 	struct drm_plane *overlays[2];
+	struct drm_flip_driver flip_driver;
 };
 
 struct psb_fpriv {

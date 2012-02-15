@@ -29,6 +29,8 @@
 #include "psb_intel_hdmi_i2c.h"
 #endif 
 
+#include "drm_flip.h"
+
 /* Temp Switch */
 #define MDFLD_HDMI_JLIU7_DEBUG_1 1 /* Debug HDMI - Can't enalbe HDMI */
 #define MDFLD_HDMI_JLIU7_1080 0 /* enable & remove it after switching to IAFW v.0.28. */
@@ -198,7 +200,7 @@ struct psb_intel_crtc {
 
 	/* Saved Crtc HW states */
 	struct psb_intel_crtc_state *crtc_state;
-	void *pending_flip;
+	struct drm_flip_helper flip_helper;
 };
 
 #define to_psb_intel_crtc(x)	\
