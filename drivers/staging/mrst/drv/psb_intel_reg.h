@@ -367,6 +367,10 @@
 # define LVDS_B0B3_POWER_DOWN		(0 << 2)
 # define LVDS_B0B3_POWER_UP		(3 << 2)
 
+#define PIPEA_DSL		0x70000
+#define PIPEB_DSL		0x71000
+#define PIPEC_DSL		0x72000
+
 #define PIPEACONF 0x70008
 #define PIPEACONF_ENABLE	(1<<31)
 #define PIPEACONF_DISABLE	0
