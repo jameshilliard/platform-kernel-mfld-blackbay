@@ -144,18 +144,6 @@ increase_read_ops_completed(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 			->psSyncData->ui32ReadOpsComplete++;
 }
 
-static PVRSRV_KERNEL_MEM_INFO *
-get_fb_meminfo(struct drm_framebuffer *fb)
-{
-	struct psb_framebuffer *psbfb = to_psb_fb(fb);
-	PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo;
-
-	if (psb_get_meminfo_by_handle(psbfb->hKernelMemInfo, &psKernelMemInfo))
-		return NULL;
-
-	return psKernelMemInfo;
-}
-
 static void
 psb_intel_flip_complete(struct pending_flip *pending_flip,
 		bool failed_vblank_get)
@@ -215,7 +203,7 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
                          struct drm_pending_vblank_event *event)
 {
 	struct psb_framebuffer *psbfb = to_psb_fb(fb);
-	PVRSRV_KERNEL_MEM_INFO *new_fb_mem_info, *current_fb_mem_info;
+	PVRSRV_KERNEL_MEM_INFO *current_fb_mem_info;
 	struct pending_flip *new_pending_flip;
 	struct psb_fpriv *priv;
 	struct drm_device *dev = crtc->dev;
@@ -223,7 +211,7 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 	unsigned long flags;
 	struct pvr_trcmd_flpreq *fltrace;
 
-	if (psb_get_meminfo_by_handle(psbfb->hKernelMemInfo, &new_fb_mem_info))
+	if (!psbfb->pvrBO)
 		return -EINVAL;
 
 	new_pending_flip = kmalloc(sizeof *new_pending_flip, GFP_KERNEL);
@@ -243,7 +231,7 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 		INIT_LIST_HEAD(&new_pending_flip->uncompleted);
 	}
 
-	current_fb_mem_info = get_fb_meminfo(crtc->fb);
+	current_fb_mem_info = to_psb_fb(crtc->fb)->pvrBO;
 
 	/* In page flip, change the psb_fb_helper.fb to the swapped fb.*/
 	if (dev->dev_private)
@@ -270,7 +258,7 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 	pvr_trcmd_commit(fltrace);
 
 
-	PVRSRVCallbackOnSync(new_fb_mem_info->psKernelSyncInfo,
+	PVRSRVCallbackOnSync(psbfb->pvrBO->psKernelSyncInfo,
 			     PVRSRV_SYNC_WRITE, sync_callback,
 			     &new_pending_flip->pending_sync);
 
