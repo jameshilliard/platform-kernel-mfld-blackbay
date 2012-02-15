@@ -540,7 +540,7 @@ static struct drm_display_mode *tc35876x_get_config_mode(struct drm_device *dev)
 	mode->vsync_start = 814;
 	mode->vsync_end = 824;
 	mode->vtotal = 838;
-	mode->clock = 33324;
+	mode->clock = 33324 << 1;
 
 	dev_info(&dev->pdev->dev, "hdisplay(w) = %d\n", mode->hdisplay);
 	dev_info(&dev->pdev->dev, "vdisplay(h) = %d\n", mode->vdisplay);
