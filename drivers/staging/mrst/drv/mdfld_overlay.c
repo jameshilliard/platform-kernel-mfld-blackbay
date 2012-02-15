@@ -145,6 +145,7 @@ struct mfld_overlay {
 	PVRSRV_KERNEL_MEM_INFO *mem_info;
 	PVRSRV_KERNEL_MEM_INFO *old_mem_info;
 	u32 tgid;
+	unsigned int sw_dirty;
 };
 
 #define to_mfld_overlay(plane) container_of(plane, struct mfld_overlay, base)
@@ -317,6 +318,13 @@ static void ovl_update_regs(struct mfld_overlay *ovl,
 	wmb();
 }
 
+static void check_dirty_coefs(struct mfld_overlay *ovl, u32 dovsta)
+{
+	/* No pending updates, coefficients have been loaded for sure. */
+	if (dovsta & OVL_DOVSTA_OVR_UPDT)
+		ovl->dirty &= ~OVL_DIRTY_COEFS;
+}
+
 static void ovl_commit(struct mfld_overlay *ovl, unsigned int dirty)
 {
 	struct drm_device *dev = ovl->dev;
@@ -325,9 +333,7 @@ static void ovl_commit(struct mfld_overlay *ovl, unsigned int dirty)
 		return;
 
 	if (ovl->atomic) {
-		spin_lock_irq(&ovl->regs_lock);
-		ovl->dirty |= dirty;
-		spin_unlock_irq(&ovl->regs_lock);
+		ovl->sw_dirty |= dirty;
 		return;
 	}
 
@@ -352,12 +358,8 @@ static void ovl_commit(struct mfld_overlay *ovl, unsigned int dirty)
 
 	spin_lock_irq(&ovl->regs_lock);
 
-	/* FIXME cook up something like this when using atomic flips. */
-	if (ovl->dirty & OVL_DIRTY_COEFS && !(dirty & OVL_DIRTY_COEFS)) {
-		/* No pending updates, coefficients have been loaded for sure. */
-		if (OVL_REG_READ(ovl, OVL_DOVSTA) & OVL_DOVSTA_OVR_UPDT)
-			ovl->dirty &= ~OVL_DIRTY_COEFS;
-	}
+	if ((ovl->dirty & OVL_DIRTY_COEFS) && !(dirty & OVL_DIRTY_COEFS))
+		check_dirty_coefs(ovl, OVL_REG_READ(ovl, OVL_DOVSTA));
 
 	/* It's possible that mdfld_overlay_resume() already did this for us. */
 	if (ovl->dirty & OVL_DIRTY_REGS)
@@ -1594,6 +1596,7 @@ struct mfld_overlay_flip {
 	u32 tgid;
 	struct mfld_overlay_regs regs;
 	bool vblank_ref;
+	unsigned int dirty;
 };
 
 static void ovl_prepare(struct drm_flip *flip)
@@ -1623,7 +1626,12 @@ static bool ovl_flip(struct drm_flip *flip,
 
 	ovl->curr_page = !ovl->curr_page;
 
+	ovl->dirty |= oflip->dirty;
+
 	dovsta = OVL_REG_READ(ovl, OVL_DOVSTA);
+
+	if ((ovl->dirty & OVL_DIRTY_COEFS) && !(oflip->dirty & OVL_DIRTY_COEFS))
+		check_dirty_coefs(ovl, dovsta);
 
 	write_ovadd(ovl);
 
@@ -1825,19 +1833,8 @@ struct drm_flip *mdfld_overlay_atomic_flip(struct drm_plane *plane, int pipe)
 	struct mfld_overlay *ovl = to_mfld_overlay(plane);
 	struct mfld_overlay_flip *oflip;
 
-	if (ovl->pipe != pipe || !ovl->atomic)
+	if (ovl->pipe != pipe || !ovl->atomic || !ovl->sw_dirty)
 		return NULL;
-
-	spin_lock_irq(&ovl->regs_lock);
-
-	if (!(ovl->dirty & OVL_DIRTY_REGS)) {
-		spin_unlock_irq(&ovl->regs_lock);
-		return NULL;
-	}
-
-	ovl->dirty &= ~OVL_DIRTY_REGS;
-
-	spin_unlock_irq(&ovl->regs_lock);
 
 	oflip = kmalloc(sizeof *oflip, GFP_KERNEL);
 	if (!oflip)
@@ -1865,6 +1862,9 @@ struct drm_flip *mdfld_overlay_atomic_flip(struct drm_plane *plane, int pipe)
 
 	oflip->plane = plane;
 	oflip->pipe = pipe;
+
+	oflip->dirty = ovl->sw_dirty;
+	ovl->sw_dirty = 0;
 
 	return &oflip->base;
 }
