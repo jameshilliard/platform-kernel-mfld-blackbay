@@ -884,7 +884,6 @@ int psb_gtt_map_meminfo(struct drm_device *dev,
 failed_add_node:
 	psb_gtt_mm_free_mem(mm, node);
 failed_pages_alloc:
-	kfree(page_list);
 	return ret;
 }
 
