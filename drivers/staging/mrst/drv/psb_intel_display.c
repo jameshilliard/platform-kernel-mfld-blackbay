@@ -709,6 +709,7 @@ static int mdfld_intel_crtc_cursor_set(struct drm_crtc *crtc,
 			mode_dev->bo_unpin_for_scanout(dev,
 						       psb_intel_crtc->
 						       cursor_bo);
+			mode_dev->bo_unref(dev, psb_intel_crtc->cursor_bo);
 			psb_intel_crtc->cursor_bo = NULL;
 		}
 		return 0;
@@ -726,11 +727,12 @@ static int mdfld_intel_crtc_cursor_set(struct drm_crtc *crtc,
 
 	ret = mode_dev->bo_pin_for_scanout(dev, bo);
 	if (ret)
-		return ret;
+		goto unref_bo;
 	size = mode_dev->bo_size(dev, bo);
 	if (size < width * height * 4) {
 		DRM_ERROR("buffer is to small\n");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto unpin_bo;
 	}
 
         /*insert this bo into gtt*/
@@ -739,7 +741,7 @@ static int mdfld_intel_crtc_cursor_set(struct drm_crtc *crtc,
 	ret = psb_gtt_map_meminfo(dev, bo, &page_offset);
         if(ret) {
                 DRM_ERROR("Can not map meminfo to GTT. handle 0x%x\n", handle);
-                return ret;
+		goto unpin_bo;
         }
 
 	addr = page_offset << PAGE_SHIFT;
@@ -760,10 +762,18 @@ static int mdfld_intel_crtc_cursor_set(struct drm_crtc *crtc,
 	/* unpin the old bo */
 	if (psb_intel_crtc->cursor_bo && psb_intel_crtc->cursor_bo != bo) {
 		mode_dev->bo_unpin_for_scanout(dev, psb_intel_crtc->cursor_bo);
+		mode_dev->bo_unref(dev, psb_intel_crtc->cursor_bo);
 		psb_intel_crtc->cursor_bo = bo;
 	}
 
 	return 0;
+
+ unpin_bo:
+	mode_dev->bo_unpin_for_scanout(dev, bo);
+ unref_bo:
+	mode_dev->bo_unref(dev, bo);
+ out:
+	return ret;
 }
 
 static int mdfld_intel_crtc_cursor_move(struct drm_crtc *crtc, int x, int y)

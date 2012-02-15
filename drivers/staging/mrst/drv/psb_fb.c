@@ -722,7 +722,17 @@ static void *psb_bo_from_handle(struct drm_device *dev,
 	IMG_HANDLE hKernelMemInfo = (IMG_HANDLE)handle;
 	int ret;
 
+	mutex_lock(&gPVRSRVLock);
+
 	ret = psb_get_meminfo_by_handle(hKernelMemInfo, &psKernelMemInfo);
+
+	if (!ret) {
+		psKernelMemInfo = PVRSRVGetSrcMemInfo(psKernelMemInfo);
+		ret = psb_fb_ref_locked(psKernelMemInfo);
+	}
+
+	mutex_unlock(&gPVRSRVLock);
+
 	if (ret) {
 		DRM_ERROR("Cannot get meminfo for handle 0x%x\n",
 			  (IMG_UINT32)hKernelMemInfo);
@@ -730,6 +740,13 @@ static void *psb_bo_from_handle(struct drm_device *dev,
 	}
 
 	return (void *)psKernelMemInfo;
+}
+
+static void psb_bo_unref(struct drm_device *dev, void *bof)
+{
+	PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo	= (PVRSRV_KERNEL_MEM_INFO *)bof;
+
+	psb_fb_unref(psKernelMemInfo, psb_get_tgid());
 }
 
 static size_t psb_bo_size(struct drm_device *dev, void *bof)
@@ -766,6 +783,7 @@ void psb_modeset_init(struct drm_device *dev)
 	PSB_DEBUG_ENTRY("\n");
 	/* Init mm functions */
 	mode_dev->bo_from_handle = psb_bo_from_handle;
+	mode_dev->bo_unref = psb_bo_unref;
 	mode_dev->bo_size = psb_bo_size;
 	mode_dev->bo_offset = psb_bo_offset;
 	mode_dev->bo_pin_for_scanout = psb_bo_pin_for_scanout;
