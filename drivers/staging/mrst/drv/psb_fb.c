@@ -61,14 +61,6 @@ static const struct drm_framebuffer_funcs psb_fb_funcs = {
 
 #define CMAP_TOHW(_val, _width) ((((_val) << (_width)) + 0x7FFF - (_val)) >> 16)
 
-void *psbfb_vdc_reg(struct drm_device *dev)
-{
-	struct drm_psb_private *dev_priv;
-	dev_priv = (struct drm_psb_private *) dev->dev_private;
-	return dev_priv->vdc_reg;
-}
-/*EXPORT_SYMBOL(psbfb_vdc_reg); */
-
 static int psbfb_setcolreg(unsigned regno, unsigned red, unsigned green,
 			   unsigned blue, unsigned transp,
 			   struct fb_info *info)

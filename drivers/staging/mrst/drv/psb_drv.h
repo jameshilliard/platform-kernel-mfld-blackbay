@@ -1128,7 +1128,6 @@ extern int psbfb_kms_off_ioctl(struct drm_device *dev, void *data,
 			       struct drm_file *file_priv);
 extern int psbfb_kms_on_ioctl(struct drm_device *dev, void *data,
 			      struct drm_file *file_priv);
-extern void *psbfb_vdc_reg(struct drm_device* dev);
 
 /* modesetting */
 extern void psb_modeset_init(struct drm_device *dev);
