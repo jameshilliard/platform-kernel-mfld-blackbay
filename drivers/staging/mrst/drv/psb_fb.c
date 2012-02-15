@@ -783,6 +783,56 @@ void psb_modeset_cleanup(struct drm_device *dev)
 	mutex_unlock(&dev->struct_mutex);
 }
 
+void psb_fb_ref(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
+{
+	if (!psKernelMemInfo)
+		return;
+
+	mutex_lock(&gPVRSRVLock);
+	PVRSRVRefDeviceMemKM(psKernelMemInfo);
+	mutex_unlock(&gPVRSRVLock);
+}
+
+void psb_fb_unref(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
+{
+	if (!psKernelMemInfo)
+		return;
+
+	mutex_lock(&gPVRSRVLock);
+	PVRSRVUnrefDeviceMemKM(psKernelMemInfo);
+	mutex_unlock(&gPVRSRVLock);
+}
+
+int psb_fb_gtt_ref(struct drm_device *dev,
+		   PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
+{
+	uint32_t offset;
+	int ret;
+
+	if (!psKernelMemInfo)
+		return 0;
+
+	ret = psb_gtt_map_meminfo(dev, psKernelMemInfo, &offset);
+	if (ret)
+		return ret;
+
+	psb_fb_ref(psKernelMemInfo);
+
+	return 0;
+}
+
+void psb_fb_gtt_unref(struct drm_device *dev,
+		      PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo,
+		      u32 tgid)
+{
+	if (!psKernelMemInfo)
+		return;
+
+	psb_gtt_unmap_meminfo(dev, psKernelMemInfo, tgid);
+
+	psb_fb_unref(psKernelMemInfo);
+}
+
 void
 psb_fb_increase_read_ops_pending(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 {
