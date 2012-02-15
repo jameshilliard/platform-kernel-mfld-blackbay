@@ -38,7 +38,6 @@ struct psb_framebuffer {
 	struct fb_info * fbdev;
 	/* struct ttm_bo_kmap_obj kmap; */
 	PVRSRV_KERNEL_MEM_INFO *pvrBO;
-	IMG_HANDLE hKernelMemInfo;
 	uint32_t size;
 	uint32_t offset;
 };

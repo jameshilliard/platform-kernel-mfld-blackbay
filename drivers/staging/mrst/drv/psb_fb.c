@@ -283,7 +283,6 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 
 	psbfb = to_psb_fb(fb);
 	psbfb->size = sizes[0];
-	psbfb->hKernelMemInfo = hKernelMemInfo;
 
 	DRM_DEBUG("Mapping to gtt..., KernelMemInfo %p\n", psKernelMemInfo);
 
