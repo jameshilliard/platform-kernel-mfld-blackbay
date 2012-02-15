@@ -701,11 +701,8 @@ static int psb_gtt_add_node(struct psb_gtt_mm *mm,
 		return ret;
 	}
 
-	ret = psb_gtt_mm_alloc_insert_mem_mapping(mm,
-			&hentry->ht,
-			key,
-			node,
-			&mapping);
+	ret = psb_gtt_mm_alloc_insert_mem_mapping(mm, &hentry->ht, key,
+						  node, &mapping);
 	if (ret) {
 		DRM_DEBUG("mapping alloc_insert failed\n");
 		return ret;
@@ -855,11 +852,8 @@ int psb_gtt_map_meminfo(struct drm_device *dev,
 	}
 
 	/*update psb_gtt_mm*/
-	ret = psb_gtt_add_node(mm,
-			       psb_get_tgid(),
-			       (u32)hKernelMemInfo,
-			       node,
-			       &mapping);
+	ret = psb_gtt_add_node(mm, psb_get_tgid(), (u32) hKernelMemInfo,
+			       node, &mapping);
 	if (ret) {
 		DRM_DEBUG("add_node failed");
 		goto failed_add_node;
@@ -872,12 +866,7 @@ int psb_gtt_map_meminfo(struct drm_device *dev,
 		  pages, offset_pages);
 
 	/*update gtt*/
-	psb_gtt_insert_pages(pg, page_list,
-			     offset_pages,
-			     pages,
-			     0,
-			     0,
-			     0);
+	psb_gtt_insert_pages(pg, page_list, offset_pages, pages, 0, 0, 0);
 
 	*offset = offset_pages;
 	return 0;
@@ -898,9 +887,7 @@ int psb_gtt_unmap_meminfo(struct drm_device *dev, IMG_HANDLE hKernelMemInfo)
 	struct drm_mm_node *node;
 	int ret;
 
-	ret = psb_gtt_remove_node(mm,
-				  psb_get_tgid(),
-				  (u32)hKernelMemInfo,
+	ret = psb_gtt_remove_node(mm, psb_get_tgid(), (u32) hKernelMemInfo,
 				  &node);
 	if (ret) {
 		DRM_DEBUG("remove node failed\n");
@@ -972,11 +959,7 @@ int psb_gtt_map_pvr_memory(struct drm_device *dev,
 	}
 
 	/*update psb_gtt_mm*/
-	ret = psb_gtt_add_node(mm,
-			       ui32TaskId,
-			       (u32)hHandle,
-			       node,
-			       &mapping);
+	ret = psb_gtt_add_node(mm, ui32TaskId, (u32) hHandle, node, &mapping);
 	if (ret) {
 		DRM_DEBUG("add_node failed");
 		goto failed_add_node;
@@ -1011,10 +994,7 @@ int psb_gtt_unmap_pvr_memory(struct drm_device *dev, void *hHandle,
 	struct drm_mm_node * node;
 	int ret;
 
-	ret = psb_gtt_remove_node(mm,
-				  ui32TaskId,
-				  (u32)hHandle,
-				  &node);
+	ret = psb_gtt_remove_node(mm, ui32TaskId, (u32) hHandle, &node);
 	if (ret) {
 		printk("remove node failed\n");
 		return ret;
