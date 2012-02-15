@@ -844,26 +844,16 @@ static int psb_gtt_remove_mapping(struct psb_gtt_mm *mm,
 }
 
 static struct psb_gtt_mem_mapping *
-psb_gtt_insert_meminfo(struct drm_device *dev, IMG_HANDLE hKernelMemInfo)
+psb_gtt_insert_meminfo(struct drm_device *dev,
+		       PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 {
 	struct drm_psb_private *dev_priv = dev->dev_private;
-	PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo;
 	struct psb_gtt *pg = dev_priv->pg;
 	uint32_t size, pages, offset_pages;
 	void *kmem;
 	struct page **page_list;
 	struct psb_gtt_mem_mapping *mapping;
 	int ret;
-
-	ret = psb_get_meminfo_by_handle(hKernelMemInfo, &psKernelMemInfo);
-	if (ret) {
-		DRM_DEBUG("Cannot find kernelMemInfo handle %p\n",
-			  hKernelMemInfo);
-		return ERR_PTR(-EINVAL);
-	}
-
-	DRM_DEBUG("Got psKernelMemInfo %p for handle %p\n",
-		psKernelMemInfo, hKernelMemInfo);
 
 	size = psKernelMemInfo->ui32AllocSize;
 	kmem = psKernelMemInfo->pvLinAddrKM;
@@ -887,7 +877,7 @@ psb_gtt_insert_meminfo(struct drm_device *dev, IMG_HANDLE hKernelMemInfo)
 
 	/* create mapping with node for handle */
 	mapping = psb_gtt_add_mapping(dev, pages, psb_get_tgid(),
-				      (u32) hKernelMemInfo, 0);
+				      (u32) psKernelMemInfo, 0);
 	if (IS_ERR(mapping))
 		return ERR_CAST(mapping);
 
@@ -900,16 +890,16 @@ psb_gtt_insert_meminfo(struct drm_device *dev, IMG_HANDLE hKernelMemInfo)
 }
 
 int psb_gtt_map_meminfo(struct drm_device *dev,
-			IMG_HANDLE hKernelMemInfo,
+			PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo,
 			uint32_t *offset)
 {
 	struct psb_gtt_mem_mapping *mapping;
 
 	/* check if memory is already mapped */
 	mapping = psb_gtt_find_mapping_for_key(dev, psb_get_tgid(),
-					       (u32) hKernelMemInfo);
+					       (u32) psKernelMemInfo);
 	if (IS_ERR(mapping))
-		mapping = psb_gtt_insert_meminfo(dev, hKernelMemInfo);
+		mapping = psb_gtt_insert_meminfo(dev, psKernelMemInfo);
 	else
 		kref_get(&mapping->refcount);
 
@@ -942,12 +932,13 @@ static void do_unmap_meminfo(struct kref *kref)
 	psb_gtt_remove_mapping(mm, mapping);
 }
 
-int psb_gtt_unmap_meminfo(struct drm_device *dev, IMG_HANDLE hKernelMemInfo)
+int psb_gtt_unmap_meminfo(struct drm_device *dev,
+			  PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 {
 	struct psb_gtt_mem_mapping *mapping;
 
 	mapping = psb_gtt_find_mapping_for_key(dev, psb_get_tgid(),
-					       (u32) hKernelMemInfo);
+					       (u32) psKernelMemInfo);
 	if (IS_ERR(mapping)) {
 		DRM_DEBUG("handle is not mapped\n");
 		return PTR_ERR(mapping);
@@ -965,10 +956,18 @@ int psb_gtt_map_meminfo_ioctl(struct drm_device *dev, void *data,
 	struct psb_gtt_mapping_arg *arg
 	= (struct psb_gtt_mapping_arg *)data;
 	uint32_t *offset_pages = &arg->offset_pages;
+	PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo;
 
 	DRM_DEBUG("\n");
 
-	return psb_gtt_map_meminfo(dev, arg->hKernelMemInfo, offset_pages);
+	if (psb_get_meminfo_by_handle(arg->hKernelMemInfo,
+				      &psKernelMemInfo)) {
+		DRM_DEBUG("Cannot find kernelMemInfo handle %p\n",
+			  arg->hKernelMemInfo);
+		return -EINVAL;
+	}
+
+	return psb_gtt_map_meminfo(dev, psKernelMemInfo, offset_pages);
 }
 
 int psb_gtt_unmap_meminfo_ioctl(struct drm_device *dev, void *data,
@@ -977,10 +976,18 @@ int psb_gtt_unmap_meminfo_ioctl(struct drm_device *dev, void *data,
 
 	struct psb_gtt_mapping_arg *arg
 	= (struct psb_gtt_mapping_arg *)data;
+	PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo;
 
 	DRM_DEBUG("\n");
 
-	return psb_gtt_unmap_meminfo(dev, arg->hKernelMemInfo);
+	if (psb_get_meminfo_by_handle(arg->hKernelMemInfo,
+				      &psKernelMemInfo)) {
+		DRM_DEBUG("Cannot find kernelMemInfo handle %p\n",
+			  arg->hKernelMemInfo);
+		return -EINVAL;
+	}
+
+	return psb_gtt_unmap_meminfo(dev, psKernelMemInfo);
 }
 
 int psb_gtt_map_pvr_memory(struct drm_device *dev,

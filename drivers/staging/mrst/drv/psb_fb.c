@@ -289,7 +289,7 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 
 	/*if not VRAM, map it into tt aperture*/
 	if (psKernelMemInfo->pvLinAddrKM != pg->vram_addr) {
-		ret = psb_gtt_map_meminfo(dev, hKernelMemInfo, &offset);
+		ret = psb_gtt_map_meminfo(dev, psKernelMemInfo, &offset);
 		if (ret) {
 			DRM_ERROR("map meminfo for 0x%x failed\n",
 				  (IMG_UINT32)hKernelMemInfo);
@@ -585,7 +585,7 @@ static void psb_user_framebuffer_destroy(struct drm_framebuffer *fb)
 	struct psb_framebuffer *psbfb = to_psb_fb(fb);
 
 	/*ummap gtt pages*/
-	psb_gtt_unmap_meminfo(dev, psbfb->hKernelMemInfo);
+	psb_gtt_unmap_meminfo(dev, psbfb->pvrBO);
 	if (psbfb->fbdev)
 		psbfb_remove(dev, fb);
 
