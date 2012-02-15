@@ -22,6 +22,8 @@
 #include "psb_drv.h"
 #include "psb_pvr_glue.h"
 
+extern struct mutex gPVRSRVLock;
+
 static inline uint32_t psb_gtt_mask_pte(uint32_t pfn, int type)
 {
 	uint32_t mask = PSB_PTE_VALID;
@@ -950,7 +952,6 @@ int psb_gtt_unmap_meminfo(struct drm_device *dev,
 	return 0;
 }
 
-
 int psb_gtt_map_meminfo_ioctl(struct drm_device *dev, void *data,
 			      struct drm_file *file_priv)
 {
@@ -958,17 +959,24 @@ int psb_gtt_map_meminfo_ioctl(struct drm_device *dev, void *data,
 	= (struct psb_gtt_mapping_arg *)data;
 	uint32_t *offset_pages = &arg->offset_pages;
 	PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo;
+	int ret;
 
 	DRM_DEBUG("\n");
 
-	if (psb_get_meminfo_by_handle(arg->hKernelMemInfo,
-				      &psKernelMemInfo)) {
-		DRM_DEBUG("Cannot find kernelMemInfo handle %p\n",
-			  arg->hKernelMemInfo);
-		return -EINVAL;
-	}
+	mutex_lock(&dev->mode_config.mutex);
 
-	return psb_gtt_map_meminfo(dev, psKernelMemInfo, offset_pages);
+	mutex_lock(&gPVRSRVLock);
+
+	ret = psb_get_meminfo_by_handle(arg->hKernelMemInfo, &psKernelMemInfo);
+
+	if (!ret)
+		ret = psb_gtt_map_meminfo(dev, psKernelMemInfo, offset_pages);
+
+	mutex_unlock(&gPVRSRVLock);
+
+	mutex_unlock(&dev->mode_config.mutex);
+
+	return ret;
 }
 
 int psb_gtt_unmap_meminfo_ioctl(struct drm_device *dev, void *data,
@@ -978,17 +986,24 @@ int psb_gtt_unmap_meminfo_ioctl(struct drm_device *dev, void *data,
 	struct psb_gtt_mapping_arg *arg
 	= (struct psb_gtt_mapping_arg *)data;
 	PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo;
+	int ret;
 
 	DRM_DEBUG("\n");
 
-	if (psb_get_meminfo_by_handle(arg->hKernelMemInfo,
-				      &psKernelMemInfo)) {
-		DRM_DEBUG("Cannot find kernelMemInfo handle %p\n",
-			  arg->hKernelMemInfo);
-		return -EINVAL;
-	}
+	mutex_lock(&dev->mode_config.mutex);
 
-	return psb_gtt_unmap_meminfo(dev, psKernelMemInfo, psb_get_tgid());
+	mutex_lock(&gPVRSRVLock);
+
+	ret = psb_get_meminfo_by_handle(arg->hKernelMemInfo, &psKernelMemInfo);
+
+	if (!ret)
+		ret = psb_gtt_unmap_meminfo(dev, psKernelMemInfo, psb_get_tgid());
+
+	mutex_unlock(&gPVRSRVLock);
+
+	mutex_unlock(&dev->mode_config.mutex);
+
+	return ret;
 }
 
 int psb_gtt_map_pvr_memory(struct drm_device *dev,
