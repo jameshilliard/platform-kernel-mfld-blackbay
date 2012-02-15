@@ -43,6 +43,7 @@
 #include "mdfld_dsi_dbi.h"
 #include "mdfld_dsi_output.h"
 #include "mdfld_output.h"
+#include "pvr_trace_cmd.h"
 
 extern struct mutex gPVRSRVLock;
 
@@ -847,4 +848,24 @@ psb_fb_increase_read_ops_completed(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 	if (psKernelMemInfo && psKernelMemInfo->psKernelSyncInfo)
 		psKernelMemInfo->psKernelSyncInfo
 			->psSyncData->ui32ReadOpsComplete++;
+
+	pvr_trcmd_check_syn_completions(PVR_TRCMD_FLPCOMP);
+}
+
+void
+psb_fb_flip_trace(PVRSRV_KERNEL_MEM_INFO *old, PVRSRV_KERNEL_MEM_INFO *new)
+{
+	struct pvr_trcmd_flpreq *fltrace;
+
+	fltrace = pvr_trcmd_reserve(PVR_TRCMD_FLPREQ, task_tgid_nr(current),
+				  current->comm, sizeof(*fltrace));
+	if (old && old->psKernelSyncInfo)
+		pvr_trcmd_set_syn(&fltrace->old_syn, old->psKernelSyncInfo);
+	else
+		pvr_trcmd_clear_syn(&fltrace->old_syn);
+	if (new && new->psKernelSyncInfo)
+		pvr_trcmd_set_syn(&fltrace->new_syn, new->psKernelSyncInfo);
+	else
+		pvr_trcmd_clear_syn(&fltrace->new_syn);
+	pvr_trcmd_commit(fltrace);
 }

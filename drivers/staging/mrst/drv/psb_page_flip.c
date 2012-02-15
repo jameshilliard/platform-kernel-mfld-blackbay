@@ -29,7 +29,6 @@
 #include "psb_intel_reg.h"
 #include "psb_page_flip.h"
 #include "psb_pvr_glue.h"
-#include "pvr_trace_cmd.h"
 
 #include "mdfld_output.h"
 #include "mdfld_dsi_output.h"
@@ -252,7 +251,6 @@ static void crtc_flip_complete(struct drm_flip *flip)
 		drm_vblank_put(dev, pipe);
 
 	psb_fb_increase_read_ops_completed(crtc_flip->old_mem_info);
-	pvr_trcmd_check_syn_completions(PVR_TRCMD_FLPCOMP);
 	PVRSRVScheduleDeviceCallbacks();
 }
 
@@ -444,7 +442,6 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 	struct psb_fpriv *priv;
 	struct psb_fbdev *fbdev = NULL;
 	unsigned long flags;
-	struct pvr_trcmd_flpreq *fltrace;
 	u32 tgid = psb_get_tgid();
 	int ret;
 	int pipe = to_psb_intel_crtc(crtc)->pipe;
@@ -498,16 +495,7 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 	new_pending_flip->old_mem_info = current_fb_mem_info;
 
 	psb_fb_increase_read_ops_pending(current_fb_mem_info);
-
-	fltrace = pvr_trcmd_reserve(PVR_TRCMD_FLPREQ, task_tgid_nr(current),
-				  current->comm, sizeof(*fltrace));
-	if (current_fb_mem_info && current_fb_mem_info->psKernelSyncInfo)
-		pvr_trcmd_set_syn(&fltrace->old_syn,
-				current_fb_mem_info->psKernelSyncInfo);
-	else
-		pvr_trcmd_clear_syn(&fltrace->old_syn);
-	pvr_trcmd_set_syn(&fltrace->new_syn, new_fb_mem_info->psKernelSyncInfo);
-	pvr_trcmd_commit(fltrace);
+	psb_fb_flip_trace(current_fb_mem_info, psbfb->pvrBO);
 
 	new_pending_flip->tgid = tgid;
 

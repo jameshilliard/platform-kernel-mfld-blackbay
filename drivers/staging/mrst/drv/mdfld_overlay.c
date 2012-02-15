@@ -1858,6 +1858,7 @@ struct drm_flip *mdfld_overlay_atomic_flip(struct drm_plane *plane, int pipe)
 	oflip->vblank_ref = false;
 
 	psb_fb_increase_read_ops_pending(oflip->old_mem_info);
+	psb_fb_flip_trace(oflip->old_mem_info, oflip->mem_info);
 
 	/* we must pipeline the register changes */
 	memcpy(&oflip->regs, &ovl->regs, sizeof ovl->regs);

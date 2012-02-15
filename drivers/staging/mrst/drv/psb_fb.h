@@ -64,5 +64,8 @@ void psb_fb_gtt_unref(struct drm_device *dev,
 void psb_fb_increase_read_ops_pending(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
 void psb_fb_increase_read_ops_completed(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
 
+void psb_fb_flip_trace(PVRSRV_KERNEL_MEM_INFO *old,
+		       PVRSRV_KERNEL_MEM_INFO *new);
+
 #endif
 
