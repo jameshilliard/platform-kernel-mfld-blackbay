@@ -772,6 +772,27 @@ static void psb_gtt_mm_free_mem(struct psb_gtt_mm *mm, struct drm_mm_node *node)
 	spin_unlock(&mm->lock);
 }
 
+static struct psb_gtt_mem_mapping *
+psb_gtt_find_mapping_for_key(struct psb_gtt_mm *mm, u32 tgid, u32 key)
+{
+	struct psb_gtt_hash_entry *hentry;
+	struct psb_gtt_mem_mapping *mapping;
+
+	spin_lock(&mm->lock);
+
+	hentry = psb_gtt_mm_get_ht_by_pid_locked(mm, tgid);
+	if (IS_ERR(hentry)) {
+		spin_unlock(&mm->lock);
+		return ERR_CAST(hentry);
+	}
+
+	mapping = psb_gtt_mm_get_mem_mapping_locked(&hentry->ht, key);
+
+	spin_unlock(&mm->lock);
+
+	return mapping;
+}
+
 int psb_gtt_map_meminfo(struct drm_device *dev,
 			IMG_HANDLE hKernelMemInfo,
 			uint32_t *offset)
@@ -817,6 +838,14 @@ int psb_gtt_map_meminfo(struct drm_device *dev,
 	}
 
 	DRM_DEBUG("get %u pages\n", pages);
+
+	/* check if memory is already mapped */
+	mapping = psb_gtt_find_mapping_for_key(mm, psb_get_tgid(),
+					       (u32) hKernelMemInfo);
+	if (!IS_ERR(mapping)) {
+		*offset = mapping->node->start;
+		return 0;
+	}
 
 	/* alloc memory in TT apeture */
 	node = psb_gtt_mm_alloc_mem(mm, pages, 0);
