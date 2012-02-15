@@ -53,6 +53,7 @@ static void psb_user_framebuffer_destroy(struct drm_framebuffer *fb);
 static int psb_user_framebuffer_create_handle(struct drm_framebuffer *fb,
 					      struct drm_file *file_priv,
 					      unsigned int *handle);
+static int psb_fb_ref_locked(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
 
 static const struct drm_framebuffer_funcs psb_fb_funcs = {
 	.destroy = psb_user_framebuffer_destroy,
@@ -251,7 +252,17 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 	uint64_t sizes[4] = {};
 	int i;
 
+	mutex_lock(&gPVRSRVLock);
+
 	ret = psb_get_meminfo_by_handle(hKernelMemInfo, &psKernelMemInfo);
+
+	if (!ret) {
+		psKernelMemInfo = PVRSRVGetSrcMemInfo(psKernelMemInfo);
+		ret = psb_fb_ref_locked(psKernelMemInfo);
+	}
+
+	mutex_unlock(&gPVRSRVLock);
+
 	if (ret) {
 		DRM_ERROR("Cannot get meminfo for handle 0x%x\n",
 			  (IMG_UINT32)hKernelMemInfo);
@@ -259,8 +270,6 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 	}
 
 	DRM_DEBUG("Got Kernel MemInfo for handle %p\n", hKernelMemInfo);
-
-	psKernelMemInfo = PVRSRVGetSrcMemInfo(psKernelMemInfo);
 
 	sizes[0] = psKernelMemInfo->ui32AllocSize;
 
@@ -270,7 +279,7 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 			DRM_ERROR("bad handle 0x%x (expected 0x%x).\n",
 				  r->handles[i], r->handles[0]);
 			ret = -EINVAL;
-			goto out;
+			goto unref_fb;
 		}
 		sizes[i] = sizes[0];
 	}
@@ -278,7 +287,7 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 	ret = drm_framebuffer_check(r, sizes);
 	if (ret) {
 		DRM_ERROR("framebuffer layout check failed.\n");
-		goto out;
+		goto unref_fb;
 	}
 
 	/* JB: TODO not drop, refcount buffer */
@@ -288,17 +297,13 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 	if (!fb) {
 		DRM_ERROR("failed to allocate fb.\n");
 		ret = -ENOMEM;
-		goto out;
+		goto unref_fb;
 	}
 
 	psbfb = to_psb_fb(fb);
 	psbfb->size = sizes[0];
 
 	psbfb->tgid = psb_get_tgid();
-
-	ret = psb_fb_ref(psKernelMemInfo);
-	if (ret)
-		goto free_fb;
 
 	DRM_DEBUG("Mapping to gtt..., KernelMemInfo %p\n", psKernelMemInfo);
 
@@ -308,7 +313,7 @@ static struct drm_framebuffer *psb_user_framebuffer_create
 		if (ret) {
 			DRM_ERROR("map meminfo for 0x%x failed\n",
 				  (IMG_UINT32)hKernelMemInfo);
-			goto unref_fb;
+			goto free_fb;
 		}
 		psbfb->offset = (offset << PAGE_SHIFT);
 	} else {
@@ -359,10 +364,10 @@ static struct drm_framebuffer *psb_user_framebuffer_create
  unmap_gtt:
 	if (need_gtt(dev, psKernelMemInfo))
 		psb_gtt_unmap_meminfo(dev, psKernelMemInfo, psbfb->tgid);
- unref_fb:
-	psb_fb_unref(psKernelMemInfo, psbfb->tgid);
  free_fb:
 	kfree(psbfb);
+ unref_fb:
+	psb_fb_unref(psKernelMemInfo, psb_get_tgid());
  out:
 	return ERR_PTR(ret);
 }
@@ -804,15 +809,12 @@ void psb_modeset_cleanup(struct drm_device *dev)
 	mutex_unlock(&dev->struct_mutex);
 }
 
-int psb_fb_ref(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
+static int psb_fb_ref_locked(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 {
-	int ret = 0;
 	u32 tgid = psb_get_tgid();
 
 	if (!psKernelMemInfo)
 		return 0;
-
-	mutex_lock(&gPVRSRVLock);
 
 	/*
 	 * Make sure we have per process data. If we just call
@@ -821,14 +823,25 @@ int psb_fb_ref(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
 	 * we want.
 	 */
 	if (!PVRSRVPerProcessData(tgid) ||
-	    PVRSRVPerProcessDataConnect(tgid, 0) != PVRSRV_OK) {
-		ret = -ESRCH;
-		goto unlock;
-	}
+	    PVRSRVPerProcessDataConnect(tgid, 0) != PVRSRV_OK)
+		return -ESRCH;
 
 	PVRSRVRefDeviceMemKM(psKernelMemInfo);
 
- unlock:
+	return 0;
+}
+
+int psb_fb_ref(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
+{
+	int ret;
+
+	if (!psKernelMemInfo)
+		return 0;
+
+	mutex_lock(&gPVRSRVLock);
+
+	ret = psb_fb_ref_locked(psKernelMemInfo);
+
 	mutex_unlock(&gPVRSRVLock);
 
 	return ret;
