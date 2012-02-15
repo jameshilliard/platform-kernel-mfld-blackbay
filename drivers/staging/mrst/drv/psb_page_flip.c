@@ -111,6 +111,58 @@ static u32 get_vbl_count(struct drm_crtc *crtc)
 		 (dsl < crtc->hwmode.crtc_vtotal - 1))) & 0xffffff;
 }
 
+static unsigned int usecs_to_scanlines(struct drm_crtc *crtc,
+				       unsigned int usecs)
+{
+	/* paranoia */
+	if (!crtc->hwmode.crtc_htotal)
+		return 1;
+
+	return DIV_ROUND_UP(usecs * crtc->hwmode.clock,
+			    1000 * crtc->hwmode.crtc_htotal);
+}
+
+/* Called with interrupts off. */
+static void avoid_danger_zone(struct drm_crtc *crtc)
+{
+	struct drm_device *dev = crtc->dev;
+	struct drm_psb_private *dev_priv = dev->dev_private;
+	struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(crtc);
+	int pipe = psb_intel_crtc->pipe;
+	/*
+	 * With CRTC and one overlay we're usually spending 30-40 usecs
+	 * between avoid_danger_zone() and psb_flip_driver_flush(). Leave
+	 * a small safety margin and avoid flipping while under 60 usec
+	 * from the vblank start.
+	 */
+	u32 min = crtc->hwmode.crtc_vdisplay - usecs_to_scanlines(crtc, 60);
+	u32 max = crtc->hwmode.crtc_vdisplay - 1;
+	long timeout = msecs_to_jiffies(1);
+	u32 val;
+
+	drm_vblank_get(dev, pipe);
+
+	psb_intel_crtc->vbl_received = false;
+	val = ioread32(dev_priv->vdc_reg + pipe_dsl_reg[pipe]);
+
+	while (val >= min && val <= max && timeout > 0) {
+		local_irq_enable();
+
+		timeout = wait_event_timeout(psb_intel_crtc->vbl_wait,
+					     psb_intel_crtc->vbl_received,
+					     timeout);
+
+		local_irq_disable();
+
+		psb_intel_crtc->vbl_received = false;
+		val = ioread32(dev_priv->vdc_reg + pipe_dsl_reg[pipe]);
+	}
+
+	drm_vblank_put(dev, pipe);
+
+	WARN_ON(val >= min && val <= max);
+}
+
 void
 psb_cleanup_pending_events(struct drm_device *dev, struct psb_fpriv *priv)
 {
@@ -298,6 +350,9 @@ psb_intel_crtc_process_vblank(struct drm_crtc *crtc)
 {
 	struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(crtc);
 
+	psb_intel_crtc->vbl_received = true;
+	wake_up(&psb_intel_crtc->vbl_wait);
+
 	drm_flip_helper_vblank(&psb_intel_crtc->flip_helper);
 }
 
@@ -333,7 +388,22 @@ sync_callback(struct pvr_pending_sync *pending_sync, bool from_misr)
 	if (pipe_enabled) {
 		drm_flip_driver_prepare_flips(&dev_priv->flip_driver, &flips);
 
+		/* Make sure we're not interrupted during the critical phase */
+		local_irq_disable();
+
+		/*
+		 * If we cross into vblank while programming the flips, we
+		 * can't determine which flips have completed. Also when
+		 * trying to synchronize multiple flips, we can't be sure
+		 * that all flips will happen on the same vblank. So, if
+		 * we're close to the start of vblank, wait until we're
+		 * safely past it before proceeding any further.
+		 */
+		avoid_danger_zone(crtc);
+
 		drm_flip_driver_schedule_flips(&dev_priv->flip_driver, &flips);
+
+		local_irq_enable();
 
 		ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 	} else

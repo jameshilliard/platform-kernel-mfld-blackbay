@@ -201,6 +201,8 @@ struct psb_intel_crtc {
 	/* Saved Crtc HW states */
 	struct psb_intel_crtc_state *crtc_state;
 	struct drm_flip_helper flip_helper;
+	wait_queue_head_t vbl_wait;
+	bool vbl_received;
 };
 
 #define to_psb_intel_crtc(x)	\

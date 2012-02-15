@@ -494,6 +494,8 @@ void psb_intel_crtc_init(struct drm_device *dev, int pipe,
 	psb_intel_cursor_init(dev, pipe);
 
 	psb_page_flip_crtc_init(psb_intel_crtc);
+
+	init_waitqueue_head(&psb_intel_crtc->vbl_wait);
 }
 
 int psb_intel_get_pipe_from_crtc_id(struct drm_device *dev, void *data,
