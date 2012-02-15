@@ -868,6 +868,23 @@ void mdfld__intel_plane_set_alpha(int enable)
 	REG_WRITE(dspcntr_reg, dspcntr);
 }
 
+static int check_fb(struct drm_framebuffer *fb)
+{
+	if (!fb)
+		return 0;
+
+	switch (fb->bits_per_pixel) {
+	case 8:
+	case 16:
+	case 24:
+	case 32:
+		return 0;
+	default:
+		DRM_ERROR("Unknown color depth\n");
+		return -EINVAL;
+	}
+}
+
 static int mdfld__intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 				struct drm_framebuffer *old_fb)
 {
@@ -883,7 +900,7 @@ static int mdfld__intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 	int dspstride = DSPASTRIDE;
 	int dspcntr_reg = DSPACNTR;
 	u32 dspcntr;
-	int ret = 0;
+	int ret;
 
 	memcpy(&globle_dev, dev, sizeof(struct drm_device));
 
@@ -894,6 +911,10 @@ static int mdfld__intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 		PSB_DEBUG_ENTRY("No FB bound\n");
 		return 0;
 	}
+
+	ret = check_fb(crtc->fb);
+	if (ret)
+		return ret;
 
 	switch (pipe) {
 	case 0:
@@ -940,10 +961,6 @@ static int mdfld__intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 	case 32:
 		dspcntr |= DISPPLANE_32BPP_NO_ALPHA;
 		break;
-	default:
-		DRM_ERROR("Unknown color depth\n");
-		ret = -EINVAL;
-		goto psb_intel_pipe_set_base_exit;
 	}
 	REG_WRITE(dspcntr_reg, dspcntr);
 
@@ -954,11 +971,9 @@ static int mdfld__intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 	REG_WRITE(dspsurf, Start);
 	REG_READ(dspsurf);
 
-psb_intel_pipe_set_base_exit:
-
 	ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 
-	return ret;
+	return 0;
 }
 
 /**
@@ -1535,6 +1550,7 @@ static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 	struct drm_encoder *encoder;
 	struct drm_connector * connector;
 	int timeout = 0;
+	int ret;
 
 	PSB_DEBUG_ENTRY("pipe = 0x%x\n", pipe);
 
@@ -1588,6 +1604,10 @@ static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 		DRM_ERROR("Illegal Pipe Number. \n");
 		return 0;
 	}
+
+	ret = check_fb(crtc->fb);
+	if (ret)
+		return ret;
 
 	PSB_DEBUG_ENTRY("adjusted_hdisplay = %d\n",
 		 adjusted_mode->hdisplay);
