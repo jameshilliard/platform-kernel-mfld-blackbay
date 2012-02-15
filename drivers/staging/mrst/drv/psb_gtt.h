@@ -62,6 +62,7 @@ struct psb_gtt_hash_entry {
 struct psb_gtt_mem_mapping {
 	struct drm_mm_node *node;
 	struct drm_hash_item item;
+	uint32_t tgid;
 };
 
 #if 0
