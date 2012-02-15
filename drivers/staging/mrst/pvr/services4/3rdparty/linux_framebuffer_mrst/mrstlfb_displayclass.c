@@ -1818,7 +1818,7 @@ MRST_ERROR MRSTLFBAllocBuffer(struct MRSTLFB_DEVINFO_TAG *psDevInfo, IMG_UINT32 
 	}
 
 	psb_gtt_map_pvr_memory( psDevInfo->psDrmDevice,
-							(unsigned int)*ppBuffer,
+							*ppBuffer,
 							(*ppBuffer)->ui32OwnerTaskID,
 							(IMG_CPU_PHYADDR*) (*ppBuffer)->uSysAddr.psNonCont,
 							ulPagesNumber,
@@ -1835,7 +1835,7 @@ MRST_ERROR MRSTLFBFreeBuffer(struct MRSTLFB_DEVINFO_TAG *psDevInfo, MRSTLFB_BUFF
 		return MRST_ERROR_INVALID_PARAMS;
 
 	psb_gtt_unmap_pvr_memory( psDevInfo->psDrmDevice,
-							  (unsigned int)*ppBuffer,
+							  *ppBuffer,
 							  (*ppBuffer)->ui32OwnerTaskID);
 
 	vfree( (*ppBuffer)->sCPUVAddr );

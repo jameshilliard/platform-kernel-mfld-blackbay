@@ -1325,7 +1325,7 @@ static int ovl_regs_init(struct drm_device *dev, struct mfld_overlay_regs_page *
 
 	phys = virt_to_phys(page->virt);
 
-	r = psb_gtt_map_pvr_memory(dev, addr, KERNEL_ID,
+	r = psb_gtt_map_pvr_memory(dev, page->virt, KERNEL_ID,
 				   (IMG_CPU_PHYADDR *)&phys, 1, &gtt_page_offset, 16);
 	if (r)
 		goto set_wb;
@@ -1346,7 +1346,7 @@ static void ovl_regs_fini(struct drm_device *dev, struct mfld_overlay_regs_page 
 {
 	unsigned long addr = (unsigned long) page->virt;
 
-	psb_gtt_unmap_pvr_memory(dev, addr, KERNEL_ID);
+	psb_gtt_unmap_pvr_memory(dev, page->virt, KERNEL_ID);
 	set_memory_wb(addr, 1);
 	free_page(addr);
 }

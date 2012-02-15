@@ -944,8 +944,8 @@ int psb_gtt_unmap_meminfo_ioctl(struct drm_device *dev, void *data,
 }
 
 int psb_gtt_map_pvr_memory(struct drm_device *dev,
-			   unsigned int hHandle,
-			   unsigned int ui32TaskId,
+			   void *hHandle,
+			   uint32_t ui32TaskId,
 			   IMG_CPU_PHYADDR *pPages,
 			   unsigned int ui32PagesNum,
 			   unsigned int *ui32Offset,
@@ -972,7 +972,7 @@ int psb_gtt_map_pvr_memory(struct drm_device *dev,
 
 	/*update psb_gtt_mm*/
 	ret = psb_gtt_add_node(mm,
-			       (u32)ui32TaskId,
+			       ui32TaskId,
 			       (u32)hHandle,
 			       node,
 			       &mapping);
@@ -999,7 +999,8 @@ failed_pages_alloc:
 }
 
 
-int psb_gtt_unmap_pvr_memory(struct drm_device *dev, unsigned int hHandle, unsigned int ui32TaskId)
+int psb_gtt_unmap_pvr_memory(struct drm_device *dev, void *hHandle,
+			     uint32_t ui32TaskId)
 {
 	struct drm_psb_private * dev_priv = (struct drm_psb_private *)dev->dev_private;
 	struct psb_gtt_mm * mm = dev_priv->gtt_mm;
@@ -1009,7 +1010,7 @@ int psb_gtt_unmap_pvr_memory(struct drm_device *dev, unsigned int hHandle, unsig
 	int ret;
 
 	ret = psb_gtt_remove_node(mm,
-				  (u32)ui32TaskId,
+				  ui32TaskId,
 				  (u32)hHandle,
 				  &node);
 	if (ret) {
