@@ -70,7 +70,7 @@ PVRSRVCallbackOnSync(PVRSRV_KERNEL_SYNC_INFO *sync_info,
 	if (pending_ops_completed(sync_info, flags,
 				  pending_read_ops,
 				  pending_write_ops)) {
-		callback(pending_sync);
+		callback(pending_sync, false);
 		return;
 	}
 
@@ -103,6 +103,6 @@ PVRSRVCheckPendingSyncs(void)
 
 	/* Execute the callbacks */
 	list_for_each_entry_safe(ps, tmp, &completed_list, list)
-		ps->callback(ps);
+		ps->callback(ps, true);
 }
 

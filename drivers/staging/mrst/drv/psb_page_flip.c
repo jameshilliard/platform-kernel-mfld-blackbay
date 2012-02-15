@@ -177,7 +177,7 @@ psb_intel_crtc_process_vblank(struct drm_crtc *crtc)
 }
 
 static void
-sync_callback(struct pvr_pending_sync *pending_sync)
+sync_callback(struct pvr_pending_sync *pending_sync, bool from_misr)
 {
 	struct pending_flip *pending_flip =
 		container_of(pending_sync, struct pending_flip, pending_sync);
