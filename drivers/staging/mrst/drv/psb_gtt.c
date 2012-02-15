@@ -897,6 +897,8 @@ int psb_gtt_map_meminfo(struct drm_device *dev,
 {
 	struct psb_gtt_mem_mapping *mapping;
 
+	WARN_ON(!mutex_is_locked(&dev->mode_config.mutex));
+
 	/* check if memory is already mapped */
 	mapping = psb_gtt_find_mapping_for_key(dev, psb_get_tgid(),
 					       (u32) psKernelMemInfo);
@@ -939,6 +941,8 @@ int psb_gtt_unmap_meminfo(struct drm_device *dev,
 			  uint32_t tgid)
 {
 	struct psb_gtt_mem_mapping *mapping;
+
+	WARN_ON(!mutex_is_locked(&dev->mode_config.mutex));
 
 	mapping = psb_gtt_find_mapping_for_key(dev, tgid,
 					       (u32) psKernelMemInfo);
