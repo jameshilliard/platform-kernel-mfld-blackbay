@@ -40,6 +40,7 @@ struct psb_framebuffer {
 	PVRSRV_KERNEL_MEM_INFO *pvrBO;
 	uint32_t size;
 	uint32_t offset;
+	uint32_t tgid;
 };
 
 struct psb_fbdev {
