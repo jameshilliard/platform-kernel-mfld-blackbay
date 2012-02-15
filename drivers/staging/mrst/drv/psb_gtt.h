@@ -74,11 +74,11 @@ struct psb_gtt_mapping_arg {
 /*Exported functions*/
 extern int psb_gtt_init(struct psb_gtt *pg, int resume);
 extern int psb_gtt_insert_pages(struct psb_gtt *pg, struct page **pages,
-				unsigned offset_pages, unsigned num_pages,
+				uint32_t offset_pages, uint32_t num_pages,
 				unsigned desired_tile_stride,
 				unsigned hw_tile_stride, int type);
-extern int psb_gtt_remove_pages(struct psb_gtt *pg, unsigned offset_pages,
-				unsigned num_pages,
+extern int psb_gtt_remove_pages(struct psb_gtt *pg, uint32_t offset_pages,
+				uint32_t num_pages,
 				unsigned desired_tile_stride,
 				unsigned hw_tile_stride);
 

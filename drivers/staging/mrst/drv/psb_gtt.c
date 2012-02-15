@@ -244,7 +244,7 @@ out_err:
 }
 
 int psb_gtt_insert_pages(struct psb_gtt *pg, struct page **pages,
-			 unsigned offset_pages, unsigned num_pages,
+			 uint32_t offset_pages, uint32_t num_pages,
 			 unsigned desired_tile_stride,
 			 unsigned hw_tile_stride, int type)
 {
@@ -279,7 +279,8 @@ int psb_gtt_insert_pages(struct psb_gtt *pg, struct page **pages,
 }
 
 static int psb_gtt_insert_phys_addresses(struct psb_gtt *pg, IMG_CPU_PHYADDR *pPhysFrames,
-				  unsigned offset_pages, unsigned num_pages, int type)
+				  uint32_t offset_pages, uint32_t num_pages,
+				  int type)
 {
 	unsigned j;
 	uint32_t __iomem *cur_page = NULL;
@@ -298,8 +299,8 @@ static int psb_gtt_insert_phys_addresses(struct psb_gtt *pg, IMG_CPU_PHYADDR *pP
 	return 0;
 }
 
-int psb_gtt_remove_pages(struct psb_gtt *pg, unsigned offset_pages,
-			 unsigned num_pages, unsigned desired_tile_stride,
+int psb_gtt_remove_pages(struct psb_gtt *pg, uint32_t offset_pages,
+			 uint32_t num_pages, unsigned desired_tile_stride,
 			 unsigned hw_tile_stride)
 {
 	struct drm_psb_private *dev_priv = pg->dev->dev_private;
@@ -872,8 +873,8 @@ int psb_gtt_map_meminfo(struct drm_device *dev,
 
 	/*update gtt*/
 	psb_gtt_insert_pages(pg, page_list,
-			     (unsigned)offset_pages,
-			     (unsigned)pages,
+			     offset_pages,
+			     pages,
 			     0,
 			     0,
 			     0);
@@ -987,7 +988,8 @@ int psb_gtt_map_pvr_memory(struct drm_device *dev,
 	DRM_DEBUG("get free node for %u pages, offset %u pages", pages, offset_pages);
 
 	/*update gtt*/
-	psb_gtt_insert_phys_addresses(pg, pPages, (unsigned)offset_pages, (unsigned)ui32PagesNum, 0);
+	psb_gtt_insert_phys_addresses(pg, pPages, offset_pages,
+				      ui32PagesNum, 0);
 
 	*ui32Offset = offset_pages;
 	return 0;
