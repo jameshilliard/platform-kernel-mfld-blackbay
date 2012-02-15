@@ -907,7 +907,6 @@ static int mdfld__intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 	/* struct drm_i915_master_private *master_priv; */
 	struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(crtc);
 	struct psb_framebuffer *psbfb = to_psb_fb(crtc->fb);
-	struct psb_intel_mode_device *mode_dev = psb_intel_crtc->mode_dev;
 	int pipe = psb_intel_crtc->pipe;
 	unsigned long Start, Offset;
 	int dsplinoff = DSPALINOFF;
@@ -955,7 +954,7 @@ static int mdfld__intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true))
 		return 0;
 
-	Start = mode_dev->bo_offset(dev, psbfb);
+	Start = psbfb->offset;
 	Offset = y * crtc->fb->pitches[0] + x * (crtc->fb->bits_per_pixel / 8);
 
 	REG_WRITE(dspstride, crtc->fb->pitches[0]);

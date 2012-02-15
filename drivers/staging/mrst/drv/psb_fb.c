@@ -755,14 +755,6 @@ static size_t psb_bo_size(struct drm_device *dev, void *bof)
 	return (size_t)psKernelMemInfo->ui32AllocSize;
 }
 
-static size_t psb_bo_offset(struct drm_device *dev, void *bof)
-{
-	struct psb_framebuffer *psbfb
-		= (struct psb_framebuffer *)bof;
-
-	return (size_t)psbfb->offset;
-}
-
 static int psb_bo_pin_for_scanout(struct drm_device *dev, void *bo)
 {
 	 return 0;
@@ -785,7 +777,6 @@ void psb_modeset_init(struct drm_device *dev)
 	mode_dev->bo_from_handle = psb_bo_from_handle;
 	mode_dev->bo_unref = psb_bo_unref;
 	mode_dev->bo_size = psb_bo_size;
-	mode_dev->bo_offset = psb_bo_offset;
 	mode_dev->bo_pin_for_scanout = psb_bo_pin_for_scanout;
 	mode_dev->bo_unpin_for_scanout = psb_bo_unpin_for_scanout;
 

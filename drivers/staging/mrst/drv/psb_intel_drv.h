@@ -108,7 +108,6 @@ struct psb_intel_mode_device {
 				 unsigned int handle);
 	void (*bo_unref) (struct drm_device *dev, void *bo);
 	 size_t(*bo_size) (struct drm_device *dev, void *bo);
-	 size_t(*bo_offset) (struct drm_device *dev, void *bo);
 	int (*bo_pin_for_scanout) (struct drm_device *dev, void *bo);
 	int (*bo_unpin_for_scanout) (struct drm_device *dev, void *bo);
 
