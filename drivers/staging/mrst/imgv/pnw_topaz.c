@@ -521,6 +521,7 @@ pnw_topaz_send(struct drm_device *dev, void *cmd,
 		case MTX_CMDID_RESET_ENCODE:
 		case MTX_CMDID_ISSUEBUFF:
 		case MTX_CMDID_SETUP:
+		case MTX_CMDID_NULL:
 			cur_cmd_header->seq = topaz_priv->topaz_cmd_count++;
 			cur_cmd_header->enable_interrupt = 0;
 			cur_cmd_size = 4;
