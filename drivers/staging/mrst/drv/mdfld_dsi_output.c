@@ -188,11 +188,6 @@ void mdfld_dsi_brightness_control (struct drm_device *dev, int pipe, int level)
 	u32 gen_ctrl_val = 0;
 	enum panel_type p_type = TMD_VID;
 
-	if (get_panel_type(dev, pipe) == TC35876X) {
-		tc35876x_brightness_control(dev, pipe, level);
-		return;
-	}
-
 	if(!dev || (pipe != 0 && pipe != 2)) {
 		DRM_ERROR("Invalid parameter\n");
 		return;

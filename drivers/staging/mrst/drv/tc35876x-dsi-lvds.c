@@ -424,8 +424,7 @@ void tc35876x_configure_lvds_bridge(struct drm_device *dev)
 
 #define PWM0DUTYCYCLE			0x67
 
-void tc35876x_brightness_control(struct drm_device *dev, int pipe,
-				int level)
+void tc35876x_brightness_control(struct drm_device *dev, int level)
 {
 	int ret;
 	u8 duty_val;
@@ -476,6 +475,7 @@ void tc35876x_toshiba_bridge_panel_off(struct drm_device *dev)
 void tc35876x_toshiba_bridge_panel_on(struct drm_device *dev)
 {
 	struct tc35876x_platform_data *pdata;
+	struct drm_psb_private *dev_priv = dev->dev_private;
 
 	if (WARN(!tc35876x_client, "%s called before probe", __func__))
 		return;
@@ -519,6 +519,8 @@ void tc35876x_toshiba_bridge_panel_on(struct drm_device *dev)
 
 	if (pdata->gpio_panel_bl_en != -1)
 		gpio_set_value_cansleep(pdata->gpio_panel_bl_en, 1);
+
+	tc35876x_brightness_control(dev, dev_priv->brightness_adjusted);
 }
 
 static struct drm_display_mode *tc35876x_get_config_mode(struct drm_device *dev)

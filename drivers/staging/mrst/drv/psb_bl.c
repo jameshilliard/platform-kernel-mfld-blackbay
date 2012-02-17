@@ -28,6 +28,7 @@
 #include "psb_intel_drv.h"
 #include "psb_powermgmt.h"
 #include "mdfld_dsi_dbi.h"
+#include "tc35876x-dsi-lvds.h"
 
 #define MRST_BLC_MAX_PWM_REG_FREQ	    0xFFFF
 #define BLC_PWM_PRECISION_FACTOR 100	/* 10000000 */
@@ -47,13 +48,14 @@
 #define PSB_BACKLIGHT_PWM_POLARITY_BIT_CLEAR (0xFFFE)
 #define PSB_BACKLIGHT_PWM_CTL_SHIFT	(16)
 
-static int psb_brightness;
 static struct backlight_device *psb_backlight_device;
 
 int psb_set_brightness(struct backlight_device *bd)
 {
-	struct drm_device *dev = (struct drm_device *)bl_get_data(psb_backlight_device);
-	struct drm_psb_private *dev_priv = (struct drm_psb_private *) dev->dev_private;
+	struct drm_device *dev =
+	    (struct drm_device *)bl_get_data(psb_backlight_device);
+	struct drm_psb_private *dev_priv =
+	    (struct drm_psb_private *)dev->dev_private;
 	int level = bd->props.brightness;
 
 	DRM_DEBUG_DRIVER("backlight level set to %d\n", level);
@@ -71,38 +73,47 @@ int psb_set_brightness(struct backlight_device *bd)
 		 */
 		adjusted_level = level * dev_priv->blc_adj2;
 		adjusted_level = adjusted_level / BLC_ADJUSTMENT_MAX;
+		dev_priv->brightness_adjusted = adjusted_level;
 
 #ifndef CONFIG_MDFLD_DSI_DPU
 		if((!(dev_priv->dsr_fb_update & MDFLD_DSR_MIPI_CONTROL)) &&
 			(dev_priv->dbi_panel_on || dev_priv->dbi_panel_on2)){
 			mdfld_dsi_dbi_exit_dsr(dev,MDFLD_DSR_MIPI_CONTROL);
-			PSB_DEBUG_ENTRY("Out of DSR before set brightness to %d.\n",adjusted_level);
+			PSB_DEBUG_ENTRY("Out of DSR before set brightness to %d.\n",
+					dev_priv->brightness_adjusted);
 		}
 #endif
 		if (get_panel_type(dev, 0) == TC35876X) {
-			mdfld_dsi_brightness_control(dev, 0, adjusted_level);
+			if (dev_priv->dpi_panel_on || dev_priv->dpi_panel_on2)
+				tc35876x_brightness_control(dev,
+							    dev_priv->brightness_adjusted);
 		} else {
 			if (dev_priv->dbi_panel_on || dev_priv->dpi_panel_on)
 				mdfld_dsi_brightness_control(dev, 0,
-							adjusted_level);
+							     dev_priv->brightness_adjusted);
 		}
 
 		if ((dev_priv->dbi_panel_on2) || (dev_priv->dpi_panel_on2))
-			mdfld_dsi_brightness_control(dev, 2, adjusted_level);
+			mdfld_dsi_brightness_control(dev, 2, dev_priv->brightness_adjusted);
 		ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 	}
 
 	/* cache the brightness for later use */
-	psb_brightness = level;
+	dev_priv->brightness = level;
 	return 0;
 }
 
 int psb_get_brightness(struct backlight_device *bd)
 {
-	DRM_DEBUG_DRIVER("brightness = 0x%x \n", psb_brightness);
+	struct drm_device *dev =
+	    (struct drm_device *)bl_get_data(psb_backlight_device);
+	struct drm_psb_private *dev_priv =
+	    (struct drm_psb_private *)dev->dev_private;
+
+	DRM_DEBUG_DRIVER("brightness = 0x%x \n", dev_priv->brightness);
 
 	/* return locally cached var instead of HW read (due to DPST etc.) */
-	return psb_brightness;
+	return dev_priv->brightness;
 }
 
 #ifdef CONFIG_BACKLIGHT_CLASS_DEVICE

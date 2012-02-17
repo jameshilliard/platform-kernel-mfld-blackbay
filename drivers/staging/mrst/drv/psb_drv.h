@@ -635,6 +635,12 @@ struct drm_psb_private {
 	/* The DBI panel power on */
 	bool dbi_panel_on2;
 
+	/*
+	 * PANEL BRIGHTNESS
+	 */
+	int brightness;
+	int brightness_adjusted;
+
 	/* The DPI display */
 	bool dpi2;
 
