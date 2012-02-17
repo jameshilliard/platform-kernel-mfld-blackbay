@@ -207,8 +207,8 @@ static void mdfld_dsi_configure_down(struct mdfld_dsi_encoder * dsi_encoder, int
 		printk(KERN_ALERT "[DISPLAY] %s: DPI Panel is Already Off\n", __func__);
 		return;
 	}
-	tc35876x_toshiba_bridge_panel_off();
-	tc35876x_set_bridge_reset_state(1);
+	tc35876x_toshiba_bridge_panel_off(dev);
+	tc35876x_set_bridge_reset_state(dev, 1);
 	dsi_set_pipe_plane_enable_state(dev, 0, pipe);  //Disable pipe and plane
 
 	mdfld_dsi_dpi_shut_down(dpi_output, pipe);  //Send shut down command
@@ -236,7 +236,7 @@ static void mdfld_dsi_configure_up(struct mdfld_dsi_encoder * dsi_encoder, int p
 	dsi_set_device_ready_state(dev, 0, pipe);  //Clear Device Ready Bit
 
 	dsi_set_device_ready_state(dev, 1, pipe);  //Set device ready state
-	tc35876x_set_bridge_reset_state(0);
+	tc35876x_set_bridge_reset_state(dev, 0);
 	tc35876x_configure_lvds_bridge(dev);
 	mdfld_dsi_dpi_turn_on(dpi_output, pipe);  //Send turn on command
 	dsi_set_pipe_plane_enable_state(dev, 1, pipe);  //Enable plane and pipe
@@ -583,7 +583,7 @@ void mdfld_dsi_dpi_controller_init(struct mdfld_dsi_config * dsi_config, int pip
 	REG_WRITE(MIPI_CLK_LANE_SWITCH_TIME_CNT_REG(pipe), (0xa << 16) | 0x14);
 
 	if (get_panel_type(dev, pipe) == TC35876X)
-		tc35876x_set_bridge_reset_state(0);  /*Pull High Reset */
+		tc35876x_set_bridge_reset_state(dev, 0);  /*Pull High Reset */
 
 	/*set device ready*/
 	REG_FLD_MOD(MIPI_DEVICE_READY_REG(pipe), 1, 0, 0);
@@ -917,8 +917,8 @@ void mdfld_dsi_dpi_mode_set(struct drm_encoder * encoder,
 		 */
 		int timeout = 0;
 
-		tc35876x_set_bridge_reset_state(0);  /*Pull High Reset */
-		tc35876x_toshiba_bridge_panel_on();
+		tc35876x_set_bridge_reset_state(dev, 0);  /*Pull High Reset */
+		tc35876x_toshiba_bridge_panel_on(dev);
 		udelay(100);
 		/* Now start the DSI clock */
 		REG_WRITE(MRST_DPLL_A, 0x00);

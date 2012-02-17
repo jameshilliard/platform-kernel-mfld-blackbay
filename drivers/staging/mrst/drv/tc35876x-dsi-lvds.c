@@ -310,7 +310,7 @@ static int tc35876x_regr(struct i2c_client *client, u16 reg, u32 *value)
 	return 0;
 }
 
-void tc35876x_set_bridge_reset_state(int state)
+void tc35876x_set_bridge_reset_state(struct drm_device *dev, int state)
 {
 	struct tc35876x_platform_data *pdata;
 
@@ -455,7 +455,7 @@ void tc35876x_brightness_control(struct drm_device *dev, int pipe,
 	}
 }
 
-void tc35876x_toshiba_bridge_panel_off(void)
+void tc35876x_toshiba_bridge_panel_off(struct drm_device *dev)
 {
 	struct tc35876x_platform_data *pdata;
 
@@ -473,7 +473,7 @@ void tc35876x_toshiba_bridge_panel_off(void)
 		gpio_set_value_cansleep(pdata->gpio_panel_vadd, 0);
 }
 
-void tc35876x_toshiba_bridge_panel_on(void)
+void tc35876x_toshiba_bridge_panel_on(struct drm_device *dev)
 {
 	struct tc35876x_platform_data *pdata;
 
