@@ -68,6 +68,7 @@ int drm_psb_debug;
 static int drm_psb_trap_pagefaults;
 
 int drm_psb_no_fb;
+int drm_tc35876x_debug;
 int drm_psb_force_pipeb;
 int drm_msvdx_pmpolicy = PSB_PMPOLICY_POWERDOWN;
 int drm_psb_cpurelax = 0;
@@ -82,6 +83,7 @@ char HDMI_EDID[HDMI_MONITOR_NAME_LENGTH];
 static int psb_probe(struct pci_dev *pdev, const struct pci_device_id *ent);
 
 MODULE_PARM_DESC(debug, "Enable debug output");
+MODULE_PARM_DESC(tc35876x_debug, "Enable TC35876X register debug output");
 MODULE_PARM_DESC(no_fb, "Disable FBdev");
 MODULE_PARM_DESC(trap_pagefaults, "Error and reset on MMU pagefaults");
 MODULE_PARM_DESC(disable_vsync, "Disable vsync interrupts");
@@ -97,6 +99,7 @@ MODULE_PARM_DESC(udelay_multiplier, "the multiplier of the usec of video udelay"
 MODULE_PARM_DESC(udelay_divider, "the divider of the usec of video udelay");
 
 module_param_named(debug, drm_psb_debug, int, 0600);
+module_param_named(tc35876x_debug, drm_tc35876x_debug, int, 0600);
 module_param_named(no_fb, drm_psb_no_fb, int, 0600);
 module_param_named(trap_pagefaults, drm_psb_trap_pagefaults, int, 0600);
 module_param_named(force_pipeb, drm_psb_force_pipeb, int, 0600);

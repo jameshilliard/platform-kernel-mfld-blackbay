@@ -251,8 +251,9 @@ static int tc35876x_regw(struct i2c_client *client, u16 reg, u32 value)
 		return -EAGAIN;
 	}
 
-	dev_dbg(&client->dev, "%s: reg 0x%04x val 0x%08x\n", __func__, reg,
-		value);
+	if (drm_tc35876x_debug)
+		dev_dbg(&client->dev, "%s: reg 0x%04x val 0x%08x\n",
+			__func__, reg, value);
 
 	return 0;
 }

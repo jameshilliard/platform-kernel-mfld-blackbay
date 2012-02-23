@@ -1177,6 +1177,7 @@ int psb_st_gfx_video_bridge(struct drm_device *dev,
 #endif
 
 extern int drm_psb_debug;
+extern int drm_tc35876x_debug;
 extern int drm_psb_no_fb;
 extern int drm_topaz_sbuswa;
 
