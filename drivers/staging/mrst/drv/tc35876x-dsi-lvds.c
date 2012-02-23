@@ -444,14 +444,15 @@ void tc35876x_brightness_control(struct drm_device *dev, int level)
 
 	ret = intel_scu_ipc_iowrite8(PWM0DUTYCYCLE, duty_val);
 	if (ret)
-		printk(KERN_ERR "[DISPLAY] %s: ipc write fail\n", __func__);
+		dev_err(&tc35876x_client->dev, "%s: ipc write fail\n",
+			__func__);
 
 	if (cmi_lcd_i2c_client) {
 		ret = i2c_smbus_write_byte_data(cmi_lcd_i2c_client,
 						PANEL_PWM_MAX, panel_duty_val);
 		if (ret < 0)
-			printk(KERN_ERR "[DISPLAY] %s: i2c write failed\n",
-			       __func__);
+			dev_err(&cmi_lcd_i2c_client->dev, "%s: i2c write failed\n",
+				__func__);
 	}
 }
 

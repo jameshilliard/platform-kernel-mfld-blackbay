@@ -126,7 +126,8 @@ static void mdfld_wait_for_PIPEA_DISABLE(struct drm_device *dev, u32 pipe)
 static void dsi_set_device_ready_state(struct drm_device *dev, int state,
 				int pipe)
 {
-	printk(KERN_ALERT "[DISPLAY TRK] %s: state = %d, pipe = %d\n", __func__, state, pipe);
+	dev_dbg(&dev->pdev->dev, "%s: state = %d, pipe = %d\n",
+		__func__, state, pipe);
 
 	REG_FLD_MOD(MIPI_DEVICE_READY_REG(pipe), !!state, 0, 0);
 }
@@ -141,7 +142,8 @@ static void dsi_set_pipe_plane_enable_state(struct drm_device *dev, int state, i
 	u32 dspcntr = dev_priv->dspcntr;
 	u32 mipi = MIPI_PORT_EN | PASS_FROM_SPHY_TO_AFE | SEL_FLOPPED_HSTX;
 
-	printk(KERN_ALERT "[DISPLAY TRK] %s: state = %d, pipe = %d\n", __func__, state, pipe);
+	dev_dbg(&dev->pdev->dev, "%s: state = %d, pipe = %d\n",
+		__func__, state, pipe);
 
 	if (pipe) {
 		pipeconf_reg = PIPECCONF;
@@ -200,11 +202,12 @@ static void mdfld_dsi_configure_down(struct mdfld_dsi_encoder * dsi_encoder, int
 	struct drm_device * dev = dsi_config->dev;
 	struct drm_psb_private * dev_priv = dev->dev_private;
 
-	printk(KERN_ALERT "[DISPLAY TRK] Enter %s\n", __func__);
+	dev_dbg(&dev->pdev->dev, "Enter %s\n", __func__);
 
 	if ((pipe == 0 && !dev_priv->dpi_panel_on) ||
 	    (pipe == 2 && !dev_priv->dpi_panel_on2)) {
-		printk(KERN_ALERT "[DISPLAY] %s: DPI Panel is Already Off\n", __func__);
+		dev_dbg(&dev->pdev->dev, "%s: DPI Panel is Already Off\n",
+			__func__);
 		return;
 	}
 	tc35876x_toshiba_bridge_panel_off(dev);
@@ -223,11 +226,12 @@ static void mdfld_dsi_configure_up(struct mdfld_dsi_encoder * dsi_encoder, int p
 	struct drm_device * dev = dsi_config->dev;
 	struct drm_psb_private * dev_priv = dev->dev_private;
 
-	printk(KERN_ALERT "[DISPLAY TRK] Enter %s\n", __func__);
+	dev_dbg(&dev->pdev->dev, "Enter %s\n", __func__);
 
 	if ((pipe == 0 && dev_priv->dpi_panel_on) ||
 	    (pipe == 2 && dev_priv->dpi_panel_on2)) {
-		printk(KERN_ALERT "[DISPLAY] %s: DPI Panel is Already On\n", __func__);
+		dev_dbg(&dev->pdev->dev, "%s: DPI Panel is Already On\n",
+			__func__);
 		return;
 	}
 
@@ -783,7 +787,7 @@ static void mipi_set_properties(struct mdfld_dsi_config *dsi_config, int pipe)
 {
 	struct drm_device *dev = dsi_config->dev;
 
-	printk(KERN_ALERT "[DISPLAY] Enter %s\n", __func__);
+	dev_dbg(&dev->pdev->dev, "Enter %s\n", __func__);
 
 	REG_WRITE(MIPI_CTRL_REG(pipe), 0x00000018);
 	REG_WRITE(MIPI_INTR_EN_REG(pipe), 0xffffffff);
@@ -806,7 +810,7 @@ static void mdfld_mipi_set_video_timing(struct mdfld_dsi_config *dsi_config,
 	struct mdfld_dsi_dpi_timing dpi_timing;
 	struct drm_display_mode *mode = dsi_config->mode;
 
-	printk(KERN_ALERT "[DISPLAY] Enter %s\n", __func__);
+	dev_dbg(&dev->pdev->dev, "Enter %s\n", __func__);
 
 	mdfld_dsi_dpi_timing_calculation(mode, &dpi_timing,
 					dsi_config->lane_count,
@@ -835,7 +839,7 @@ static void mdfld_mipi_config(struct mdfld_dsi_config *dsi_config, int pipe)
 	struct drm_device *dev = dsi_config->dev;
 	int lane_count = dsi_config->lane_count;
 
-	printk(KERN_ALERT "[DISPLAY] Enter %s\n", __func__);
+	dev_dbg(&dev->pdev->dev, "Enter %s\n", __func__);
 
 	if (pipe) {
 		REG_WRITE(MIPI_PORT_CONTROL(0), 0x00000002);
@@ -859,7 +863,7 @@ static void mdfld_set_pipe_timing(struct mdfld_dsi_config *dsi_config, int pipe)
 	struct drm_device *dev = dsi_config->dev;
 	struct drm_display_mode *mode = dsi_config->mode;
 
-	printk(KERN_ALERT "[DISPLAY] Enter %s\n", __func__);
+	dev_dbg(&dev->pdev->dev, "Enter %s\n", __func__);
 
 	REG_WRITE(HTOTAL_A, ((mode->htotal - 1) << 16) | (mode->hdisplay - 1));
 	REG_WRITE(HBLANK_A, ((mode->htotal - 1) << 16) | (mode->hdisplay - 1));
