@@ -771,9 +771,16 @@ static int mdfld_hdmi_set_property(struct drm_connector *connector,
 	static int prev_state;
 	int state = 0, audio_notify = 0;
 
-	PSB_DEBUG_ENTRY("connector info, type = %d, type_id=%d, base=0x%p, base.id=0x%x. \n", connector->connector_type, connector->connector_type_id, &connector->base, connector->base.id);
-	PSB_DEBUG_ENTRY("encoder info, base.id=%d, encoder_type=%d, dev=0x%p, base=0x%p, possible_clones=0x%x. \n", pEncoder->base.id, pEncoder->encoder_type, pEncoder->dev, &pEncoder->base, pEncoder->possible_clones);
-	PSB_DEBUG_ENTRY("encoder info, possible_crtcs=0x%x, crtc=0x%p.  \n", pEncoder->possible_crtcs, pEncoder->crtc);
+	PSB_DEBUG_ENTRY("connector info, type = %d, type_id=%d, base=0x%p, base.id=0x%x.\n",
+			connector->connector_type, connector->connector_type_id, &connector->base, connector->base.id);
+	if (pEncoder) {
+		PSB_DEBUG_ENTRY("encoder info, base.id=%d, encoder_type=%d, dev=0x%p, base=0x%p, possible_clones=0x%x.\n",
+				pEncoder->base.id, pEncoder->encoder_type, pEncoder->dev, &pEncoder->base, pEncoder->possible_clones);
+		PSB_DEBUG_ENTRY("encoder info, possible_crtcs=0x%x, crtc=0x%p.\n",
+				pEncoder->possible_crtcs, pEncoder->crtc);
+	} else {
+		PSB_DEBUG_ENTRY("encoder info NULL\n");
+	}
 
 	if (!strcmp(property->name, "scaling mode") && pEncoder) {
 		PSB_DEBUG_ENTRY("scaling mode \n");
