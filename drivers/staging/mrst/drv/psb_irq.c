@@ -518,7 +518,7 @@ void psb_irq_preinstall_islands(struct drm_device *dev, int hw_islands)
 		(struct drm_psb_private *) dev->dev_private;
 	unsigned long irqflags;
 
-	PSB_DEBUG_ENTRY("\n");
+	PSB_DEBUG_ENTRY("hw_islands = 0x%08x\n", hw_islands);
 
 	spin_lock_irqsave(&dev_priv->irqmask_lock, irqflags);
 
@@ -565,7 +565,7 @@ int psb_irq_postinstall_islands(struct drm_device *dev, int hw_islands)
 		(struct drm_psb_private *) dev->dev_private;
 	unsigned long irqflags;
 
-	PSB_DEBUG_ENTRY("\n");
+	PSB_DEBUG_ENTRY("hw_islands = 0x%08x\n", hw_islands);
 
 	spin_lock_irqsave(&dev_priv->irqmask_lock, irqflags);
 
@@ -622,7 +622,7 @@ void psb_irq_uninstall_islands(struct drm_device *dev, int hw_islands)
 		(struct drm_psb_private *) dev->dev_private;
 	unsigned long irqflags;
 
-	PSB_DEBUG_ENTRY("\n");
+	PSB_DEBUG_ENTRY("hw_islands = 0x%08x\n", hw_islands);
 
 	spin_lock_irqsave(&dev_priv->irqmask_lock, irqflags);
 
@@ -794,7 +794,7 @@ int psb_enable_vblank(struct drm_device *dev, int pipe)
 	uint32_t reg_val = 0;
 	uint32_t pipeconf_reg = mid_pipeconf(pipe);
 
-	PSB_DEBUG_ENTRY("\n");
+	PSB_DEBUG_ENTRY("pipe = %d\n", pipe);
 
 	if (!is_panel_vid_or_cmd(dev))
 		return mdfld_enable_te(dev, pipe);
@@ -826,7 +826,7 @@ void psb_disable_vblank(struct drm_device *dev, int pipe)
 		(struct drm_psb_private *) dev->dev_private;
 	unsigned long irqflags;
 
-	PSB_DEBUG_ENTRY("\n");
+	PSB_DEBUG_ENTRY("pipe = %d\n", pipe);
 
 	if (!is_panel_vid_or_cmd(dev))
 		mdfld_disable_te(dev, pipe);
@@ -912,7 +912,7 @@ int mdfld_enable_te(struct drm_device *dev, int pipe)
 	uint32_t reg_val = 0;
 	uint32_t pipeconf_reg = mid_pipeconf(pipe);
 
-	PSB_DEBUG_ENTRY("pipe = %d, \n", pipe);
+	PSB_DEBUG_ENTRY("pipe = %d\n", pipe);
 
 	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
 		reg_val = REG_READ(pipeconf_reg);
@@ -941,7 +941,7 @@ void mdfld_disable_te(struct drm_device *dev, int pipe)
 		(struct drm_psb_private *) dev->dev_private;
 	unsigned long irqflags;
 
-	PSB_DEBUG_ENTRY("\n");
+	PSB_DEBUG_ENTRY("pipe = %d\n", pipe);
 
 	if (!dev_priv->b_dsr_enable)
 		return;
