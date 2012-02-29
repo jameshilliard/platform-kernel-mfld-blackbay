@@ -526,6 +526,7 @@ struct drm_psb_private {
 	struct android_hdmi_priv *hdmi_priv;
 	/* TODO: choose either hdmi_present or HDMI_enable in this struct.*/
 	uint32_t hdmi_present;
+	bool hdmi_audio_busy;
 
 	/* Feature bits from the VBIOS*/
 	unsigned int int_tv_support:1;

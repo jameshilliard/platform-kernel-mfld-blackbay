@@ -53,6 +53,7 @@ static atomic_t g_videodec_access_count;
 void ospm_power_island_up(int hw_islands);
 void ospm_power_island_down(int hw_islands);
 static bool gbSuspended = false;
+static int psb_runtime_hdmi_audio_suspend(struct drm_device *drm_dev);
 
 #if 1
 static int ospm_runtime_check_msvdx_hw_busy(struct drm_device *dev)
@@ -347,12 +348,25 @@ static void gfx_early_suspend(struct early_suspend *es)
 	struct drm_encoder *encoder;
 
 	dev_dbg(&dev->pdev->dev, "%s\n", __func__);
+	dev_priv->hdmi_audio_busy =
+			psb_runtime_hdmi_audio_suspend(dev) == -EBUSY;
 
 	mutex_lock(&dev->mode_config.mutex);
 	list_for_each_entry(encoder, &dev->mode_config.encoder_list, head) {
 		struct drm_encoder_helper_funcs *ehf = encoder->helper_private;
-
-		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->dpms)
+		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->dpms
+#ifndef JIRA_ANDROID-1553
+	/*
+	 * Local MIPI fails to turn back on from a DPMS off/on cycle if
+	 * HDMI audio returns busy to disallow system suspend.
+	 * Once ANDROID-1553 is fixed, the expectation is to turn off
+	 * MIPI but keep display island on if there is active audio
+	 * playback over HDMI.
+	 * Refer Jira bug# Android-1553 for more details.
+	 */
+			&& !dev_priv->hdmi_audio_busy
+#endif
+		)
 			ehf->dpms(encoder, DRM_MODE_DPMS_OFF);
 	}
 	mutex_unlock(&dev->mode_config.mutex);
@@ -1608,7 +1622,8 @@ int psb_runtime_idle(struct device *dev)
 	    atomic_read(&g_videodec_access_count) ||
 	    atomic_read(&g_display_access_count) ||
 	    ospm_runtime_check_msvdx_hw_busy(drm_dev) == 1 ||
-	    ospm_runtime_check_topaz_hw_busy(drm_dev) == 1) {
+	    ospm_runtime_check_topaz_hw_busy(drm_dev) == 1 ||
+	    dev_priv->hdmi_audio_busy) {
 
 #ifdef OSPM_GFX_DPK
 		dev_dbg(&drm_dev->pdev->dev,
@@ -1637,10 +1652,6 @@ int psb_runtime_suspend(struct device *dev)
 #endif
 
 	r = psb_runtime_idle(dev);
-	if (r)
-		return r;
-
-	r = psb_runtime_hdmi_audio_suspend(drm_dev);
 	if (r)
 		return r;
 
