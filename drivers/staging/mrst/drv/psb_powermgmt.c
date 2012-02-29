@@ -390,7 +390,18 @@ static void gfx_late_resume(struct early_suspend *es)
 		struct drm_encoder_helper_funcs *ehf = encoder->helper_private;
 
 		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->mode_set
-		    && ehf->dpms) {
+		    && ehf->dpms
+#ifndef JIRA_ANDROID-1553
+	/*
+	  Local MIPI fails to turn back on from a DPMS off/on cycle if HDMI
+	  audio returns busy to disallow system suspend.
+	  Once ANDROID-1553 is fixed, the expectation is to turn off MIPI but
+	  keep display island on if there is active audio playback over HDMI
+	  Refer Jira bug# Android-1553 for more details.
+	*/
+			&& !(dev_priv->hdmi_audio_busy)
+#endif
+		) {
 			struct drm_crtc *crtc = encoder->crtc;
 
 			if (crtc)
