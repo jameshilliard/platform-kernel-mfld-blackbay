@@ -787,8 +787,8 @@ struct hdmi_edid_info {
   #define VCC330_OFF 0x24
   #define VCC330_ON 0x37
 #define MSIC_VHDMICNT 0xde
-  #define VHDMI_OFF 0x25
-  #define VHDMI_ON 0xa5
+  #define VHDMI_OFF 0x24
+  #define VHDMI_ON 0xa4
   #define VHDMI_DB_30MS 0x60
 #define MSIC_HDMI_STATUS 0x281
   #define HPD_SIGNAL_STATUS (1 << 0)
