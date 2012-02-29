@@ -218,9 +218,14 @@ static void mdfld_pipe_hdmi_audio_underrun(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv =
 		(struct drm_psb_private *) dev->dev_private;
+	void *had_pvt_data = dev_priv->had_pvt_data;
 
+	BUG_ON(had_pvt_data == NULL);
+
+	enum had_event_type event_type = HAD_EVENT_AUDIO_BUFFER_UNDERRUN;
 	if (dev_priv->mdfld_had_event_callbacks)
-		(*dev_priv->mdfld_had_event_callbacks)(HAD_EVENT_AUDIO_BUFFER_UNDERRUN, NULL);
+		(*dev_priv->mdfld_had_event_callbacks)(event_type,
+			had_pvt_data);
 }
 
 /**
