@@ -344,8 +344,8 @@ void psb_page_flip_crtc_fini(struct psb_intel_crtc *psb_intel_crtc)
 	drm_flip_helper_fini(&psb_intel_crtc->flip_helper);
 }
 
-void
-psb_intel_crtc_process_vblank(struct drm_crtc *crtc)
+static void
+psb_intel_crtc_process_vblank_real(struct drm_crtc *crtc)
 {
 	struct drm_psb_private *dev_priv = crtc->dev->dev_private;
 	struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(crtc);
@@ -363,6 +363,40 @@ psb_intel_crtc_process_vblank(struct drm_crtc *crtc)
 	}
 
 	drm_flip_helper_vblank(&psb_intel_crtc->flip_helper);
+}
+
+void
+psb_intel_crtc_process_vblank(struct drm_crtc *crtc)
+{
+	struct drm_psb_private *dev_priv = crtc->dev->dev_private;
+	struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(crtc);
+	int pipe = psb_intel_crtc->pipe;
+	struct drm_connector *connector;
+	struct drm_crtc *hdmicrtc = NULL;
+
+	psb_intel_crtc_process_vblank_real(crtc);
+
+	/* This following is to handle HDMI pending flips if unplug the cable
+	 * After HDMI is unpluged, there is no vblank interrupt anymore.
+	 * But there may be some pending flips exists in psb_intel_crtc.
+	 * We need complet the pending flips.
+	 * This can be REVERTED, if the pending flip issue fixed.
+	 */
+	if (pipe != 0)
+		return;
+
+	hdmicrtc = dev_priv->pipe_to_crtc_mapping[1];
+	if (!hdmicrtc)
+		return;
+
+	list_for_each_entry(connector,
+			&crtc->dev->mode_config.connector_list, head) {
+		if (connector->connector_type == DRM_MODE_CONNECTOR_DVID &&
+			connector->status == connector_status_disconnected) {
+			psb_intel_crtc_process_vblank_real(hdmicrtc);
+			break;
+		}
+	}
 }
 
 static void
