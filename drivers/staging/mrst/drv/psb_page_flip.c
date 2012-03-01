@@ -40,6 +40,8 @@
 #endif
 
 #include "drm_flip.h"
+#include "mutex.h"
+#include "lock.h"
 
 struct pending_flip {
 	struct drm_crtc *crtc;
@@ -54,6 +56,8 @@ struct pending_flip {
 	struct list_head companions;
 	u32 tgid;
 	bool vblank_ref;
+	atomic_t refcnt;
+	struct psb_pending_values pending_values;
 };
 
 static const u32 dspsurf_reg[] = {
@@ -238,6 +242,35 @@ static void psb_flip_driver_flush(struct drm_flip_driver *driver)
 	(void)ioread32(dev_priv->vdc_reg + PIPEASTAT);
 }
 
+static void free_flip(struct pending_flip *crtc_flip)
+{
+	if (atomic_dec_and_test(&crtc_flip->refcnt))
+		kfree(crtc_flip);
+}
+
+static void psb_flip_complete_sync_callback(struct pvr_pending_sync *sync,
+		bool call_from_work)
+{
+	struct pending_flip *crtc_flip =
+		container_of(sync, struct pending_flip, pending_sync);
+
+	if (psb_fb_increase_read_ops_completed(crtc_flip->old_mem_info,
+			&crtc_flip->pending_values, sync)) {
+		WARN(true, "Sync callback called without completing operation");
+		return;
+	}
+
+	free_flip(crtc_flip);
+
+	if (call_from_work)
+		mutex_lock(&gPVRSRVLock);
+
+	PVRSRVScheduleDeviceCallbacks();
+
+	if (call_from_work)
+		mutex_unlock(&gPVRSRVLock);
+}
+
 static void crtc_flip_complete(struct drm_flip *flip)
 {
 	struct pending_flip *crtc_flip =
@@ -250,7 +283,14 @@ static void crtc_flip_complete(struct drm_flip *flip)
 	if (crtc_flip->vblank_ref)
 		drm_vblank_put(dev, pipe);
 
-	psb_fb_increase_read_ops_completed(crtc_flip->old_mem_info);
+	atomic_inc(&crtc_flip->refcnt);
+	crtc_flip->pending_sync.callback = psb_flip_complete_sync_callback;
+	if (psb_fb_increase_read_ops_completed(crtc_flip->old_mem_info,
+				&crtc_flip->pending_values,
+				&crtc_flip->pending_sync))
+		return;
+
+	free_flip(crtc_flip);
 	PVRSRVScheduleDeviceCallbacks();
 }
 
@@ -507,6 +547,7 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 
 	drm_flip_init(&new_pending_flip->base, &to_psb_intel_crtc(crtc)->flip_helper);
 
+	atomic_set(&new_pending_flip->refcnt, 1);
 	new_pending_flip->crtc = crtc;
 	new_pending_flip->event = event;
 	new_pending_flip->offset = psbfb->offset;
@@ -536,7 +577,8 @@ psb_intel_crtc_page_flip(struct drm_crtc *crtc,
 	new_pending_flip->mem_info = psbfb->pvrBO;
 	new_pending_flip->old_mem_info = current_fb_mem_info;
 
-	psb_fb_increase_read_ops_pending(current_fb_mem_info);
+	psb_fb_increase_read_ops_pending(current_fb_mem_info,
+			&new_pending_flip->pending_values);
 	psb_fb_flip_trace(current_fb_mem_info, psbfb->pvrBO);
 
 	new_pending_flip->tgid = tgid;

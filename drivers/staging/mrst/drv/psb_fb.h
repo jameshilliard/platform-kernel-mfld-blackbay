@@ -48,6 +48,11 @@ struct psb_fbdev {
 	struct psb_framebuffer * pfb;
 };
 
+struct psb_pending_values {
+	uint32_t read;
+	uint32_t write;
+};
+
 #define to_psb_fb(x) container_of(x, struct psb_framebuffer, base)
 
 
@@ -63,8 +68,13 @@ void psb_fb_gtt_unref(struct drm_device *dev,
 		      PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo,
 		      uint32_t tgid);
 
-void psb_fb_increase_read_ops_pending(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
-void psb_fb_increase_read_ops_completed(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo);
+struct pvr_pending_sync;
+
+void psb_fb_increase_read_ops_pending(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo,
+		struct psb_pending_values *pending);
+int psb_fb_increase_read_ops_completed(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo,
+		struct psb_pending_values *pending,
+		struct pvr_pending_sync *pending_sync);
 
 void psb_fb_flip_trace(PVRSRV_KERNEL_MEM_INFO *old,
 		       PVRSRV_KERNEL_MEM_INFO *new);

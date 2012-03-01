@@ -45,6 +45,8 @@
 #include "mdfld_output.h"
 #include "pvr_trace_cmd.h"
 
+#include "ossync.h"
+
 extern struct mutex gPVRSRVLock;
 
 extern int MRSTLFBHandleChangeFB(struct drm_device* dev, struct psb_framebuffer *psbfb);
@@ -908,21 +910,47 @@ void psb_fb_gtt_unref(struct drm_device *dev,
 }
 
 void
-psb_fb_increase_read_ops_pending(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
+psb_fb_increase_read_ops_pending(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo,
+		struct psb_pending_values *pending)
 {
-	if (psKernelMemInfo && psKernelMemInfo->psKernelSyncInfo)
-		psKernelMemInfo->psKernelSyncInfo
-			->psSyncData->ui32ReadOpsPending++;
+	PVRSRV_SYNC_DATA *sync_data;
+	if (!psKernelMemInfo || !psKernelMemInfo->psKernelSyncInfo)
+		return;
+
+	sync_data = psKernelMemInfo->psKernelSyncInfo->psSyncData;
+	pending->write = sync_data->ui32WriteOpsPending;
+	pending->read = sync_data->ui32ReadOpsPending++;
 }
 
-void
-psb_fb_increase_read_ops_completed(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo)
+int
+psb_fb_increase_read_ops_completed(PVRSRV_KERNEL_MEM_INFO *psKernelMemInfo,
+		struct psb_pending_values *pending,
+		struct pvr_pending_sync *pending_sync)
 {
-	if (psKernelMemInfo && psKernelMemInfo->psKernelSyncInfo)
-		psKernelMemInfo->psKernelSyncInfo
-			->psSyncData->ui32ReadOpsComplete++;
+	PVRSRV_SYNC_DATA *sync_data;
+	if (!psKernelMemInfo || !psKernelMemInfo->psKernelSyncInfo)
+		return 0;
 
+	sync_data = psKernelMemInfo->psKernelSyncInfo->psSyncData;
+	if (unlikely(
+	    pvr_ops_after(pending->write, sync_data->ui32WriteOpsComplete) ||
+	    pvr_ops_after(pending->read, sync_data->ui32ReadOpsComplete))) {
+		/* Has to wait SGX micorkernel to complete parallel reads to
+		 * avoid deadlock.
+		 */
+
+		pending_sync->sync_info = psKernelMemInfo->psKernelSyncInfo;
+		pending_sync->pending_read_ops = pending->read;
+		pending_sync->pending_write_ops = pending->write;
+		pending_sync->flags = PVRSRV_SYNC_WRITE | PVRSRV_SYNC_READ;
+
+		PVRSRVCallbackOnSync2(pending_sync);
+
+		return -EBUSY;
+	}
+	sync_data->ui32ReadOpsComplete++;
 	pvr_trcmd_check_syn_completions(PVR_TRCMD_FLPCOMP);
+	return 0;
 }
 
 void

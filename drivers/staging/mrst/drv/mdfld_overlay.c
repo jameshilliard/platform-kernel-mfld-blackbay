@@ -40,6 +40,9 @@
 #include "fp_trig.h"
 
 #include "drm_flip.h"
+#include "ossync.h"
+#include "mutex.h"
+#include "lock.h"
 
 enum {
 	OVL_DIRTY_REGS  = 0x1,
@@ -1601,6 +1604,9 @@ struct mfld_overlay_flip {
 	struct mfld_overlay_regs regs;
 	bool vblank_ref;
 	unsigned int dirty;
+	atomic_t refcnt;
+	struct psb_pending_values pending_values;
+	struct pvr_pending_sync pending_sync;
 };
 
 static void ovl_prepare(struct drm_flip *flip)
@@ -1657,6 +1663,35 @@ static bool ovl_flip_vblank(struct drm_flip *pending_flip)
 	return (OVL_REG_READ(ovl, OVL_DOVSTA) & OVL_DOVSTA_OVR_UPDT) != 0;
 }
 
+static void free_flip(struct mfld_overlay_flip *oflip)
+{
+	if (atomic_dec_and_test(&oflip->refcnt))
+		kfree(oflip);
+}
+
+static void ovl_sync_callback(struct pvr_pending_sync *sync,
+		bool call_from_work)
+{
+	struct mfld_overlay_flip *oflip =
+		container_of(sync, struct mfld_overlay_flip, pending_sync);
+
+	if (psb_fb_increase_read_ops_completed(oflip->old_mem_info,
+			&oflip->pending_values, sync)) {
+		WARN(true, "Sync callback called without completing operation");
+		return;
+	}
+
+	free_flip(oflip);
+
+	if (call_from_work)
+		mutex_lock(&gPVRSRVLock);
+
+	PVRSRVScheduleDeviceCallbacks();
+
+	if (call_from_work)
+		mutex_unlock(&gPVRSRVLock);
+}
+
 static void ovl_flip_complete(struct drm_flip *pending_flip)
 {
 	struct mfld_overlay_flip *oflip =
@@ -1667,7 +1702,13 @@ static void ovl_flip_complete(struct drm_flip *pending_flip)
 	if (oflip->vblank_ref)
 		drm_vblank_put(dev, pipe);
 
-	psb_fb_increase_read_ops_completed(oflip->old_mem_info);
+	atomic_inc(&oflip->refcnt);
+	oflip->pending_sync.callback = ovl_sync_callback;
+	if (psb_fb_increase_read_ops_completed(oflip->old_mem_info,
+				&oflip->pending_values, &oflip->pending_sync))
+		return;
+
+	free_flip(oflip);
 	PVRSRVScheduleDeviceCallbacks();
 }
 
@@ -1689,7 +1730,7 @@ static void ovl_flip_cleanup(struct drm_flip *pending_flip)
 	psb_fb_gtt_unref(dev, oflip->mem_info, oflip->tgid);
 	mutex_unlock(&dev->mode_config.mutex);
 
-	kfree(oflip);
+	free_flip(oflip);
 }
 
 static const struct drm_flip_helper_funcs ovl_flip_funcs = {
@@ -1846,6 +1887,7 @@ struct drm_flip *mdfld_overlay_atomic_flip(struct drm_plane *plane, int pipe)
 
 	drm_flip_init(&oflip->base, &ovl->flip_helper);
 
+	atomic_set(&oflip->refcnt, 1);
 	oflip->mem_info = ovl->mem_info;
 	/* reference ownership moved to the flip */
 	ovl->mem_info = NULL;
@@ -1858,7 +1900,8 @@ struct drm_flip *mdfld_overlay_atomic_flip(struct drm_plane *plane, int pipe)
 
 	oflip->vblank_ref = false;
 
-	psb_fb_increase_read_ops_pending(oflip->old_mem_info);
+	psb_fb_increase_read_ops_pending(oflip->old_mem_info,
+			&oflip->pending_values);
 	psb_fb_flip_trace(oflip->old_mem_info, oflip->mem_info);
 
 	/* we must pipeline the register changes */
