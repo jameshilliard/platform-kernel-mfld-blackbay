@@ -27,6 +27,8 @@
 #define PVRSRV_SYNC_READ	(1 << 0)
 #define PVRSRV_SYNC_WRITE	(1 << 1)
 
+#define pvr_ops_after(a, b) ((s32)(b) - (s32)(a) < 0)
+
 struct pvr_pending_sync;
 
 typedef void (*pvr_sync_callback)(struct pvr_pending_sync *pending_sync, bool from_misr);

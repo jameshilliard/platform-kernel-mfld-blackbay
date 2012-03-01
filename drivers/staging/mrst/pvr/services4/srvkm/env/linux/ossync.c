@@ -30,19 +30,17 @@
 static DEFINE_SPINLOCK(sync_lock);
 static LIST_HEAD(sync_list);
 
-#define ops_after(a, b) ((s32)(b) - (s32)(a) < 0)
-
 static bool pending_ops_completed(PVRSRV_KERNEL_SYNC_INFO *sync_info,
 				  unsigned int flags,
 				  u32 pending_read_ops,
 				  u32 pending_write_ops)
 {
 	if (flags & PVRSRV_SYNC_READ &&
-	    ops_after(pending_read_ops, sync_info->psSyncData->ui32ReadOpsComplete))
+	    pvr_ops_after(pending_read_ops, sync_info->psSyncData->ui32ReadOpsComplete))
 		return false;
 
 	if (flags & PVRSRV_SYNC_WRITE &&
-	    ops_after(pending_write_ops, sync_info->psSyncData->ui32WriteOpsComplete))
+	    pvr_ops_after(pending_write_ops, sync_info->psSyncData->ui32WriteOpsComplete))
 		return false;
 
 	return true;
