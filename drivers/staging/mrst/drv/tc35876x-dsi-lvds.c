@@ -423,6 +423,53 @@ void tc35876x_configure_lvds_bridge(struct drm_device *dev)
 	tc35876x_regw(i2c, DSI_INTCLR, FLD_MASK(31, 30) | FLD_MASK(22, 0));
 }
 
+#define GPIOPWMCTRL	0x38F
+#define PWM0CLKDIV0	0x62 /* low byte */
+#define PWM0CLKDIV1	0x61 /* high byte */
+
+#define SYSTEMCLK	19200000UL /* 19.2 MHz */
+#define PWM_FREQUENCY	9600 /* Hz */
+
+/* f = baseclk / (clkdiv + 1) => clkdiv = (baseclk - f) / f */
+static inline u16 calc_clkdiv(unsigned long baseclk, unsigned int f)
+{
+	return (baseclk - f) / f;
+}
+
+static void tc35876x_brightness_init(struct drm_device *dev)
+{
+	int ret;
+	u8 pwmctrl;
+	u16 clkdiv;
+
+	/* Make sure the PWM reference is the 19.2 MHz system clock. Read first
+	 * instead of setting directly to catch potential conflicts between PWM
+	 * users. */
+	ret = intel_scu_ipc_ioread8(GPIOPWMCTRL, &pwmctrl);
+	if (ret || pwmctrl != 0x01) {
+		if (ret)
+			dev_err(&dev->pdev->dev, "GPIOPWMCTRL read failed\n");
+		else
+			dev_warn(&dev->pdev->dev, "GPIOPWMCTRL was not set to system clock (pwmctrl = 0x%02x)\n", pwmctrl);
+
+		ret = intel_scu_ipc_iowrite8(GPIOPWMCTRL, 0x01);
+		if (ret)
+			dev_err(&dev->pdev->dev, "GPIOPWMCTRL set failed\n");
+	}
+
+	clkdiv = calc_clkdiv(SYSTEMCLK, PWM_FREQUENCY);
+
+	ret = intel_scu_ipc_iowrite8(PWM0CLKDIV1, (clkdiv >> 8) & 0xff);
+	if (!ret)
+		ret = intel_scu_ipc_iowrite8(PWM0CLKDIV0, clkdiv & 0xff);
+
+	if (ret)
+		dev_err(&dev->pdev->dev, "PWM0CLKDIV set failed\n");
+	else
+		dev_dbg(&dev->pdev->dev, "PWM0CLKDIV set to 0x%04x (%d Hz)\n",
+			clkdiv, PWM_FREQUENCY);
+}
+
 #define PWM0DUTYCYCLE			0x67
 
 void tc35876x_brightness_control(struct drm_device *dev, int level)
@@ -765,6 +812,8 @@ void tc35876x_init(struct drm_device *dev, struct panel_funcs *pf)
 		dev_err(&dev->pdev->dev,
 			"%s: i2c_add_driver() for %s failed (%d)\n",
 			__func__, tc35876x_bridge_i2c_driver.driver.name, r);
+
+	tc35876x_brightness_init(dev);
 }
 
 void tc35876x_exit(void)

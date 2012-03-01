@@ -110,23 +110,6 @@ void mdfld_dsi_gen_fifo_ready (struct drm_device *dev, u32 gen_fifo_stat_reg, u3
  * FIXME: this is exported to OSPM code. should work out an specific 
  * display interface to OSPM. 
  */
-#define PWM0_CLK_DIV	64000
-#define PWM0CLKDIV0	0x62
-#define PWM0CLKDIV1	0x61
-static void tc35876x_brightness_init(struct mdfld_dsi_config *dsi_config,
-				int pipe)
-{
-	struct drm_device *dev = dsi_config->dev;
-	int ret;
-
-	dev_dbg(&dev->pdev->dev, "Enter %s\n", __func__);
-
-	/* Set PWM frequency to 300 Hz = (19.2*1000*1000)/64000 */
-	ret = intel_scu_ipc_iowrite8(PWM0CLKDIV0, PWM0_CLK_DIV & 0xff);
-	ret |= intel_scu_ipc_iowrite8(PWM0CLKDIV1, (PWM0_CLK_DIV >> 8) & 0xff);
-	if (ret)
-		dev_err(&dev->pdev->dev, "%s: ipc write fail\n", __func__);
-}
 
 void mdfld_dsi_brightness_init (struct mdfld_dsi_config * dsi_config, int pipe)
 {
@@ -134,11 +117,6 @@ void mdfld_dsi_brightness_init (struct mdfld_dsi_config * dsi_config, int pipe)
 	struct drm_device * dev = sender->dev;
 	struct drm_psb_private * dev_priv = dev->dev_private;
 	u32 gen_ctrl_val;
-
-	if (get_panel_type(dev, pipe) == TC35876X) {
-		tc35876x_brightness_init(dsi_config, pipe);
-		return;
-	}
 
 	if(!sender) {
 		DRM_ERROR("No sender found\n");
