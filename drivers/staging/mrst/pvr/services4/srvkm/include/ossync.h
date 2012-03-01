@@ -43,6 +43,7 @@ struct pvr_pending_sync {
 void PVRSRVCallbackOnSync(PVRSRV_KERNEL_SYNC_INFO *sync_info, unsigned int flags,
 			  pvr_sync_callback callback,
 			  struct pvr_pending_sync *pending_sync);
+void PVRSRVCallbackOnSync2(struct pvr_pending_sync *pending_sync);
 void PVRSRVCheckPendingSyncs(void);
 
 #endif /* _OSSYNC_H_ */

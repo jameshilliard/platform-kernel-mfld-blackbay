@@ -48,6 +48,26 @@ static bool pending_ops_completed(PVRSRV_KERNEL_SYNC_INFO *sync_info,
 	return true;
 }
 
+void
+PVRSRVCallbackOnSync2(struct pvr_pending_sync *pending_sync)
+{
+	bool complete = false;
+	spin_lock_irq(&sync_lock);
+	/* If the object is already in sync, don't add it to the list */
+	if (!pending_ops_completed(pending_sync->sync_info,
+				  pending_sync->flags,
+				  pending_sync->pending_read_ops,
+				  pending_sync->pending_write_ops))
+		list_add_tail(&pending_sync->list, &sync_list);
+	else
+		complete = true;
+
+	spin_unlock_irq(&sync_lock);
+
+	if (complete)
+		pending_sync->callback(pending_sync, false);
+}
+
 /* Returns 0 if the callback was successfully registered.
  * Returns a negative value on error.
  */
@@ -57,7 +77,6 @@ PVRSRVCallbackOnSync(PVRSRV_KERNEL_SYNC_INFO *sync_info,
 		     pvr_sync_callback callback,
 		     struct pvr_pending_sync *pending_sync)
 {
-	bool complete = false;
 	u32 pending_read_ops = sync_info->psSyncData->ui32ReadOpsPending;
 	u32 pending_write_ops = sync_info->psSyncData->ui32WriteOpsPending;
 
@@ -67,19 +86,8 @@ PVRSRVCallbackOnSync(PVRSRV_KERNEL_SYNC_INFO *sync_info,
 	pending_sync->flags = flags;
 	pending_sync->callback = callback;
 
-	spin_lock_irq(&sync_lock);
-	/* If the object is already in sync, don't add it to the list */
-	if (!pending_ops_completed(sync_info, flags,
-				  pending_read_ops,
-				  pending_write_ops))
-		list_add_tail(&pending_sync->list, &sync_list);
-	else
-		complete = true;
+	PVRSRVCallbackOnSync2(pending_sync);
 
-	spin_unlock_irq(&sync_lock);
-
-	if (complete)
-		callback(pending_sync, false);
 	return;
 }
 
