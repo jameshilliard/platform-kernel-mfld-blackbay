@@ -39,6 +39,7 @@
 #include "ttm/ttm_bo_driver.h"
 #include "ttm/ttm_lock.h"
 #include "psb_irq.h"
+#include "psb_intel_reg.h"
 
 #ifdef CONFIG_EARLYSUSPEND
 #include <linux/earlysuspend.h>
@@ -693,44 +694,37 @@ struct drm_psb_private {
 	/*
 	 *Register state
 	 */
+	struct psb_pipe_regs {
+		uint32_t htotal;
+		uint32_t hblank;
+		uint32_t hsync;
+		uint32_t vtotal;
+		uint32_t vblank;
+		uint32_t vsync;
+		uint32_t src;
+		uint32_t dsp_stride;
+		uint32_t dsp_line_offs;
+		uint32_t dsp_tile_offs;
+		uint32_t dsp_size;
+		uint32_t dsp_pos;
+		uint32_t dsp_surf;
+		uint32_t dsp_status;
+	} pipe_regs[PSB_PIPE_NUM];
+
 	uint32_t saveDSPACNTR;
 	uint32_t saveDSPBCNTR;
 	uint32_t savePIPEACONF;
 	uint32_t savePIPEBCONF;
-	uint32_t savePIPEASRC;
-	uint32_t savePIPEBSRC;
 	uint32_t saveFPA0;
 	uint32_t saveFPA1;
 	uint32_t saveDPLL_A;
 	uint32_t saveDPLL_A_MD;
-	uint32_t saveHTOTAL_A;
-	uint32_t saveHBLANK_A;
-	uint32_t saveHSYNC_A;
-	uint32_t saveVTOTAL_A;
-	uint32_t saveVBLANK_A;
-	uint32_t saveVSYNC_A;
-	uint32_t saveDSPASTRIDE;
-	uint32_t saveDSPASIZE;
-	uint32_t saveDSPAPOS;
 	uint32_t saveDSPABASE;
-	uint32_t saveDSPASURF;
-	uint32_t saveDSPASTATUS;
 	uint32_t saveFPB0;
 	uint32_t saveFPB1;
 	uint32_t saveDPLL_B;
 	uint32_t saveDPLL_B_MD;
-	uint32_t saveHTOTAL_B;
-	uint32_t saveHBLANK_B;
-	uint32_t saveHSYNC_B;
-	uint32_t saveVTOTAL_B;
-	uint32_t saveVBLANK_B;
-	uint32_t saveVSYNC_B;
-	uint32_t saveDSPBSTRIDE;
-	uint32_t saveDSPBSIZE;
-	uint32_t saveDSPBPOS;
 	uint32_t saveDSPBBASE;
-	uint32_t saveDSPBSURF;
-	uint32_t saveDSPBSTATUS;
 	uint32_t saveVCLK_DIVISOR_VGA0;
 	uint32_t saveVCLK_DIVISOR_VGA1;
 	uint32_t saveVCLK_POST_DIV;
@@ -751,8 +745,6 @@ struct drm_psb_private {
 	uint32_t saveBLC_PWM_CTL;
 	uint32_t saveCLOCKGATING;
 	uint32_t saveDSPARB;
-	uint32_t saveDSPATILEOFF;
-	uint32_t saveDSPBTILEOFF;
 	uint32_t saveDSPAADDR;
 	uint32_t saveDSPBADDR;
 	uint32_t savePFIT_AUTO_RATIOS;
@@ -764,8 +756,6 @@ struct drm_psb_private {
 	uint32_t saveVBT;
 	uint32_t saveBCLRPAT_A;
 	uint32_t saveBCLRPAT_B;
-	uint32_t saveDSPALINOFF;
-	uint32_t saveDSPBLINOFF;
 	uint32_t savePERF_MODE;
 	uint32_t saveDSPFW1;
 	uint32_t saveDSPFW2;
@@ -804,20 +794,6 @@ struct drm_psb_private {
 	uint32_t saveHDMIB_CONTROL;
 	uint32_t saveDSPCCNTR;
 	uint32_t savePIPECCONF;
-	uint32_t savePIPECSRC;
-	uint32_t saveHTOTAL_C;
-	uint32_t saveHBLANK_C;
-	uint32_t saveHSYNC_C;
-	uint32_t saveVTOTAL_C;
-	uint32_t saveVBLANK_C;
-	uint32_t saveVSYNC_C;
-	uint32_t saveDSPCSTRIDE;
-	uint32_t saveDSPCSIZE;
-	uint32_t saveDSPCPOS;
-	uint32_t saveDSPCSURF;
-	uint32_t saveDSPCSTATUS;
-	uint32_t saveDSPCLINOFF;
-	uint32_t saveDSPCTILEOFF;
 	uint32_t saveDSPCCURSOR_CTRL;
 	uint32_t saveDSPCCURSOR_BASE;
 	uint32_t saveDSPCCURSOR_POS;

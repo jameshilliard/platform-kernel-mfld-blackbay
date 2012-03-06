@@ -1752,7 +1752,7 @@ static int psb_mode_operation_ioctl(struct drm_device *dev, void *data,
 			REG_READ(PSB_DSPSURF(PSB_PIPE_A));
 			ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 		} else {
-			dev_priv->saveDSPASURF = psb_fb->offset;
+			dev_priv->pipe_regs[0].dsp_surf = psb_fb->offset;
 		}
 
 		return 0;
@@ -1949,6 +1949,7 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 	unsigned int iep_ble_status;
 	unsigned long iep_timeout;
 	bool force_on = arg->b_force_hw_on;
+	struct psb_pipe_regs *pipe_regs = dev_priv->pipe_regs;
 
 	if (arg->display_write_mask != 0) {
 		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, force_on)) {
@@ -1990,13 +1991,13 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 				dev_priv->savePFIT_PGM_RATIOS =
 					arg->display.pfit_programmed_scale_ratios;
 			if (arg->display_write_mask & REGRWBITS_PIPEASRC)
-				dev_priv->savePIPEASRC = arg->display.pipeasrc;
+				pipe_regs[0].src = arg->display.pipeasrc;
 			if (arg->display_write_mask & REGRWBITS_PIPEBSRC)
-				dev_priv->savePIPEBSRC = arg->display.pipebsrc;
+				pipe_regs[1].src = arg->display.pipebsrc;
 			if (arg->display_write_mask & REGRWBITS_VTOTAL_A)
-				dev_priv->saveVTOTAL_A = arg->display.vtotal_a;
+				pipe_regs[0].vtotal = arg->display.vtotal_a;
 			if (arg->display_write_mask & REGRWBITS_VTOTAL_B)
-				dev_priv->saveVTOTAL_B = arg->display.vtotal_b;
+				pipe_regs[1].vtotal = arg->display.vtotal_b;
 		}
 	}
 
@@ -2041,13 +2042,13 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 				arg->display.pfit_programmed_scale_ratios =
 					dev_priv->savePFIT_PGM_RATIOS;
 			if (arg->display_read_mask & REGRWBITS_PIPEASRC)
-				arg->display.pipeasrc = dev_priv->savePIPEASRC;
+				arg->display.pipeasrc = pipe_regs[0].src;
 			if (arg->display_read_mask & REGRWBITS_PIPEBSRC)
-				arg->display.pipebsrc = dev_priv->savePIPEBSRC;
+				arg->display.pipebsrc = pipe_regs[1].src;
 			if (arg->display_read_mask & REGRWBITS_VTOTAL_A)
-				arg->display.vtotal_a = dev_priv->saveVTOTAL_A;
+				arg->display.vtotal_a = pipe_regs[0].vtotal;
 			if (arg->display_read_mask & REGRWBITS_VTOTAL_B)
-				arg->display.vtotal_b = dev_priv->saveVTOTAL_B;
+				arg->display.vtotal_b = pipe_regs[1].vtotal;
 		}
 	}
 
