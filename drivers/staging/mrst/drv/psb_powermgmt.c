@@ -592,7 +592,6 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 {
 	//to get  panel out of ULPS mode.
 	u32 temp = 0;
-	u32 device_ready_reg = DEVICE_READY_REG;
 	struct drm_psb_private *dev_priv = dev->dev_private;
 	struct psb_pipe_regs *pr = &dev_priv->pipe_regs[pipe];
 	struct mdfld_dsi_dbi_output * dsi_output = dev_priv->dbi_output;
@@ -748,20 +747,21 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 	REG_WRITE(mipi_reg, temp);
 	mdelay(1);
 
+	if (pipe == PSB_PIPE_A) {
+		/* Set DSI host to exit from Utra Low Power State */
+		temp = REG_READ(MIPI_DEVICE_READY_REG(pipe));
+		temp &= ~ULPS_MASK;
+		temp |= 0x3;
+		temp |= EXIT_ULPS_DEV_READY;
+		REG_WRITE(MIPI_DEVICE_READY_REG(pipe), temp);
+		mdelay(1);
 
-	/* Set DSI host to exit from Utra Low Power State */
-	temp = REG_READ(device_ready_reg);
-	temp &= ~ULPS_MASK;
-	temp |= 0x3;
-	temp |= EXIT_ULPS_DEV_READY;
-	REG_WRITE(device_ready_reg, temp);
-	mdelay(1);
-
-	temp = REG_READ(device_ready_reg);
-	temp &= ~ULPS_MASK;
-	temp |= EXITING_ULPS;
-	REG_WRITE(device_ready_reg, temp);
-	mdelay(1);
+		temp = REG_READ(MIPI_DEVICE_READY_REG(pipe));
+		temp &= ~ULPS_MASK;
+		temp |= EXITING_ULPS;
+		REG_WRITE(MIPI_DEVICE_READY_REG(pipe), temp);
+		mdelay(1);
+	}
 
 	/*enable the pipe*/
 	PSB_WVDC32(pr->pipe_conf, PSB_PIPECONF(pipe));
