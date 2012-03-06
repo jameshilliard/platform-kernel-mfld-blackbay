@@ -371,9 +371,12 @@ enum psb_pipe {
 # define LVDS_B0B3_POWER_DOWN		(0 << 2)
 # define LVDS_B0B3_POWER_UP		(3 << 2)
 
+#define PSB_PIPE_DSL(pipe)	(0x70000 + PSB_PREG_OFFSET(pipe))
 #define PIPEA_DSL		0x70000
 #define PIPEB_DSL		0x71000
 #define PIPEC_DSL		0x72000
+
+#define PSB_PIPECONF(pipe)	(0x70008 + PSB_PREG_OFFSET(pipe))
 
 #define PIPEACONF 0x70008
 #define PIPEACONF_ENABLE	(1<<31)
@@ -409,6 +412,8 @@ enum psb_pipe {
 #define PIPEBGCMAXRED		0x71010
 #define PIPEBGCMAXGREEN		0x71014
 #define PIPEBGCMAXBLUE		0x71018
+
+#define PSB_PIPESTAT(pipe)	(0x70024 + PSB_PREG_OFFSET(pipe))
 
 #define PIPEASTAT               0x70024
 #define PIPEBSTAT		0x71024
@@ -480,7 +485,9 @@ struct dpst_guardband {
 	};
 };
 
+#define PSB_PIPEFRAMEHIGH(pipe)		(0x70040 + PSB_PREG_OFFSET(pipe))
 #define PIPEAFRAMEHIGH		0x70040
+#define PSB_PIPEFRAMEPIXEL(pipe)	(0x70044 + PSB_PREG_OFFSET(pipe))
 #define PIPEAFRAMEPIXEL		0x70044
 #define PIPEBFRAMEHIGH		0x71040
 #define PIPEBFRAMEPIXEL		0x71044
@@ -501,6 +508,8 @@ struct dpst_guardband {
 #define DSPFW5			0x70054
 #define DSPFW6			0x70058
 #define DSPCHICKENBIT		0x70400
+
+#define PSB_DSPCNTR(pipe)	(0x70180 + PSB_PREG_OFFSET(pipe))
 #define DSPACNTR		0x70180
 #define DSPBCNTR		0x71180
 #define DSPCCNTR		0x72180
@@ -534,7 +543,10 @@ struct dpst_guardband {
 #define DISPPLANE_BOTTOM			(4)
 
 #define DSPABASE		0x70184
+#define PSB_DSPLINOFF(pipe)	(0x70184 + PSB_PREG_OFFSET(pipe))
 #define DSPALINOFF		0x70184
+#define PSB_DSPBASE(pipe)	PSB_DSPLINOFF(pipe)
+#define PSB_DSPSTRIDE(pipe)	(0x70188 + PSB_PREG_OFFSET(pipe))
 #define DSPASTRIDE		0x70188
 
 #define DSPBBASE		0x71184
@@ -549,14 +561,18 @@ struct dpst_guardband {
 #define DSPAKEYVAL		0x70194
 #define DSPAKEYMASK		0x70198
 
+#define PSB_DSPPOS(pipe)	(0x7018C + PSB_PREG_OFFSET(pipe))
 #define DSPAPOS			0x7018C	/* reserved */
+#define PSB_DSPSIZE(pipe)	(0x70190 + PSB_PREG_OFFSET(pipe))
 #define DSPASIZE		0x70190
 #define DSPBPOS			0x7118C
 #define DSPBSIZE		0x71190
 #define DSPCPOS			0x7218C
 #define DSPCSIZE		0x72190
 
+#define PSB_DSPSURF(pipe)	(0x7019C + PSB_PREG_OFFSET(pipe))
 #define DSPASURF		0x7019C
+#define PSB_DSPTILEOFF(pipe)	(0x701A4 + PSB_PREG_OFFSET(pipe))
 #define DSPATILEOFF		0x701A4
 
 #define DSPBSURF		0x7119C
@@ -637,6 +653,12 @@ struct dpst_guardband {
 /*
  * Palette registers
  */
+#define PSB_PALETTE_OFFSET(pipe) ({				\
+	const typeof(pipe) __pipe = CHECK_PREG_PIPE(pipe);	\
+	__pipe ? 0x800 + 0x400 * (__pipe - 1) : 0;		\
+})
+
+#define PSB_PALETTE(pipe)	(0x0a000 + PSB_PALETTE_OFFSET(pipe))
 #define PALETTE_A		0x0a000
 #define PALETTE_B		0x0a800
 #define PALETTE_C		0x0ac00
