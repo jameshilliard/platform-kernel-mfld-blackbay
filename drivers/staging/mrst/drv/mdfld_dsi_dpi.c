@@ -102,27 +102,6 @@ static void mdfld_wait_for_SPL_PKG_SENT(struct drm_device *dev, u32 pipe)
                 DRM_INFO("MIPI: SPL_PKT_SENT_INTERRUPT was not sent successfully!\n");
 }
 
-/* For TC35876X */
-static void mdfld_wait_for_PIPEA_DISABLE(struct drm_device *dev, u32 pipe)
-{
-        u32 pipeconf_reg = PIPEACONF;
-        int timeout = 0;
-
-        if (pipe == 2)
-                pipeconf_reg = PIPECCONF;
-
-        udelay(500);
-
-        /* This will time out after approximately 2+ seconds */
-        while ((timeout < 20000) && (REG_READ(pipeconf_reg) & 0x40000000)) {
-                udelay(100);
-                timeout++;
-        }
-
-        if (timeout == 20000)
-                DRM_INFO("MIPI: PIPE was not disabled!\n");
-}
-
 static void dsi_set_device_ready_state(struct drm_device *dev, int state,
 				int pipe)
 {
