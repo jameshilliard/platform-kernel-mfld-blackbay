@@ -466,14 +466,14 @@ static inline unsigned long palette_reg(int pipe, int idx)
 }
 
 /*
- * mdfld_save_display_registers
+ * mdfld_save_pipe_registers
  *
  * Description: We are going to suspend so save current display
  * register state.
  *
  * Notes: FIXME_JLIU7 need to add the support for DPI MIPI & HDMI audio
  */
-static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
+static int mdfld_save_pipe_registers(struct drm_device *dev, int pipe)
 {
 	struct drm_psb_private *dev_priv = dev->dev_private;
 	struct psb_pipe_regs *pr = &dev_priv->pipe_regs[pipe];
@@ -559,13 +559,13 @@ static int mdfld_save_cursor_overlay_registers(struct drm_device *dev)
 	return 0;
 }
 /*
- * mdfld_restore_display_registers
+ * mdfld_restore_pipe_registers
  *
  * Description: We are going to resume so restore display register state.
  *
  * Notes: FIXME_JLIU7 need to add the support for DPI MIPI & HDMI audio
  */
-static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
+static int mdfld_restore_pipe_registers(struct drm_device *dev, int pipe)
 {
 	//to get  panel out of ULPS mode.
 	u32 temp = 0;
@@ -780,8 +780,8 @@ static void ospm_suspend_display(struct drm_device *dev)
 
 	mdfld_save_cursor_overlay_registers(dev);
 
-	mdfld_save_display_registers(dev, 0);
-	mdfld_save_display_registers(dev, 2);
+	mdfld_save_pipe_registers(dev, 0);
+	mdfld_save_pipe_registers(dev, 2);
 	android_hdmi_save_display_registers(dev);
 
 	mdfld_disable_crtc(dev, 0);
@@ -835,8 +835,8 @@ static void ospm_resume_display(struct drm_device *drm_dev)
 	/*psb_gtt_init(dev_priv->pg, 1);*/
 
 	android_hdmi_restore_and_enable_display(drm_dev);
-	mdfld_restore_display_registers(drm_dev, 0);
-	mdfld_restore_display_registers(drm_dev, 2);
+	mdfld_restore_pipe_registers(drm_dev, 0);
+	mdfld_restore_pipe_registers(drm_dev, 2);
 	mdfld_restore_cursor_overlay_registers(drm_dev);
 }
 
