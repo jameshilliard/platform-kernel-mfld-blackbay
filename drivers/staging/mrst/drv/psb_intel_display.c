@@ -972,7 +972,7 @@ static int mdfld__intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
  */
 void mdfld_disable_crtc (struct drm_device *dev, int pipe)
 {
-	int dpll_reg = MRST_DPLL_A;
+	int dpll_reg = PSB_DSI_PLL_CTRL;
 	int dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 	int dspbase_reg = PSB_DSPBASE(PSB_PIPE_A);
 	int pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
@@ -985,13 +985,13 @@ void mdfld_disable_crtc (struct drm_device *dev, int pipe)
 	case 0:
 		break;
 	case 1:
-		dpll_reg = MDFLD_DPLL_B;
+		dpll_reg = PSB_DPLL_CTRL;
 		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_B);
 		dspbase_reg = PSB_DSPSURF(PSB_PIPE_B);
 		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_B);
 		break;
 	case 2:
-		dpll_reg = MRST_DPLL_A;
+		dpll_reg = PSB_DSI_PLL_CTRL;
 		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
 		dspbase_reg = PSB_DSPBASE(PSB_PIPE_C);
 		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
@@ -1066,7 +1066,7 @@ static void mdfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 	DRM_DRIVER_PRIVATE_T *dev_priv = dev->dev_private;
 	struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(crtc);
 	int pipe = psb_intel_crtc->pipe;
-	int dpll_reg = MRST_DPLL_A;
+	int dpll_reg = PSB_DSI_PLL_CTRL;
 	int dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 	int dspbase_reg = PSB_DSPBASE(PSB_PIPE_A);
 	int pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
@@ -1092,10 +1092,10 @@ static void mdfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_B);
 		pipeconf = dev_priv->pipeconf1;
 		dspcntr = dev_priv->dspcntr1;
-		dpll_reg = MDFLD_DPLL_B;
+		dpll_reg = PSB_DPLL_CTRL;
 		break;
 	case 2:
-		dpll_reg = MRST_DPLL_A;
+		dpll_reg = PSB_DSI_PLL_CTRL;
 		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
 		dspbase_reg = PSB_DSPBASE(PSB_PIPE_C);
 		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
@@ -1517,8 +1517,8 @@ static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 	struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(crtc);
 	DRM_DRIVER_PRIVATE_T *dev_priv = dev->dev_private;
 	int pipe = psb_intel_crtc->pipe;
-	int fp_reg = MRST_FPA0;
-	int dpll_reg = MRST_DPLL_A;
+	int fp_reg = PSB_DSI_PLL_DIV_M1;
+	int dpll_reg = PSB_DSI_PLL_CTRL;
 	int dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 	int pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 	int htot_reg = PSB_HTOTAL(PSB_PIPE_A);
@@ -1576,11 +1576,11 @@ static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 		pipesrc_reg = PSB_PIPESRC(PSB_PIPE_B);
 		pipeconf = &dev_priv->pipeconf1;
 		dspcntr = &dev_priv->dspcntr1;
-		fp_reg = MDFLD_DPLL_DIV0;
-		dpll_reg = MDFLD_DPLL_B;
+		fp_reg = PSB_DPLL_DIV0;
+		dpll_reg = PSB_DPLL_CTRL;
 		break;
 	case 2:
-		dpll_reg = MRST_DPLL_A;
+		dpll_reg = PSB_DSI_PLL_CTRL;
 		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
 		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
 		htot_reg = PSB_HTOTAL(PSB_PIPE_C);

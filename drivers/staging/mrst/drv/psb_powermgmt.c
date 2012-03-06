@@ -483,14 +483,13 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 
 	switch (pipe) {
 	case 0:
-		pr->pll_ctrl = PSB_RVDC32(MRST_DPLL_A);
-		pr->pll_div = PSB_RVDC32(MRST_FPA0);
+		pr->pll_ctrl = PSB_RVDC32(PSB_DSI_PLL_CTRL);
+		pr->pll_div = PSB_RVDC32(PSB_DSI_PLL_DIV_M1);
 		pr->mipi_ctrl = PSB_RVDC32(MIPI_PORT_CONTROL(pipe));
 		break;
 	case 1:
-		pr->pll_ctrl = PSB_RVDC32(MDFLD_DPLL_B);
-		pr->pll_div = PSB_RVDC32(MDFLD_DPLL_DIV0);
-
+		pr->pll_ctrl = PSB_RVDC32(PSB_DPLL_CTRL);
+		pr->pll_div = PSB_RVDC32(PSB_DPLL_DIV0);
 		dev_priv->savePFIT_CONTROL = PSB_RVDC32(PFIT_CONTROL);
 		dev_priv->savePFIT_PGM_RATIOS = PSB_RVDC32(PFIT_PGM_RATIOS);
 		dev_priv->saveHDMIPHYMISCCTL = PSB_RVDC32(HDMIPHYMISCCTL);
@@ -584,13 +583,13 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 
 	switch (pipe) {
 	case 0:
-		dpll_reg = MRST_DPLL_A;
-		pll_div_reg = MRST_FPA0;
+		dpll_reg = PSB_DSI_PLL_CTRL;
+		pll_div_reg = PSB_DSI_PLL_DIV_M1;
 		dsi_config = dev_priv->dsi_configs[0];
 		break;
 	case 1:
-		dpll_reg = MDFLD_DPLL_B;
-		pll_div_reg = MDFLD_DPLL_DIV0;
+		dpll_reg = PSB_DPLL_CTRL;
+		pll_div_reg = PSB_DPLL_DIV0;
 		break;
 	case 2:
 		dsi_output = dev_priv->dbi_output2;

@@ -412,7 +412,7 @@ static void mdfld_dsi_dbi_update_fb (struct mdfld_dsi_dbi_output * dbi_output, i
 	struct drm_crtc * crtc = dbi_output->base.base.crtc;
 	struct psb_intel_crtc * psb_crtc = (crtc) ? to_psb_intel_crtc(crtc) : NULL; 
 
-	u32 dpll_reg = MRST_DPLL_A;
+	u32 dpll_reg = PSB_DSI_PLL_CTRL;
 	u32 dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 	u32 dsplinoff_reg = PSB_DSPLINOFF(PSB_PIPE_A);

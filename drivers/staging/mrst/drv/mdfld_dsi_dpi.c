@@ -908,11 +908,11 @@ void mdfld_dsi_dpi_mode_set(struct drm_encoder * encoder,
 		tc35876x_toshiba_bridge_panel_on(dev);
 		udelay(100);
 		/* Now start the DSI clock */
-		REG_WRITE(MRST_DPLL_A, 0x00);
-		REG_WRITE(MRST_FPA0, 0xC1);
-		REG_WRITE(MRST_DPLL_A, 0x00800000);
+		REG_WRITE(PSB_DSI_PLL_CTRL, 0x00);
+		REG_WRITE(PSB_DSI_PLL_DIV_M1, 0xC1);
+		REG_WRITE(PSB_DSI_PLL_CTRL, 0x00800000);
 		udelay(500);
-		REG_WRITE(MRST_DPLL_A, 0x80800000);
+		REG_WRITE(PSB_DSI_PLL_CTRL, 0x80800000);
 
 		if (REG_BIT_WAIT(pipeconf_reg, 1, 29))
 			dev_err(&dev->pdev->dev, "%s: DSI PLL lock timeout\n",

@@ -446,7 +446,7 @@ static int mdfld_dpu_update_fb(struct drm_device * dev) {
 	struct mdfld_dbi_dpu_info * dpu_info = dev_priv->dbi_dpu_info;
 	bool pipe_updated[2];
 	unsigned long irq_flags;
-	u32 dpll_reg = MRST_DPLL_A;
+	u32 dpll_reg = PSB_DSI_PLL_CTRL;
 	u32 dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 	u32 dsplinoff_reg = PSB_DSPLINOFF(PSB_PIPE_A);
@@ -520,7 +520,7 @@ static int __mdfld_dbi_exit_dsr(struct mdfld_dsi_dbi_output * dbi_output, int pi
 	struct drm_crtc * crtc = dbi_output->base.base.crtc;
 	struct psb_intel_crtc * psb_crtc = (crtc) ? to_psb_intel_crtc(crtc) : NULL; 
 	u32 reg_val;
-	u32 dpll_reg = MRST_DPLL_A;
+	u32 dpll_reg = PSB_DSI_PLL_CTRL;
 	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 	u32 dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 	u32 dspbase_reg = PSB_DSPBASE(PSB_PIPE_A);
@@ -538,7 +538,7 @@ static int __mdfld_dbi_exit_dsr(struct mdfld_dsi_dbi_output * dbi_output, int pi
 		return -EAGAIN;
 		
 	if(pipe == 2) {
-		dpll_reg = MRST_DPLL_A;
+		dpll_reg = PSB_DSI_PLL_CTRL;
 		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
 		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
 		dspbase_reg = MDFLD_DSPCBASE;

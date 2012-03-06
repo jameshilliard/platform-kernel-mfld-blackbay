@@ -677,18 +677,16 @@ struct dpst_guardband {
 /*
  * MOORESTOWN delta registers
  */
-#define MRST_DPLL_A		0x0f014
-#define MDFLD_DPLL_B		0x0f018
+#define PSB_DSI_PLL_CTRL	0x0f014
+#define PSB_DPLL_CTRL		0x0f018
 #define MDFLD_INPUT_REF_SEL	(1 << 14) 
 #define MDFLD_VCO_SEL		(1 << 16) 
 #define DPLLA_MODE_LVDS		(2 << 26)	/* mrst */
 #define MDFLD_PLL_LATCHEN	(1 << 28) 
 #define MDFLD_PWR_GATE_EN	(1 << 30) 
 #define MDFLD_P1_MASK		(0x1FF << 17) 
-#define MRST_FPA0		0x0f040
-#define MRST_FPA1		0x0f044
-#define MDFLD_DPLL_DIV0		0x0f048
-#define MDFLD_DPLL_DIV1		0x0f04c
+#define PSB_DSI_PLL_DIV_M1	0x0f040
+#define PSB_DPLL_DIV0		0x0f048
 #define MRST_PERF_MODE		0x020f4
 
 /* MEDFIELD HDMI registers */

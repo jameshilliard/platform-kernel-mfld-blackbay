@@ -804,14 +804,14 @@ int mdfld_dsi_pkg_sender_init(struct mdfld_dsi_connector * dsi_connector, int pi
 	
 	/*init regs*/
 	if(pipe == 0) {
-		pkg_sender->dpll_reg = MRST_DPLL_A;
+		pkg_sender->dpll_reg = PSB_DSI_PLL_CTRL;
 		pkg_sender->dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 		pkg_sender->pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 		pkg_sender->dsplinoff_reg = PSB_DSPLINOFF(PSB_PIPE_A);
 		pkg_sender->dspsurf_reg = PSB_DSPSURF(PSB_PIPE_A);
 		pkg_sender->pipestat_reg = PSB_PIPESTAT(PSB_PIPE_A);
 	} else if (pipe == 2) {
-		pkg_sender->dpll_reg = MRST_DPLL_A;
+		pkg_sender->dpll_reg = PSB_DSI_PLL_CTRL;
 		pkg_sender->dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
 		pkg_sender->pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
 		pkg_sender->dsplinoff_reg = PSB_DSPLINOFF(PSB_PIPE_C);

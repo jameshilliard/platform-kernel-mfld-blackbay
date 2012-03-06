@@ -184,7 +184,7 @@ void mdfld_dsi_dbi_enter_dsr (struct mdfld_dsi_dbi_output * dbi_output, int pipe
 	struct drm_psb_private * dev_priv = dev->dev_private;
 	struct drm_crtc * crtc = dbi_output->base.base.crtc;
 	struct psb_intel_crtc * psb_crtc = (crtc) ? to_psb_intel_crtc(crtc) : NULL; 
-	u32 dpll_reg = MRST_DPLL_A;
+	u32 dpll_reg = PSB_DSI_PLL_CTRL;
 	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 	u32 dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 	u32 dspbase_reg = PSB_DSPBASE(PSB_PIPE_A);
@@ -201,7 +201,7 @@ void mdfld_dsi_dbi_enter_dsr (struct mdfld_dsi_dbi_output * dbi_output, int pipe
 		return;
 		
 	if(pipe == 2) {
-		dpll_reg = MRST_DPLL_A;
+		dpll_reg = PSB_DSI_PLL_CTRL;
 		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
 		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
 		dspbase_reg = PSB_DSPBASE(PSB_PIPE_C);
@@ -260,7 +260,7 @@ static void mdfld_dbi_output_exit_dsr (struct mdfld_dsi_dbi_output * dbi_output,
 	struct drm_crtc * crtc = dbi_output->base.base.crtc;
 	struct psb_intel_crtc * psb_crtc = (crtc) ? to_psb_intel_crtc(crtc) : NULL; 
 	u32 reg_val;
-	u32 dpll_reg = MRST_DPLL_A;
+	u32 dpll_reg = PSB_DSI_PLL_CTRL;
 	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 	u32 dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 
@@ -270,7 +270,7 @@ static void mdfld_dbi_output_exit_dsr (struct mdfld_dsi_dbi_output * dbi_output,
 		return;
 		
 	if(pipe == 2) {
-		dpll_reg = MRST_DPLL_A;
+		dpll_reg = PSB_DSI_PLL_CTRL;
 		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
 		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
 	}
@@ -361,7 +361,7 @@ void mdfld_dsi_dbi_exit_dsr(struct drm_device *dev, u32 update_src)
 
 static bool mdfld_dbi_is_in_dsr(struct drm_device * dev)
 {
-	if(REG_READ(MRST_DPLL_A) & DPLL_VCO_ENABLE)
+	if (REG_READ(PSB_DSI_PLL_CTRL) & DPLL_VCO_ENABLE)
 		return false;
 	if ((REG_READ(PSB_PIPECONF(PSB_PIPE_A)) & PIPEACONF_ENABLE) ||
 	    (REG_READ(PSB_PIPECONF(PSB_PIPE_C)) & PIPEACONF_ENABLE))
