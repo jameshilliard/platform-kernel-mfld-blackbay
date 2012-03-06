@@ -844,17 +844,21 @@ static void mdfld_set_pipe_timing(struct mdfld_dsi_config *dsi_config, int pipe)
 
 	dev_dbg(&dev->pdev->dev, "Enter %s\n", __func__);
 
-	REG_WRITE(HTOTAL_A, ((mode->htotal - 1) << 16) | (mode->hdisplay - 1));
-	REG_WRITE(HBLANK_A, ((mode->htotal - 1) << 16) | (mode->hdisplay - 1));
-	REG_WRITE(HSYNC_A,
+	REG_WRITE(PSB_HTOTAL(PSB_PIPE_A),
+		  ((mode->htotal - 1) << 16) | (mode->hdisplay - 1));
+	REG_WRITE(PSB_HBLANK(PSB_PIPE_A),
+		((mode->htotal - 1) << 16) | (mode->hdisplay - 1));
+	REG_WRITE(PSB_HSYNC(PSB_PIPE_A),
 		((mode->hsync_end - 1) << 16) | (mode->hsync_start - 1));
 
-	REG_WRITE(VTOTAL_A, ((mode->vtotal - 1) << 16) | (mode->vdisplay - 1));
-	REG_WRITE(VBLANK_A, ((mode->vtotal - 1) << 16) | (mode->vdisplay - 1));
-	REG_WRITE(VSYNC_A,
+	REG_WRITE(PSB_VTOTAL(PSB_PIPE_A), \
+		  ((mode->vtotal - 1) << 16) | (mode->vdisplay - 1));
+	REG_WRITE(PSB_VBLANK(PSB_PIPE_A), \
+		  ((mode->vtotal - 1) << 16) | (mode->vdisplay - 1));
+	REG_WRITE(PSB_VSYNC(PSB_PIPE_A),
 		((mode->vsync_end - 1) << 16) | (mode->vsync_start - 1));
 
-	REG_WRITE(PIPEASRC,
+	REG_WRITE(PSB_PIPESRC(PSB_PIPE_A),
 		((mode->hdisplay - 1) << 16) | (mode->vdisplay - 1));
 }
 /* End for TC35876X */

@@ -1645,7 +1645,7 @@ static int psb_dpst_ioctl(struct drm_device *dev, void *data,
 	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false))
 		return 0;
 
-	reg = PSB_RVDC32(PIPEASRC);
+	reg = PSB_RVDC32(PSB_PIPESRC(PSB_PIPE_A));
 
 	ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 
@@ -1965,16 +1965,16 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 					PFIT_PGM_RATIOS);
 			if (arg->display_write_mask & REGRWBITS_PIPEASRC)
 				PSB_WVDC32(arg->display.pipeasrc,
-					   PIPEASRC);
+					   PSB_PIPESRC(PSB_PIPE_A));
 			if (arg->display_write_mask & REGRWBITS_PIPEBSRC)
 				PSB_WVDC32(arg->display.pipebsrc,
-					   PIPEBSRC);
+					   PSB_PIPESRC(PSB_PIPE_B));
 			if (arg->display_write_mask & REGRWBITS_VTOTAL_A)
 				PSB_WVDC32(arg->display.vtotal_a,
-					   VTOTAL_A);
+					   PSB_VTOTAL(PSB_PIPE_A));
 			if (arg->display_write_mask & REGRWBITS_VTOTAL_B)
 				PSB_WVDC32(arg->display.vtotal_b,
-					   VTOTAL_B);
+					   PSB_VTOTAL(PSB_PIPE_B));
 			ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 		} else {
 			if (arg->display_write_mask & REGRWBITS_PFIT_CONTROLS)
@@ -2014,13 +2014,17 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 				arg->display.pfit_programmed_scale_ratios =
 					PSB_RVDC32(PFIT_PGM_RATIOS);
 			if (arg->display_read_mask & REGRWBITS_PIPEASRC)
-				arg->display.pipeasrc = PSB_RVDC32(PIPEASRC);
+				arg->display.pipeasrc = \
+					PSB_RVDC32(PSB_PIPESRC(PSB_PIPE_A));
 			if (arg->display_read_mask & REGRWBITS_PIPEBSRC)
-				arg->display.pipebsrc = PSB_RVDC32(PIPEBSRC);
+				arg->display.pipebsrc = \
+					PSB_RVDC32(PSB_PIPESRC(PSB_PIPE_B));
 			if (arg->display_read_mask & REGRWBITS_VTOTAL_A)
-				arg->display.vtotal_a = PSB_RVDC32(VTOTAL_A);
+				arg->display.vtotal_a = \
+					PSB_RVDC32(PSB_VTOTAL(PSB_PIPE_A));
 			if (arg->display_read_mask & REGRWBITS_VTOTAL_B)
-				arg->display.vtotal_b = PSB_RVDC32(VTOTAL_B);
+				arg->display.vtotal_b = \
+					PSB_RVDC32(PSB_VTOTAL(PSB_PIPE_B));
 			ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 		} else {
 			if (arg->display_read_mask &

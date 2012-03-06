@@ -280,7 +280,7 @@ static void mdfld_dpu_cursor_plane_flush(struct mdfld_dbi_dpu_info * dpu_info,
 static void mdfld_dpu_fb_plane_flush(struct mdfld_dbi_dpu_info * dpu_info,
 									 mdfld_plane_t plane)
 {
-	u32 pipesrc_reg = PIPEASRC;
+	u32 pipesrc_reg = PSB_PIPESRC(PSB_PIPE_A);
 	u32 dspsize_reg = DSPASIZE;
 	u32 dspoff_reg = DSPALINOFF;
 	u32 dspsurf_reg = DSPASURF;
@@ -290,7 +290,7 @@ static void mdfld_dpu_fb_plane_flush(struct mdfld_dbi_dpu_info * dpu_info,
 	struct drm_device * dev = dpu_info->dev;
 	
 	if(plane == MDFLD_PLANEC) {
-		pipesrc_reg = PIPECSRC;
+		pipesrc_reg = PSB_PIPESRC(PSB_PIPE_C);
 		dspsize_reg = DSPCSIZE;
 		dspoff_reg = DSPCLINOFF;
 		dspsurf_reg = DSPCSURF;

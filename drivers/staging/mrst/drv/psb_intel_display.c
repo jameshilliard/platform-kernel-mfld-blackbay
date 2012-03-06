@@ -203,6 +203,7 @@ static void psb_intel_crtc_save(struct drm_crtc *crtc)
 			(struct drm_psb_private *)dev->dev_private; */
 	struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(crtc);
 	struct psb_intel_crtc_state *crtc_state = psb_intel_crtc->crtc_state;
+	int pipe = psb_intel_crtc->pipe;
 	int pipeA = (psb_intel_crtc->pipe == 0);
 	uint32_t paletteReg;
 	int i;
@@ -216,16 +217,16 @@ static void psb_intel_crtc_save(struct drm_crtc *crtc)
 
 	crtc_state->saveDSPCNTR = REG_READ(pipeA ? DSPACNTR : DSPBCNTR);
 	crtc_state->savePIPECONF = REG_READ(pipeA ? PIPEACONF : PIPEBCONF);
-	crtc_state->savePIPESRC = REG_READ(pipeA ? PIPEASRC : PIPEBSRC);
+	crtc_state->savePIPESRC = REG_READ(PSB_PIPESRC(pipe));
 	crtc_state->saveFP0 = REG_READ(pipeA ? FPA0 : FPB0);
 	crtc_state->saveFP1 = REG_READ(pipeA ? FPA1 : FPB1);
 	crtc_state->saveDPLL = REG_READ(pipeA ? DPLL_A : DPLL_B);
-	crtc_state->saveHTOTAL = REG_READ(pipeA ? HTOTAL_A : HTOTAL_B);
-	crtc_state->saveHBLANK = REG_READ(pipeA ? HBLANK_A : HBLANK_B);
-	crtc_state->saveHSYNC = REG_READ(pipeA ? HSYNC_A : HSYNC_B);
-	crtc_state->saveVTOTAL = REG_READ(pipeA ? VTOTAL_A : VTOTAL_B);
-	crtc_state->saveVBLANK = REG_READ(pipeA ? VBLANK_A : VBLANK_B);
-	crtc_state->saveVSYNC = REG_READ(pipeA ? VSYNC_A : VSYNC_B);
+	crtc_state->saveHTOTAL = REG_READ(PSB_HTOTAL(pipe));
+	crtc_state->saveHBLANK = REG_READ(PSB_HBLANK(pipe));
+	crtc_state->saveHSYNC = REG_READ(PSB_HSYNC(pipe));
+	crtc_state->saveVTOTAL = REG_READ(PSB_VTOTAL(pipe));
+	crtc_state->saveVBLANK = REG_READ(PSB_VBLANK(pipe));
+	crtc_state->saveVSYNC = REG_READ(PSB_VSYNC(pipe));
 	crtc_state->saveDSPSTRIDE = REG_READ(pipeA ? DSPASTRIDE : DSPBSTRIDE);
 
 	/*NOTE: DSPSIZE DSPPOS only for psb*/
@@ -269,6 +270,7 @@ static void psb_intel_crtc_restore(struct drm_crtc *crtc)
 	struct psb_intel_crtc *psb_intel_crtc =  to_psb_intel_crtc(crtc);
 	struct psb_intel_crtc_state *crtc_state = psb_intel_crtc->crtc_state;
 	/* struct drm_crtc_helper_funcs * crtc_funcs = crtc->helper_private; */
+	int pipe = psb_intel_crtc->pipe;
 	int pipeA = (psb_intel_crtc->pipe == 0);
 	uint32_t paletteReg;
 	int i;
@@ -284,16 +286,16 @@ static void psb_intel_crtc_restore(struct drm_crtc *crtc)
 		"current:(%x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x)\n",
 		REG_READ(pipeA ? DSPACNTR : DSPBCNTR),
 		REG_READ(pipeA ? PIPEACONF : PIPEBCONF),
-		REG_READ(pipeA ? PIPEASRC : PIPEBSRC),
+		REG_READ(PSB_PIPESRC(pipe)),
 		REG_READ(pipeA ? FPA0 : FPB0),
 		REG_READ(pipeA ? FPA1 : FPB1),
 		REG_READ(pipeA ? DPLL_A : DPLL_B),
-		REG_READ(pipeA ? HTOTAL_A : HTOTAL_B),
-		REG_READ(pipeA ? HBLANK_A : HBLANK_B),
-		REG_READ(pipeA ? HSYNC_A : HSYNC_B),
-		REG_READ(pipeA ? VTOTAL_A : VTOTAL_B),
-		REG_READ(pipeA ? VBLANK_A : VBLANK_B),
-		REG_READ(pipeA ? VSYNC_A : VSYNC_B),
+		REG_READ(PSB_HTOTAL(pipe)),
+		REG_READ(PSB_HBLANK(pipe)),
+		REG_READ(PSB_HSYNC(pipe)),
+		REG_READ(PSB_VTOTAL(pipe)),
+		REG_READ(PSB_VBLANK(pipe)),
+		REG_READ(PSB_VSYNC(pipe)),
 		REG_READ(pipeA ? DSPASTRIDE : DSPBSTRIDE),
 		REG_READ(pipeA ? DSPASIZE : DSPBSIZE),
 		REG_READ(pipeA ? DSPAPOS : DSPBPOS),
@@ -339,18 +341,18 @@ static void psb_intel_crtc_restore(struct drm_crtc *crtc)
 	REG_READ(pipeA ? DPLL_A : DPLL_B);
 	udelay(150);
 
-	REG_WRITE(pipeA ? HTOTAL_A : HTOTAL_B, crtc_state->saveHTOTAL);
-	REG_WRITE(pipeA ? HBLANK_A : HBLANK_B, crtc_state->saveHBLANK);
-	REG_WRITE(pipeA ? HSYNC_A : HSYNC_B, crtc_state->saveHSYNC);
-	REG_WRITE(pipeA ? VTOTAL_A : VTOTAL_B, crtc_state->saveVTOTAL);
-	REG_WRITE(pipeA ? VBLANK_A : VBLANK_B, crtc_state->saveVBLANK);
-	REG_WRITE(pipeA ? VSYNC_A : VSYNC_B, crtc_state->saveVSYNC);
+	REG_WRITE(PSB_HTOTAL(pipe), crtc_state->saveHTOTAL);
+	REG_WRITE(PSB_HBLANK(pipe), crtc_state->saveHBLANK);
+	REG_WRITE(PSB_HSYNC(pipe), crtc_state->saveHSYNC);
+	REG_WRITE(PSB_VTOTAL(pipe), crtc_state->saveVTOTAL);
+	REG_WRITE(PSB_VBLANK(pipe), crtc_state->saveVBLANK);
+	REG_WRITE(PSB_VSYNC(pipe), crtc_state->saveVSYNC);
 	REG_WRITE(pipeA ? DSPASTRIDE : DSPBSTRIDE, crtc_state->saveDSPSTRIDE);
 
 	REG_WRITE(pipeA ? DSPASIZE : DSPBSIZE, crtc_state->saveDSPSIZE);
 	REG_WRITE(pipeA ? DSPAPOS : DSPBPOS, crtc_state->saveDSPPOS);
 
-	REG_WRITE(pipeA ? PIPEASRC : PIPEBSRC, crtc_state->savePIPESRC);
+	REG_WRITE(PSB_PIPESRC(pipe), crtc_state->savePIPESRC);
 	REG_WRITE(pipeA ? DSPABASE : DSPBBASE, crtc_state->saveDSPBASE);
 	REG_WRITE(pipeA ? PIPEACONF : PIPEBCONF, crtc_state->savePIPECONF);
 
@@ -1540,15 +1542,15 @@ static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 	int dpll_reg = MRST_DPLL_A;
 	int dspcntr_reg = DSPACNTR;
 	int pipeconf_reg = PIPEACONF;
-	int htot_reg = HTOTAL_A;
-	int hblank_reg = HBLANK_A;
-	int hsync_reg = HSYNC_A;
-	int vtot_reg = VTOTAL_A;
-	int vblank_reg = VBLANK_A;
-	int vsync_reg = VSYNC_A;
+	int htot_reg = PSB_HTOTAL(PSB_PIPE_A);
+	int hblank_reg = PSB_HBLANK(PSB_PIPE_A);
+	int hsync_reg = PSB_HSYNC(PSB_PIPE_A);
+	int vtot_reg = PSB_VTOTAL(PSB_PIPE_A);
+	int vblank_reg = PSB_VBLANK(PSB_PIPE_A);
+	int vsync_reg = PSB_VSYNC(PSB_PIPE_A);
 	int dspsize_reg = DSPASIZE; 
 	int dsppos_reg = DSPAPOS; 
-	int pipesrc_reg = PIPEASRC;
+	int pipesrc_reg = PSB_PIPESRC(PSB_PIPE_A);
 	u32 *pipeconf = &dev_priv->pipeconf;
 	u32 *dspcntr = &dev_priv->dspcntr;
 	int refclk = 0;
@@ -1584,15 +1586,15 @@ static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 		dpll_reg = DPLL_B;
 		dspcntr_reg = DSPBCNTR;
 		pipeconf_reg = PIPEBCONF;
-		htot_reg = HTOTAL_B;
-		hblank_reg = HBLANK_B;
-		hsync_reg = HSYNC_B;
-		vtot_reg = VTOTAL_B;
-		vblank_reg = VBLANK_B;
-		vsync_reg = VSYNC_B;
+		htot_reg = PSB_HTOTAL(PSB_PIPE_B);
+		hblank_reg = PSB_HBLANK(PSB_PIPE_B);
+		hsync_reg = PSB_HSYNC(PSB_PIPE_B);
+		vtot_reg = PSB_VTOTAL(PSB_PIPE_B);
+		vblank_reg = PSB_VBLANK(PSB_PIPE_B);
+		vsync_reg = PSB_VSYNC(PSB_PIPE_B);
 		dspsize_reg = DSPBSIZE; 
 		dsppos_reg = DSPBPOS; 
-		pipesrc_reg = PIPEBSRC;
+		pipesrc_reg = PSB_PIPESRC(PSB_PIPE_B);
 		pipeconf = &dev_priv->pipeconf1;
 		dspcntr = &dev_priv->dspcntr1;
 		fp_reg = MDFLD_DPLL_DIV0;
@@ -1602,15 +1604,15 @@ static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 		dpll_reg = MRST_DPLL_A;
 		dspcntr_reg = DSPCCNTR;
 		pipeconf_reg = PIPECCONF;
-		htot_reg = HTOTAL_C;
-		hblank_reg = HBLANK_C;
-		hsync_reg = HSYNC_C;
-		vtot_reg = VTOTAL_C;
-		vblank_reg = VBLANK_C;
-		vsync_reg = VSYNC_C;
+		htot_reg = PSB_HTOTAL(PSB_PIPE_C);
+		hblank_reg = PSB_HBLANK(PSB_PIPE_C);
+		hsync_reg = PSB_HSYNC(PSB_PIPE_C);
+		vtot_reg = PSB_VTOTAL(PSB_PIPE_C);
+		vblank_reg = PSB_VBLANK(PSB_PIPE_C);
+		vsync_reg = PSB_VSYNC(PSB_PIPE_C);
 		dspsize_reg = DSPCSIZE; 
 		dsppos_reg = DSPCPOS; 
-		pipesrc_reg = PIPECSRC;
+		pipesrc_reg = PSB_PIPESRC(PSB_PIPE_C);
 		pipeconf = &dev_priv->pipeconf2;
 		dspcntr = &dev_priv->dspcntr2;
 		break;
