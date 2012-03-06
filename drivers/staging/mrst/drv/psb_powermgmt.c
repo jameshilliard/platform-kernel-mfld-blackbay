@@ -462,91 +462,6 @@ void ospm_power_uninit(struct drm_device *drm_dev)
 
 
 /*
- * save_display_registers
- *
- * Description: We are going to suspend so save current display
- * register state.
- */
-static int save_display_registers(struct drm_device *dev)
-{
-	struct drm_psb_private *dev_priv = dev->dev_private;
-	struct drm_crtc * crtc;
-	struct drm_connector * connector;
-
-	/* Display arbitration control + watermarks */
-	dev_priv->saveDSPARB = PSB_RVDC32(DSPARB);
-	dev_priv->saveDSPFW1 = PSB_RVDC32(DSPFW1);
-	dev_priv->saveDSPFW2 = PSB_RVDC32(DSPFW2);
-	dev_priv->saveDSPFW3 = PSB_RVDC32(DSPFW3);
-	dev_priv->saveDSPFW4 = PSB_RVDC32(DSPFW4);
-	dev_priv->saveDSPFW5 = PSB_RVDC32(DSPFW5);
-	dev_priv->saveDSPFW6 = PSB_RVDC32(DSPFW6);
-	dev_priv->saveCHICKENBIT = PSB_RVDC32(DSPCHICKENBIT);
-
-	/*save crtc and output state*/
-	mutex_lock(&dev->mode_config.mutex);
-	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
-		if (drm_helper_crtc_in_use(crtc)) {
-			crtc->funcs->save(crtc);
-		}
-	}
-
-	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
-		connector->funcs->save(connector);
-	}
-	mutex_unlock(&dev->mode_config.mutex);
-
-	/* Interrupt state */
-	/*
-	 * Handled in psb_irq.c
-	 */
-
-	return 0;
-}
-
-/*
- * restore_display_registers
- *
- * Description: We are going to resume so restore display register state.
- */
-static int restore_display_registers(struct drm_device *dev)
-{
-	struct drm_psb_private *dev_priv = dev->dev_private;
-	struct drm_crtc * crtc;
-	struct drm_connector * connector;
-
-	/* Display arbitration + watermarks */
-	PSB_WVDC32(dev_priv->saveDSPARB, DSPARB);
-	PSB_WVDC32(dev_priv->saveDSPFW1, DSPFW1);
-	PSB_WVDC32(dev_priv->saveDSPFW2, DSPFW2);
-	PSB_WVDC32(dev_priv->saveDSPFW3, DSPFW3);
-	PSB_WVDC32(dev_priv->saveDSPFW4, DSPFW4);
-	PSB_WVDC32(dev_priv->saveDSPFW5, DSPFW5);
-	PSB_WVDC32(dev_priv->saveDSPFW6, DSPFW6);
-	PSB_WVDC32(dev_priv->saveCHICKENBIT, DSPCHICKENBIT);
-
-	/*make sure VGA plane is off. it initializes to on after reset!*/
-	PSB_WVDC32(0x80000000, VGACNTRL);
-
-	mutex_lock(&dev->mode_config.mutex);
-	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
-		if (drm_helper_crtc_in_use(crtc))
-			crtc->funcs->restore(crtc);
-	}
-
-	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
-		connector->funcs->restore(connector);
-	}
-	mutex_unlock(&dev->mode_config.mutex);
-
-	/*Interrupt state*/
-	/*
-	 * Handled in psb_irq.c
-	 */
-
-	return 0;
-}
-/*
  * mdfld_save_display_registers
  *
  * Description: We are going to suspend so save current display
@@ -1084,22 +999,6 @@ static int mdfld_restore_cursor_overlay_registers(struct drm_device *dev)
 	return 0;
 }
 
-/*
- *  mdfld_save_display
- *
- * Description: Save display status before DPMS OFF for RuntimePM
- */
-static void mdfld_save_display(struct drm_device *dev)
-{
-#ifdef OSPM_GFX_DPK
-	printk(KERN_ALERT "ospm_save_display\n");
-#endif
-	mdfld_save_cursor_overlay_registers(dev);
-
-	mdfld_save_display_registers(dev, 0);
-
-	mdfld_save_display_registers(dev, 2);
-}
 /*
  * powermgmt_suspend_display
  *
