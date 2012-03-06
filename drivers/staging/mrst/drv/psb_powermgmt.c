@@ -460,6 +460,10 @@ void ospm_power_uninit(struct drm_device *drm_dev)
 	mutex_destroy(&g_ospm_mutex);
 }
 
+static inline unsigned long palette_reg(int pipe, int idx)
+{
+	return PSB_PALETTE(pipe) + (idx << 2);
+}
 
 /*
  * mdfld_save_display_registers
@@ -479,13 +483,11 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 	u32 dpll_reg = MRST_DPLL_A;
 	u32 fp_reg = MRST_FPA0;
 	u32 mipi_reg = MIPI;
-	u32 palette_reg = PALETTE_A;
 
 	/* pointer to values */
 	u32 *dpll_val = &dev_priv->saveDPLL_A;
 	u32 *fp_val = &dev_priv->saveFPA0;
 	u32 *mipi_val = &dev_priv->saveMIPI;
-	u32 *palette_val = dev_priv->save_palette_a;
 	PSB_DEBUG_ENTRY("\n");
 
 	switch (pipe) {
@@ -495,21 +497,17 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 		/* regester */
 		dpll_reg = MDFLD_DPLL_B;
 		fp_reg = MDFLD_DPLL_DIV0;
-		palette_reg = PALETTE_B;
 
 		/* values */
 		dpll_val = &dev_priv->saveDPLL_B;
 		fp_val = &dev_priv->saveFPB0;
-		palette_val = dev_priv->save_palette_b;
 		break;
 	case 2:
 		/* regester */
 		mipi_reg = MIPI_C;
-		palette_reg = PALETTE_C;
 
 		/* pointer to values */
 		mipi_val = &dev_priv->saveMIPI_C;
-		palette_val = dev_priv->save_palette_c;
 		break;
 	default:
 		DRM_ERROR("%s, invalid pipe number. \n", __FUNCTION__);
@@ -538,8 +536,8 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 	pr->dsp_status		= PSB_RVDC32(PSB_PIPESTAT(pipe));
 
 	/*save palette (gamma) */
-	for (i = 0; i < 256; i++)
-		palette_val[i] = PSB_RVDC32(palette_reg + (i << 2));
+	for (i = 0; i < ARRAY_SIZE(pr->palette); i++)
+		pr->palette[i] = PSB_RVDC32(palette_reg(pipe, i));
 
 	if (pipe == 1) {
 		dev_priv->savePFIT_CONTROL = PSB_RVDC32(PFIT_CONTROL);
@@ -607,13 +605,11 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 	u32 dpll_reg = MRST_DPLL_A;
 	u32 fp_reg = MRST_FPA0;
 	u32 mipi_reg = MIPI;
-	u32 palette_reg = PALETTE_A;
 
 	/* values */
 	u32 dpll_val = dev_priv->saveDPLL_A & ~DPLL_VCO_ENABLE;
 	u32 fp_val = dev_priv->saveFPA0;
 	u32 mipi_val = dev_priv->saveMIPI;
-	u32 *palette_val = dev_priv->save_palette_a;
 	PSB_DEBUG_ENTRY("\n");
 
 	switch (pipe) {
@@ -624,23 +620,19 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 		/* regester */
 		dpll_reg = MDFLD_DPLL_B;
 		fp_reg = MDFLD_DPLL_DIV0;
-		palette_reg = PALETTE_B;
 
 		/* values */
 		dpll_val = dev_priv->saveDPLL_B & ~DPLL_VCO_ENABLE;
 		fp_val = dev_priv->saveFPB0;
-		palette_val = dev_priv->save_palette_b;
 		break;
 	case 2:
 		dsi_output = dev_priv->dbi_output2;
 
 		/* regester */
 		mipi_reg = MIPI_C;
-		palette_reg = PALETTE_C;
 
 		/* values */
 		mipi_val = dev_priv->saveMIPI_C;
-		palette_val = dev_priv->save_palette_c;
 
 		dsi_config = dev_priv->dsi_configs[1];
 		break;
@@ -713,8 +705,8 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 	if (pipe == 1) {
 		/* restore palette (gamma) */
 		/*DRM_UDELAY(50000); */
-		for (i = 0; i < 256; i++)
-			PSB_WVDC32(palette_val[i], palette_reg + (i << 2));
+		for (i = 0; i < ARRAY_SIZE(pr->palette); i++)
+			PSB_WVDC32(pr->palette[i], palette_reg(pipe, i));
 
 		PSB_WVDC32(dev_priv->savePFIT_CONTROL, PFIT_CONTROL);
 		PSB_WVDC32(dev_priv->savePFIT_PGM_RATIOS, PFIT_PGM_RATIOS);
@@ -776,8 +768,8 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 
 	/* restore palette (gamma) */
 	/*DRM_UDELAY(50000); */
-	for (i = 0; i < 256; i++)
-		PSB_WVDC32(palette_val[i], palette_reg + (i << 2));
+	for (i = 0; i < ARRAY_SIZE(pr->palette); i++)
+		PSB_WVDC32(pr->palette[i], palette_reg(pipe, i));
 
 	return 0;
 }

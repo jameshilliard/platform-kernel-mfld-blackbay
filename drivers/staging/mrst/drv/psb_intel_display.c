@@ -169,7 +169,7 @@ void psb_intel_crtc_load_lut(struct drm_crtc *crtc)
 		ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 	} else {
 		for (i = 0; i < 256; i++) {
-			dev_priv->save_palette_a[i] =
+			dev_priv->pipe_regs[0].palette[i] =
 				  ((psb_intel_crtc->lut_r[i] +
 				  psb_intel_crtc->lut_adj[i]) << 16) |
 				  ((psb_intel_crtc->lut_g[i] +

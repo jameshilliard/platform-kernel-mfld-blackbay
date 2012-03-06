@@ -711,6 +711,7 @@ struct drm_psb_private {
 		uint32_t dsp_status;
 		uint32_t dsp_cntr;
 		uint32_t pipe_conf;
+		uint32_t palette[256];
 	} pipe_regs[PSB_PIPE_NUM];
 
 	uint32_t saveFPA0;
@@ -768,8 +769,6 @@ struct drm_psb_private {
 	uint32_t saveDSPBCURSOR_BASE;
 	uint32_t saveDSPACURSOR_POS;
 	uint32_t saveDSPBCURSOR_POS;
-	uint32_t save_palette_a[256];
-	uint32_t save_palette_b[256];
 	uint32_t saveOV_OVADD;
 	uint32_t saveOV_OGAMC0;
 	uint32_t saveOV_OGAMC1;
@@ -793,7 +792,6 @@ struct drm_psb_private {
 	uint32_t saveDSPCCURSOR_CTRL;
 	uint32_t saveDSPCCURSOR_BASE;
 	uint32_t saveDSPCCURSOR_POS;
-	uint32_t save_palette_c[256];
 	uint32_t saveOV_OVADD_C;
 	uint32_t saveOV_OGAMC0_C;
 	uint32_t saveOV_OGAMC1_C;
