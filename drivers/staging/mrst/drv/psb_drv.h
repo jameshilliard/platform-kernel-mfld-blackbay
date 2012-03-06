@@ -711,17 +711,16 @@ struct drm_psb_private {
 		uint32_t dsp_status;
 		uint32_t dsp_cntr;
 		uint32_t pipe_conf;
+		uint32_t pll_ctrl;
+		uint32_t pll_div;
+		uint32_t mipi_ctrl;
 		uint32_t palette[256];
 	} pipe_regs[PSB_PIPE_NUM];
 
-	uint32_t saveFPA0;
 	uint32_t saveFPA1;
-	uint32_t saveDPLL_A;
 	uint32_t saveDPLL_A_MD;
 	uint32_t saveDSPABASE;
-	uint32_t saveFPB0;
 	uint32_t saveFPB1;
-	uint32_t saveDPLL_B;
 	uint32_t saveDPLL_B_MD;
 	uint32_t saveDSPBBASE;
 	uint32_t saveVCLK_DIVISOR_VGA0;
@@ -826,8 +825,6 @@ struct drm_psb_private {
 	uint32_t saveTXCLKESC_REG;
 	uint32_t saveDPHY_PARAM_REG;
 	uint32_t saveMIPI_CONTROL_REG;
-	uint32_t saveMIPI;
-	uint32_t saveMIPI_C;
 	void (*init_drvIC)(struct drm_device *dev);
 	void (*dsi_prePowerState)(struct drm_device *dev);
 	void (*dsi_postPowerState)(struct drm_device *dev);

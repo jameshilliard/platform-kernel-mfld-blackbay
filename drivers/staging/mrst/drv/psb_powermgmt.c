@@ -479,29 +479,17 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 	struct psb_pipe_regs *pr = &dev_priv->pipe_regs[pipe];
 	int i;
 
-	/* regester */
-	u32 dpll_reg = MRST_DPLL_A;
-	u32 fp_reg = MRST_FPA0;
-	u32 mipi_reg = MIPI;
-
-	/* pointer to values */
-	u32 *dpll_val = &dev_priv->saveDPLL_A;
-	u32 *fp_val = &dev_priv->saveFPA0;
-	u32 *mipi_val = &dev_priv->saveMIPI;
 	PSB_DEBUG_ENTRY("\n");
 
 	switch (pipe) {
 	case 0:
-		*mipi_val = PSB_RVDC32(mipi_reg);
+		pr->pll_ctrl = PSB_RVDC32(MRST_DPLL_A);
+		pr->pll_div = PSB_RVDC32(MRST_FPA0);
+		pr->mipi_ctrl = PSB_RVDC32(MIPI_PORT_CONTROL(pipe));
 		break;
 	case 1:
-		/* regester */
-		dpll_reg = MDFLD_DPLL_B;
-		fp_reg = MDFLD_DPLL_DIV0;
-
-		/* values */
-		dpll_val = &dev_priv->saveDPLL_B;
-		fp_val = &dev_priv->saveFPB0;
+		pr->pll_ctrl = PSB_RVDC32(MDFLD_DPLL_B);
+		pr->pll_div = PSB_RVDC32(MDFLD_DPLL_DIV0);
 
 		dev_priv->savePFIT_CONTROL = PSB_RVDC32(PFIT_CONTROL);
 		dev_priv->savePFIT_PGM_RATIOS = PSB_RVDC32(PFIT_PGM_RATIOS);
@@ -509,13 +497,7 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 		dev_priv->saveHDMIB_CONTROL = PSB_RVDC32(HDMIB_CONTROL);
 		break;
 	case 2:
-		/* regester */
-		mipi_reg = MIPI_C;
-
-		/* pointer to values */
-		mipi_val = &dev_priv->saveMIPI_C;
-
-		*mipi_val = PSB_RVDC32(mipi_reg);
+		pr->mipi_ctrl = PSB_RVDC32(MIPI_PORT_CONTROL(pipe));
 		break;
 	default:
 		DRM_ERROR("%s, invalid pipe number. \n", __FUNCTION__);
@@ -523,8 +505,6 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 	}
 
 	/* Pipe & plane A info */
-	*dpll_val = PSB_RVDC32(dpll_reg);
-	*fp_val = PSB_RVDC32(fp_reg);
 	pr->pipe_conf = PSB_RVDC32(PSB_PIPECONF(pipe));
 	pr->dsp_cntr = PSB_RVDC32(PSB_DSPCNTR(pipe));
 
@@ -596,40 +576,24 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 	struct mdfld_dsi_config * dsi_config = NULL;
 	u32 i = 0;
 	u32 dpll = 0;
+	u32 dpll_reg = 0;
+	u32 pll_div_reg = 0;
+	u32 dpll_val;
 
-	/* regester */
-	u32 dpll_reg = MRST_DPLL_A;
-	u32 fp_reg = MRST_FPA0;
-	u32 mipi_reg = MIPI;
-
-	/* values */
-	u32 dpll_val = dev_priv->saveDPLL_A & ~DPLL_VCO_ENABLE;
-	u32 fp_val = dev_priv->saveFPA0;
-	u32 mipi_val = dev_priv->saveMIPI;
 	PSB_DEBUG_ENTRY("\n");
 
 	switch (pipe) {
 	case 0:
+		dpll_reg = MRST_DPLL_A;
+		pll_div_reg = MRST_FPA0;
 		dsi_config = dev_priv->dsi_configs[0];
 		break;
 	case 1:
-		/* regester */
 		dpll_reg = MDFLD_DPLL_B;
-		fp_reg = MDFLD_DPLL_DIV0;
-
-		/* values */
-		dpll_val = dev_priv->saveDPLL_B & ~DPLL_VCO_ENABLE;
-		fp_val = dev_priv->saveFPB0;
+		pll_div_reg = MDFLD_DPLL_DIV0;
 		break;
 	case 2:
 		dsi_output = dev_priv->dbi_output2;
-
-		/* regester */
-		mipi_reg = MIPI_C;
-
-		/* values */
-		mipi_val = dev_priv->saveMIPI_C;
-
 		dsi_config = dev_priv->dsi_configs[1];
 		break;
 	default:
@@ -637,16 +601,19 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 		return -EINVAL;
 	}
 
+	dpll_val = pr->pll_ctrl & ~DPLL_VCO_ENABLE;
+
 	/*make sure VGA plane is off. it initializes to on after reset!*/
 	PSB_WVDC32(0x80000000, VGACNTRL);
 
-	if (pipe == 1) {
+	switch (pipe) {
+	case 1:
 		PSB_WVDC32(dpll_val & ~DPLL_VCO_ENABLE, dpll_reg);
 		PSB_RVDC32(dpll_reg);
+		PSB_WVDC32(pr->pll_div, pll_div_reg);
+		break;
 
-		PSB_WVDC32(fp_val, fp_reg);
-	} else {
-
+	case 0:
 		dpll = PSB_RVDC32(dpll_reg);
 
 		if (!(dpll & DPLL_VCO_ENABLE)) {
@@ -658,7 +625,7 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 				udelay(500);
 			}
 
-			PSB_WVDC32(fp_val, fp_reg);
+			PSB_WVDC32(pr->pll_div, pll_div_reg);
 			PSB_WVDC32(dpll_val, dpll_reg);
 			/* FIXME_MDFLD PO - change 500 to 1 after PO */
 			udelay(500);
@@ -673,6 +640,7 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 				return -EINVAL;
 			}
 		}
+		break;
 	}
 
 	PSB_WVDC32(pr->htotal,		PSB_HTOTAL(pipe));
@@ -711,7 +679,7 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 	}
 
 	/*set up pipe related registers*/
-	PSB_WVDC32(mipi_val, mipi_reg);
+	PSB_WVDC32(pr->mipi_ctrl, MIPI_PORT_CONTROL(pipe));
 
 	/*setup MIPI adapter + MIPI IP registers*/
 	if (dsi_config)
@@ -731,9 +699,9 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 		msleep(20);
 
 	/* LP Hold Release */
-	temp = REG_READ(mipi_reg);
+	temp = REG_READ(MIPI_PORT_CONTROL(pipe));
 	temp |= LP_OUTPUT_HOLD_RELEASE;
-	REG_WRITE(mipi_reg, temp);
+	REG_WRITE(MIPI_PORT_CONTROL(pipe), temp);
 	mdelay(1);
 
 	if (pipe == PSB_PIPE_A) {
