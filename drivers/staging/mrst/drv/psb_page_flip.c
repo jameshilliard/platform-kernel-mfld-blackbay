@@ -197,6 +197,12 @@ unlock:
 	spin_unlock_irqrestore(&dev->event_lock, flags);
 }
 
+static void free_flip(struct pending_flip *crtc_flip)
+{
+	if (atomic_dec_and_test(&crtc_flip->refcnt))
+		kfree(crtc_flip);
+}
+
 static void crtc_flip_cleanup(struct drm_flip *flip)
 {
 	struct pending_flip *crtc_flip =
@@ -207,7 +213,7 @@ static void crtc_flip_cleanup(struct drm_flip *flip)
 	psb_fb_gtt_unref(dev, crtc_flip->mem_info, crtc_flip->tgid);
 	mutex_unlock(&dev->mode_config.mutex);
 
-	kfree(crtc_flip);
+	free_flip(crtc_flip);
 }
 
 static void crtc_flip_finish(struct drm_flip *flip)
@@ -225,12 +231,6 @@ static void psb_flip_driver_flush(struct drm_flip_driver *driver)
 
 	/* Flush posted writes */
 	(void)ioread32(dev_priv->vdc_reg + PSB_PIPESTAT(PSB_PIPE_A));
-}
-
-static void free_flip(struct pending_flip *crtc_flip)
-{
-	if (atomic_dec_and_test(&crtc_flip->refcnt))
-		kfree(crtc_flip);
 }
 
 static void psb_flip_complete_sync_callback(struct pvr_pending_sync *sync,
