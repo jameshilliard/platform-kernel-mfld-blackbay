@@ -598,7 +598,6 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 	struct mdfld_dsi_config * dsi_config = NULL;
 	u32 i = 0;
 	u32 dpll = 0;
-	u32 timeout = 0;
 
 	/* regester */
 	u32 dpll_reg = MRST_DPLL_A;
@@ -653,8 +652,6 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 		dpll = PSB_RVDC32(dpll_reg);
 
 		if (!(dpll & DPLL_VCO_ENABLE)) {
-			unsigned long pipeconf_reg;
-
 			/* When ungating power of DPLL, needs to wait 0.5us before enable the VCO */
 			if (dpll & MDFLD_PWR_GATE_EN) {
 				dpll &= ~MDFLD_PWR_GATE_EN;
@@ -672,15 +669,9 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 			PSB_WVDC32(dpll_val, dpll_reg);
 			PSB_RVDC32(dpll_reg);
 
-			pipeconf_reg = PSB_PIPECONF(pipe);
-			/* wait for DSI PLL to lock */
-			while ((timeout < 20000) && !(PSB_RVDC32(pipeconf_reg) & PIPECONF_DSIPLL_LOCK)) {
-				udelay(150);
-				timeout ++;
-			}
-
-			if (timeout == 20000) {
-				DRM_ERROR("%s, can't lock DSIPLL. \n", __FUNCTION__);
+			if (REG_FLAG_WAIT_SET(PSB_PIPECONF(pipe),
+					      PIPECONF_DSIPLL_LOCK)) {
+				DRM_ERROR("%s, can't lock DSIPLL.\n", __func__);
 				return -EINVAL;
 			}
 		}
