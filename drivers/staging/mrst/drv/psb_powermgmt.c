@@ -492,6 +492,7 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 
 	switch (pipe) {
 	case 0:
+		*mipi_val = PSB_RVDC32(mipi_reg);
 		break;
 	case 1:
 		/* regester */
@@ -501,6 +502,11 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 		/* values */
 		dpll_val = &dev_priv->saveDPLL_B;
 		fp_val = &dev_priv->saveFPB0;
+
+		dev_priv->savePFIT_CONTROL = PSB_RVDC32(PFIT_CONTROL);
+		dev_priv->savePFIT_PGM_RATIOS = PSB_RVDC32(PFIT_PGM_RATIOS);
+		dev_priv->saveHDMIPHYMISCCTL = PSB_RVDC32(HDMIPHYMISCCTL);
+		dev_priv->saveHDMIB_CONTROL = PSB_RVDC32(HDMIB_CONTROL);
 		break;
 	case 2:
 		/* regester */
@@ -508,6 +514,8 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 
 		/* pointer to values */
 		mipi_val = &dev_priv->saveMIPI_C;
+
+		*mipi_val = PSB_RVDC32(mipi_reg);
 		break;
 	default:
 		DRM_ERROR("%s, invalid pipe number. \n", __FUNCTION__);
@@ -539,16 +547,6 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 	for (i = 0; i < ARRAY_SIZE(pr->palette); i++)
 		pr->palette[i] = PSB_RVDC32(palette_reg(pipe, i));
 
-	if (pipe == 1) {
-		dev_priv->savePFIT_CONTROL = PSB_RVDC32(PFIT_CONTROL);
-		dev_priv->savePFIT_PGM_RATIOS = PSB_RVDC32(PFIT_PGM_RATIOS);
-
-		dev_priv->saveHDMIPHYMISCCTL = PSB_RVDC32(HDMIPHYMISCCTL);
-		dev_priv->saveHDMIB_CONTROL = PSB_RVDC32(HDMIB_CONTROL);
-		return 0;
-	}
-
-	*mipi_val = PSB_RVDC32(mipi_reg);
 	return 0;
 }
 /*
