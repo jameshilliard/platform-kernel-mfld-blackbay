@@ -372,13 +372,9 @@ enum psb_pipe {
 # define LVDS_B0B3_POWER_UP		(3 << 2)
 
 #define PSB_PIPE_DSL(pipe)	(0x70000 + PSB_PREG_OFFSET(pipe))
-#define PIPEA_DSL		0x70000
-#define PIPEB_DSL		0x71000
-#define PIPEC_DSL		0x72000
 
 #define PSB_PIPECONF(pipe)	(0x70008 + PSB_PREG_OFFSET(pipe))
 
-#define PIPEACONF 0x70008
 #define PIPEACONF_ENABLE	(1<<31)
 #define PIPEACONF_DISABLE	0
 #define PIPEACONF_DOUBLE_WIDE	(1<<30)
@@ -399,7 +395,6 @@ enum psb_pipe {
 #define PIPECONF_CURSOR_OFF 	(1<<18)
 
 
-#define PIPEBCONF 0x71008
 #define PIPEBCONF_ENABLE	(1<<31)
 #define PIPEBCONF_DISABLE	0
 #define PIPEBCONF_DOUBLE_WIDE	(1<<30)
@@ -407,17 +402,12 @@ enum psb_pipe {
 #define PIPEBCONF_GAMMA 	(1<<24)
 #define PIPEBCONF_PALETTE	0
 
-#define PIPECCONF 0x72008
-
 #define PIPEBGCMAXRED		0x71010
 #define PIPEBGCMAXGREEN		0x71014
 #define PIPEBGCMAXBLUE		0x71018
 
 #define PSB_PIPESTAT(pipe)	(0x70024 + PSB_PREG_OFFSET(pipe))
 
-#define PIPEASTAT               0x70024
-#define PIPEBSTAT		0x71024
-#define PIPECSTAT		0x72024
 #define PIPE_VBLANK_INTERRUPT_STATUS         (1UL<<1)
 #define PIPE_START_VBLANK_INTERRUPT_STATUS   (1UL<<2)
 #define PIPE_VBLANK_CLEAR                    (1 << 1)
@@ -486,13 +476,7 @@ struct dpst_guardband {
 };
 
 #define PSB_PIPEFRAMEHIGH(pipe)		(0x70040 + PSB_PREG_OFFSET(pipe))
-#define PIPEAFRAMEHIGH		0x70040
 #define PSB_PIPEFRAMEPIXEL(pipe)	(0x70044 + PSB_PREG_OFFSET(pipe))
-#define PIPEAFRAMEPIXEL		0x70044
-#define PIPEBFRAMEHIGH		0x71040
-#define PIPEBFRAMEPIXEL		0x71044
-#define PIPECFRAMEHIGH		0x72040
-#define PIPECFRAMEPIXEL		0x72044
 #define PIPE_FRAME_HIGH_MASK    0x0000ffff
 #define PIPE_FRAME_HIGH_SHIFT   0
 #define PIPE_FRAME_LOW_MASK     0xff000000
@@ -510,9 +494,6 @@ struct dpst_guardband {
 #define DSPCHICKENBIT		0x70400
 
 #define PSB_DSPCNTR(pipe)	(0x70180 + PSB_PREG_OFFSET(pipe))
-#define DSPACNTR		0x70180
-#define DSPBCNTR		0x71180
-#define DSPCCNTR		0x72180
 #define DISPLAY_PLANE_ENABLE 			(1<<31)
 #define DISPLAY_PLANE_DISABLE			0
 #define DISPPLANE_GAMMA_ENABLE			(1<<30)
@@ -542,44 +523,18 @@ struct dpst_guardband {
 #define DISPPLANE_SPRITE_ABOVE_OVERLAY		(1)
 #define DISPPLANE_BOTTOM			(4)
 
-#define DSPABASE		0x70184
 #define PSB_DSPLINOFF(pipe)	(0x70184 + PSB_PREG_OFFSET(pipe))
-#define DSPALINOFF		0x70184
 #define PSB_DSPBASE(pipe)	PSB_DSPLINOFF(pipe)
 #define PSB_DSPSTRIDE(pipe)	(0x70188 + PSB_PREG_OFFSET(pipe))
-#define DSPASTRIDE		0x70188
-
-#define DSPBBASE		0x71184
-#define DSPBLINOFF		0X71184
-#define DSPBADDR		DSPBBASE
-#define DSPBSTRIDE		0x71188
-
-#define DSPCBASE		0x72184
-#define DSPCLINOFF		0x72184
-#define DSPCSTRIDE		0x72188
 
 #define DSPAKEYVAL		0x70194
 #define DSPAKEYMASK		0x70198
 
 #define PSB_DSPPOS(pipe)	(0x7018C + PSB_PREG_OFFSET(pipe))
-#define DSPAPOS			0x7018C	/* reserved */
 #define PSB_DSPSIZE(pipe)	(0x70190 + PSB_PREG_OFFSET(pipe))
-#define DSPASIZE		0x70190
-#define DSPBPOS			0x7118C
-#define DSPBSIZE		0x71190
-#define DSPCPOS			0x7218C
-#define DSPCSIZE		0x72190
-
 #define PSB_DSPSURF(pipe)	(0x7019C + PSB_PREG_OFFSET(pipe))
-#define DSPASURF		0x7019C
 #define PSB_DSPTILEOFF(pipe)	(0x701A4 + PSB_PREG_OFFSET(pipe))
-#define DSPATILEOFF		0x701A4
 
-#define DSPBSURF		0x7119C
-#define DSPBTILEOFF		0x711A4
-
-#define DSPCSURF		0x7219C
-#define DSPCTILEOFF		0x721A4
 #define DSPCKEYMAXVAL 		0x721A0
 #define DSPCKEYMINVAL 		0x72194
 #define DSPCKEYMSK 		0x72198
@@ -659,9 +614,6 @@ struct dpst_guardband {
 })
 
 #define PSB_PALETTE(pipe)	(0x0a000 + PSB_PALETTE_OFFSET(pipe))
-#define PALETTE_A		0x0a000
-#define PALETTE_B		0x0a800
-#define PALETTE_C		0x0ac00
 
 #define IS_I830(dev) ((dev)->pci_device == PCI_DEVICE_ID_INTEL_82830_CGC)
 #define IS_845G(dev) ((dev)->pci_device == PCI_DEVICE_ID_INTEL_82845G_IG)
@@ -790,10 +742,6 @@ Ignore alpha.1110 = 32 - bit RGBX(8 : 8 : 8 : 8) pixel format.
     Ignore
     alpha.
 #endif				/*FIXME JLIU7 need to define the following */
-
-#define MRST_DSPABASE		0x7019c
-#define MRST_DSPBBASE		0x7119c
-#define MDFLD_DSPCBASE		0x7219c
 
 /*
  * MOORESTOWN reserved registers
