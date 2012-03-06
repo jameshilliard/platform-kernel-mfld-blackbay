@@ -1241,12 +1241,12 @@ static inline void REGISTER_WRITE(struct drm_device *dev, uint32_t reg,
 #define REG_FLD_MOD(reg, val, start, end) \
 	REG_WRITE(reg, FLD_MOD(REG_READ(reg), val, start, end))
 
-static inline int REGISTER_FLD_WAIT(struct drm_device *dev, u32 reg,
-				    u32 val, int start, int end)
+static inline int REGISTER_FLD_MASK_WAIT(struct drm_device *dev, u32 reg,
+					 u32 val, u32 mask)
 {
 	int t = 100000;
 
-	while (FLD_GET(REG_READ(reg), start, end) != val) {
+	while ((REG_READ(reg) & mask) != val) {
 		if (--t == 0)
 			return 1;
 	}
@@ -1254,11 +1254,24 @@ static inline int REGISTER_FLD_WAIT(struct drm_device *dev, u32 reg,
 	return 0;
 }
 
+static inline int REGISTER_FLD_WAIT(struct drm_device *dev, u32 reg, u32 val,
+				    int start, int end)
+{
+	return REGISTER_FLD_MASK_WAIT(dev, reg, FLD_VAL(val, start, end),
+				      FLD_MASK(start, end));
+}
+
 #define REG_FLD_WAIT(reg, val, start, end) \
 	REGISTER_FLD_WAIT(dev, reg, val, start, end)
 
 #define REG_BIT_WAIT(reg, val, bitnum) \
 	REGISTER_FLD_WAIT(dev, reg, val, bitnum, bitnum)
+
+#define REG_FLAG_WAIT_SET(reg, flag) \
+	REGISTER_FLD_MASK_WAIT(dev, reg, flag, flag)
+
+#define REG_FLAG_WAIT_CLEAR(reg, flag) \
+	REGISTER_FLD_MASK_WAIT(dev, reg, flag, 0)
 
 static inline void REGISTER_WRITE16(struct drm_device *dev,
 					uint32_t reg, uint32_t val)
