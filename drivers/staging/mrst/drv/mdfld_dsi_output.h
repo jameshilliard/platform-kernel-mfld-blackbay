@@ -30,6 +30,7 @@
 
 #include <linux/backlight.h>
 #include <linux/version.h>
+#include <linux/bitops.h>
 #include <drm/drmP.h>
 #include <drm/drm.h>
 #include <drm/drm_crtc.h>
@@ -45,19 +46,13 @@
 
 #define MDFLD_DSI_BRIGHTNESS_MAX_LEVEL 100
 
-#ifdef DEBUG
-#define CHECK_PIPE(pipe) ({			\
-	const typeof(pipe) __pipe = (pipe);	\
-	BUG_ON(__pipe != 0 && __pipe != 2);	\
-	__pipe;	})
-#else
-#define CHECK_PIPE(pipe) (pipe)
-#endif
-
 /*
  * Actual MIPIA->MIPIC reg offset is 0x800, value 0x400 is valid for 0 and 2
  */
-#define REG_OFFSET(pipe) (CHECK_PIPE(pipe) * 0x400)
+#define CHECK_MIPI_PIPE(pipe)		\
+	(PSB_CHECK_PIPE(pipe, BIT(0) | BIT(2)))
+
+#define REG_OFFSET(pipe)			(CHECK_MIPI_PIPE(pipe) * 0x400)
 
 /* mdfld DSI controller registers */
 #define MIPI_DEVICE_READY_REG(pipe)		(0xb000 + REG_OFFSET(pipe))
@@ -102,7 +97,8 @@
 #define MIPI_CMD_LEN_REG(pipe)			(0xb114 + REG_OFFSET(pipe))
 
 /* non-uniform reg offset */
-#define MIPI_PORT_CONTROL(pipe)		(CHECK_PIPE(pipe) ? MIPI_C : MIPI)
+#define MIPI_PORT_CONTROL(pipe)		\
+		(CHECK_MIPI_PIPE(pipe) ? MIPI_C : MIPI)
 
 #define DSI_DEVICE_READY 					(0x1)
 #define DSI_POWER_STATE_ULPS_ENTER			(0x2 << 1)

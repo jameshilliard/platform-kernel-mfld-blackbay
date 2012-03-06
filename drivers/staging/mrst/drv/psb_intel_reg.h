@@ -17,6 +17,15 @@
 #ifndef __PSB_INTEL_REG_H__
 #define __PSB_INTEL_REG_H__
 
+#ifdef DEBUG
+#define PSB_CHECK_PIPE(pipe, valid_pipes) ({		\
+	const typeof(pipe) __pipe = (pipe);		\
+	BUG_ON(!((1 << __pipe) & (valid_pipes)));	\
+	__pipe;	})
+#else
+#define PSB_CHECK_PIPE(pipe, valid_pipes) (pipe)
+#endif
+
 #define BLC_PWM_CTL		0x61254
 #define BLC_PWM_CTL2		0x61250
 #define BLC_PWM_CTL_C		0x62254
