@@ -767,6 +767,7 @@ static int mdfld_restore_cursor_overlay_registers(struct drm_device *dev)
  */
 static void ospm_suspend_display(struct drm_device *dev)
 {
+	struct drm_psb_private *dev_priv = dev->dev_private;
 	//to put panel into ULPS mode.
 	u32 temp = 0;
 	u32 device_ready_reg = DEVICE_READY_REG;
@@ -783,6 +784,8 @@ static void ospm_suspend_display(struct drm_device *dev)
 	mdfld_save_pipe_registers(dev, 0);
 	mdfld_save_pipe_registers(dev, 2);
 	android_hdmi_save_display_registers(dev);
+	/* save the gunit register controlling write-combining */
+	dev_priv->savePERF_MODE = PSB_RVDC32(MRST_PERF_MODE);
 
 	mdfld_disable_crtc(dev, 0);
 	mdfld_disable_crtc(dev, 2);
@@ -834,6 +837,8 @@ static void ospm_resume_display(struct drm_device *drm_dev)
 	 */
 	/*psb_gtt_init(dev_priv->pg, 1);*/
 
+	/* restore gunit register controlling write-combining */
+	PSB_WVDC32(dev_priv->savePERF_MODE, MRST_PERF_MODE);
 	android_hdmi_restore_and_enable_display(drm_dev);
 	mdfld_restore_pipe_registers(drm_dev, 0);
 	mdfld_restore_pipe_registers(drm_dev, 2);
