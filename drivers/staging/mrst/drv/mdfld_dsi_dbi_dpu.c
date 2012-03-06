@@ -281,20 +281,20 @@ static void mdfld_dpu_fb_plane_flush(struct mdfld_dbi_dpu_info * dpu_info,
 									 mdfld_plane_t plane)
 {
 	u32 pipesrc_reg = PSB_PIPESRC(PSB_PIPE_A);
-	u32 dspsize_reg = DSPASIZE;
-	u32 dspoff_reg = DSPALINOFF;
-	u32 dspsurf_reg = DSPASURF;
-	u32 dspstride_reg = DSPASTRIDE;
+	u32 dspsize_reg = PSB_DSPSIZE(PSB_PIPE_A);
+	u32 dspoff_reg = PSB_DSPLINOFF(PSB_PIPE_A);
+	u32 dspsurf_reg = PSB_DSPSURF(PSB_PIPE_A);
+	u32 dspstride_reg = PSB_DSPSTRIDE(PSB_PIPE_A);
 	u32 stride;
 	struct psb_drm_dpu_rect * rect = &dpu_info->damage_pipea;
 	struct drm_device * dev = dpu_info->dev;
 	
 	if(plane == MDFLD_PLANEC) {
 		pipesrc_reg = PSB_PIPESRC(PSB_PIPE_C);
-		dspsize_reg = DSPCSIZE;
-		dspoff_reg = DSPCLINOFF;
-		dspsurf_reg = DSPCSURF;
-		dspstride_reg = DSPCSTRIDE;
+		dspsize_reg = PSB_DSPSIZE(PSB_PIPE_C);
+		dspoff_reg = PSB_DSPLINOFF(PSB_PIPE_C);
+		dspsurf_reg = PSB_DSPSURF(PSB_PIPE_C);
+		dspstride_reg = PSB_DSPSTRIDE(PSB_PIPE_C);
 		
 		rect = &dpu_info->damage_pipec;
 	}
@@ -447,10 +447,10 @@ static int mdfld_dpu_update_fb(struct drm_device * dev) {
 	bool pipe_updated[2];
 	unsigned long irq_flags;
 	u32 dpll_reg = MRST_DPLL_A;
-	u32 dspcntr_reg = DSPACNTR;
-	u32 pipeconf_reg = PIPEACONF;
-	u32 dsplinoff_reg = DSPALINOFF;
-	u32 dspsurf_reg = DSPASURF;
+	u32 dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
+	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
+	u32 dsplinoff_reg = PSB_DSPLINOFF(PSB_PIPE_A);
+	u32 dspsurf_reg = PSB_DSPSURF(PSB_PIPE_A);
 	int pipe;
 	int i;
 	int ret;
@@ -473,10 +473,10 @@ static int mdfld_dpu_update_fb(struct drm_device * dev) {
                 pipe = dbi_output[i]->channel_num ? 2 : 0;
 
                 if(pipe == 2) {
-                        dspcntr_reg = DSPCCNTR;
-                        pipeconf_reg = PIPECCONF;
-                        dsplinoff_reg = DSPCLINOFF;
-                        dspsurf_reg = DSPCSURF;
+			dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
+			pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
+			dsplinoff_reg = PSB_DSPLINOFF(PSB_PIPE_C);
+			dspsurf_reg = PSB_DSPSURF(PSB_PIPE_C);
                 }
 
                 if (!(REG_READ(MIPI_GEN_FIFO_STAT_REG(pipe)) & BIT(27)) ||
@@ -521,10 +521,10 @@ static int __mdfld_dbi_exit_dsr(struct mdfld_dsi_dbi_output * dbi_output, int pi
 	struct psb_intel_crtc * psb_crtc = (crtc) ? to_psb_intel_crtc(crtc) : NULL; 
 	u32 reg_val;
 	u32 dpll_reg = MRST_DPLL_A;
-	u32 pipeconf_reg = PIPEACONF;
-	u32 dspcntr_reg = DSPACNTR;
-	u32 dspbase_reg = DSPABASE;
-	u32 dspsurf_reg = DSPASURF;
+	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
+	u32 dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
+	u32 dspbase_reg = PSB_DSPBASE(PSB_PIPE_A);
+	u32 dspsurf_reg = PSB_DSPSURF(PSB_PIPE_A);
 
 	PSB_DEBUG_ENTRY("\n");
 
@@ -539,10 +539,10 @@ static int __mdfld_dbi_exit_dsr(struct mdfld_dsi_dbi_output * dbi_output, int pi
 		
 	if(pipe == 2) {
 		dpll_reg = MRST_DPLL_A;
-		pipeconf_reg = PIPECCONF;
-		dspcntr_reg = DSPCCNTR;
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
 		dspbase_reg = MDFLD_DSPCBASE;
-		dspsurf_reg = DSPCSURF;
+		dspsurf_reg = PSB_DSPSURF(PSB_PIPE_C);
 	}
 
 	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true))

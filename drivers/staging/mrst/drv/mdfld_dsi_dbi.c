@@ -185,10 +185,10 @@ void mdfld_dsi_dbi_enter_dsr (struct mdfld_dsi_dbi_output * dbi_output, int pipe
 	struct drm_crtc * crtc = dbi_output->base.base.crtc;
 	struct psb_intel_crtc * psb_crtc = (crtc) ? to_psb_intel_crtc(crtc) : NULL; 
 	u32 dpll_reg = MRST_DPLL_A;
-	u32 pipeconf_reg = PIPEACONF;
-	u32 dspcntr_reg = DSPACNTR;
-	u32 dspbase_reg = DSPABASE;
-	u32 dspsurf_reg = DSPASURF;
+	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
+	u32 dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
+	u32 dspbase_reg = PSB_DSPBASE(PSB_PIPE_A);
+	u32 dspsurf_reg = PSB_DSPSURF(PSB_PIPE_A);
 
 	PSB_DEBUG_ENTRY(" \n");
 	
@@ -202,10 +202,10 @@ void mdfld_dsi_dbi_enter_dsr (struct mdfld_dsi_dbi_output * dbi_output, int pipe
 		
 	if(pipe == 2) {
 		dpll_reg = MRST_DPLL_A;
-		pipeconf_reg = PIPECCONF;
-		dspcntr_reg = DSPCCNTR;
-		dspbase_reg = MDFLD_DSPCBASE;
-		dspsurf_reg = DSPCSURF;
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
+		dspbase_reg = PSB_DSPBASE(PSB_PIPE_C);
+		dspsurf_reg = PSB_DSPSURF(PSB_PIPE_C);
 	}
 
 	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true)) {
@@ -261,8 +261,8 @@ static void mdfld_dbi_output_exit_dsr (struct mdfld_dsi_dbi_output * dbi_output,
 	struct psb_intel_crtc * psb_crtc = (crtc) ? to_psb_intel_crtc(crtc) : NULL; 
 	u32 reg_val;
 	u32 dpll_reg = MRST_DPLL_A;
-	u32 pipeconf_reg = PIPEACONF;
-	u32 dspcntr_reg = DSPACNTR;
+	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
+	u32 dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 
 	/*if mode setting on-going, back off*/
 	if((dbi_output->mode_flags & MODE_SETTING_ON_GOING) ||
@@ -271,8 +271,8 @@ static void mdfld_dbi_output_exit_dsr (struct mdfld_dsi_dbi_output * dbi_output,
 		
 	if(pipe == 2) {
 		dpll_reg = MRST_DPLL_A;
-		pipeconf_reg = PIPECCONF;
-		dspcntr_reg = DSPCCNTR;
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
 	}
 
 	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true)) {
@@ -363,11 +363,11 @@ static bool mdfld_dbi_is_in_dsr(struct drm_device * dev)
 {
 	if(REG_READ(MRST_DPLL_A) & DPLL_VCO_ENABLE)
 		return false;
-	if((REG_READ(PIPEACONF) & PIPEACONF_ENABLE) ||
-	   (REG_READ(PIPECCONF) & PIPEACONF_ENABLE))
+	if ((REG_READ(PSB_PIPECONF(PSB_PIPE_A)) & PIPEACONF_ENABLE) ||
+	    (REG_READ(PSB_PIPECONF(PSB_PIPE_C)) & PIPEACONF_ENABLE))
 		return false;
-	if((REG_READ(DSPACNTR) & DISPLAY_PLANE_ENABLE) ||
-	   (REG_READ(DSPCCNTR) & DISPLAY_PLANE_ENABLE))
+	if ((REG_READ(PSB_DSPCNTR(PSB_PIPE_A)) & DISPLAY_PLANE_ENABLE) ||
+	    (REG_READ(PSB_DSPCNTR(PSB_PIPE_C)) & DISPLAY_PLANE_ENABLE))
 		return false;
 	
 	return true;

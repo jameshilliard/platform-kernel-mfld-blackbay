@@ -243,8 +243,8 @@ static void mdfld_dsi_dbi_mode_set(struct drm_encoder * encoder,
 	int pipe = dsi_connector->pipe;
 	
 	/*regs*/
-	u32 dspcntr_reg = DSPACNTR;
-	u32 pipeconf_reg = PIPEACONF;
+	u32 dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
+	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 	
 	/*values*/
 	u32 dspcntr_val = dev_priv->dspcntr;
@@ -262,8 +262,8 @@ static void mdfld_dsi_dbi_mode_set(struct drm_encoder * encoder,
 	PSB_DEBUG_ENTRY("h %d v %d\n", mode->hdisplay, mode->vdisplay);
 
 	if(pipe == 2) {
-		dspcntr_reg = DSPCCNTR;
-		pipeconf_reg = PIPECCONF;
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
 		dspcntr_val = dev_priv->dspcntr2;
 		pipeconf_val = dev_priv->pipeconf2;
 	} else {
@@ -413,10 +413,10 @@ static void mdfld_dsi_dbi_update_fb (struct mdfld_dsi_dbi_output * dbi_output, i
 	struct psb_intel_crtc * psb_crtc = (crtc) ? to_psb_intel_crtc(crtc) : NULL; 
 
 	u32 dpll_reg = MRST_DPLL_A;
-	u32 dspcntr_reg = DSPACNTR;
-	u32 pipeconf_reg = PIPEACONF;
-	u32 dsplinoff_reg = DSPALINOFF;
-	u32 dspsurf_reg = DSPASURF;
+	u32 dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
+	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
+	u32 dsplinoff_reg = PSB_DSPLINOFF(PSB_PIPE_A);
+	u32 dspsurf_reg = PSB_DSPSURF(PSB_PIPE_A);
 	
 	/*if mode setting on-going, back off*/
 	if((dbi_output->mode_flags & MODE_SETTING_ON_GOING) ||
@@ -425,10 +425,10 @@ static void mdfld_dsi_dbi_update_fb (struct mdfld_dsi_dbi_output * dbi_output, i
 		return;
 		
 	if(pipe == 2) {
-		dspcntr_reg = DSPCCNTR;
-		pipeconf_reg = PIPECCONF;
-		dsplinoff_reg = DSPCLINOFF;
-		dspsurf_reg = DSPCSURF;
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
+		dsplinoff_reg = PSB_DSPLINOFF(PSB_PIPE_C);
+		dspsurf_reg = PSB_DSPSURF(PSB_PIPE_C);
 	}
 
 	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true)) {

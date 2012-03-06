@@ -45,13 +45,7 @@
 static inline u32
 psb_pipestat(int pipe)
 {
-	if (pipe == 0)
-		return PIPEASTAT;
-	if (pipe == 1)
-		return PIPEBSTAT;
-	if (pipe == 2)
-		return PIPECSTAT;
-	BUG();
+	return PSB_PIPESTAT(pipe);
 }
 
 static inline u32
@@ -81,13 +75,7 @@ mid_pipe_vsync(int pipe)
 static inline u32
 mid_pipeconf(int pipe)
 {
-	if (pipe == 0)
-		return PIPEACONF;
-	if (pipe == 1)
-		return PIPEBCONF;
-	if (pipe == 2)
-		return PIPECCONF;
-	BUG();
+	return PSB_PIPECONF(pipe);
 }
 
 static void trcmd_vblank_power(unsigned type, int pipe)
@@ -335,9 +323,9 @@ static void mid_pipe_event_handler(struct drm_device *dev, uint32_t pipe)
 			ie_hist_cont_reg.ie_histogram_enable = 0;
 			PSB_WVDC32(ie_hist_cont_reg.data, HISTOGRAM_LOGIC_CONTROL);
 
-			irqCtrl = PSB_RVDC32(PIPEASTAT);
+			irqCtrl = PSB_RVDC32(PSB_PIPESTAT(PSB_PIPE_A));
 			irqCtrl &= ~PIPE_DPST_EVENT_ENABLE;
-			PSB_WVDC32(irqCtrl, PIPEASTAT);
+			PSB_WVDC32(irqCtrl, PSB_PIPESTAT(PSB_PIPE_A));
 		}
 		pwm_reg = PSB_RVDC32(PWM_CONTROL_LOGIC);
 		if ((pwm_reg & PWM_PHASEIN_INT_ENABLE) &&
@@ -849,9 +837,9 @@ void psb_disable_vblank(struct drm_device *dev, int pipe)
  */
 u32 psb_get_vblank_counter(struct drm_device *dev, int pipe)
 {
-	uint32_t high_frame = PIPEAFRAMEHIGH;
-	uint32_t low_frame = PIPEAFRAMEPIXEL;
-	uint32_t pipeconf_reg = PIPEACONF;
+	uint32_t high_frame = PSB_PIPEFRAMEHIGH(PSB_PIPE_A);
+	uint32_t low_frame = PSB_PIPEFRAMEPIXEL(PSB_PIPE_A);
+	uint32_t pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 	uint32_t reg_val = 0;
 	uint32_t high1 = 0, high2 = 0, low = 0, count = 0;
 
@@ -859,14 +847,14 @@ u32 psb_get_vblank_counter(struct drm_device *dev, int pipe)
 	case 0:
 		break;
 	case 1:
-		high_frame = PIPEBFRAMEHIGH;
-		low_frame = PIPEBFRAMEPIXEL;
-		pipeconf_reg = PIPEBCONF;
+		high_frame = PSB_PIPEFRAMEHIGH(PSB_PIPE_B);
+		low_frame = PSB_PIPEFRAMEPIXEL(PSB_PIPE_B);
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_B);
 		break;
 	case 2:
-		high_frame = PIPECFRAMEHIGH;
-		low_frame = PIPECFRAMEPIXEL;
-		pipeconf_reg = PIPECCONF;
+		high_frame = PSB_PIPEFRAMEHIGH(PSB_PIPE_C);
+		low_frame = PSB_PIPEFRAMEPIXEL(PSB_PIPE_C);
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
 		break;
 	default:
 		DRM_ERROR("%s, invalded pipe. \n", __FUNCTION__);
@@ -967,7 +955,7 @@ int mdfld_irq_enable_hdmi_audio(struct drm_device *dev)
 	u32 reg_val = 0, mask = 0;
 
 	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
-		reg_val = REG_READ(PIPEBCONF);
+		reg_val = REG_READ(PSB_PIPECONF(PSB_PIPE_B));
 		ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 	}
 

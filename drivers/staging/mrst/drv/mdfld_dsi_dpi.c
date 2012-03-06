@@ -114,8 +114,8 @@ static void dsi_set_device_ready_state(struct drm_device *dev, int state,
 static void dsi_set_pipe_plane_enable_state(struct drm_device *dev, int state, int pipe)
 {
 	struct drm_psb_private *dev_priv = dev->dev_private;
-	u32 pipeconf_reg = PIPEACONF;
-	u32 dspcntr_reg = DSPACNTR;
+	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
+	u32 dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 
 	u32 pipeconf = dev_priv->pipeconf;
 	u32 dspcntr = dev_priv->dspcntr;
@@ -125,8 +125,8 @@ static void dsi_set_pipe_plane_enable_state(struct drm_device *dev, int state, i
 		__func__, state, pipe);
 
 	if (pipe) {
-		pipeconf_reg = PIPECCONF;
-		dspcntr_reg = DSPCCNTR;
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
 	} else {
 		mipi &= (~0x03);
 	}
@@ -144,7 +144,7 @@ static void dsi_set_pipe_plane_enable_state(struct drm_device *dev, int state, i
 		REG_WRITE(dspcntr_reg, dspcntr);
 	} else {
 		u32 val;
-		u32 dspbase_reg = pipe ? MDFLD_DSPCBASE : MRST_DSPABASE;
+		u32 dspbase_reg = PSB_DSPBASE(pipe);
 
 		/* Put DSI lanes to ULPS to disable pipe */
 		REG_FLD_MOD(MIPI_DEVICE_READY_REG(pipe), 2, 2, 1);
@@ -653,12 +653,12 @@ static void mdfld_dsi_dpi_set_power(struct drm_encoder * encoder, bool on)
 	int pipe = mdfld_dsi_encoder_get_pipe(dsi_encoder);
 	struct drm_device * dev = dsi_config->dev;
 	struct drm_psb_private * dev_priv = dev->dev_private;
-	u32 pipeconf_reg = PIPEACONF;
+	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 	
 	PSB_DEBUG_ENTRY("set power %s on pipe %d\n", on ? "On" : "Off", pipe);
 	
 	if (pipe)
-		pipeconf_reg = PIPECCONF;
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
 	
 	/*start up display island if it was shutdown*/
 	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true))
@@ -874,8 +874,8 @@ void mdfld_dsi_dpi_mode_set(struct drm_encoder * encoder,
 	struct drm_psb_private * dev_priv = dev->dev_private;
 	int pipe = mdfld_dsi_encoder_get_pipe(dsi_encoder);
 	
-	u32 pipeconf_reg = PIPEACONF;
-	u32 dspcntr_reg = DSPACNTR;
+	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
+	u32 dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 	
 	u32 pipeconf = dev_priv->pipeconf;
 	u32 dspcntr = dev_priv->dspcntr;
@@ -884,8 +884,8 @@ void mdfld_dsi_dpi_mode_set(struct drm_encoder * encoder,
 	PSB_DEBUG_ENTRY("set mode %dx%d on pipe %d", mode->hdisplay, mode->vdisplay, pipe);
 
 	if(pipe) {
-		pipeconf_reg = PIPECCONF;
-		dspcntr_reg = DSPCCNTR;
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
 	} else {
 		if (get_panel_type(dev, pipe) == TC35876X)
 			mipi &= (~0x03); /* Use all four lanes */
@@ -924,13 +924,13 @@ void mdfld_dsi_dpi_mode_set(struct drm_encoder * encoder,
 		mdfld_mipi_config(dsi_config, pipe);
 		mdfld_set_pipe_timing(dsi_config, pipe);
 
-		REG_WRITE(DSPABASE, 0x00);
-		REG_WRITE(DSPASTRIDE, (mode->hdisplay * 4));
-		REG_WRITE(DSPASIZE,
+		REG_WRITE(PSB_DSPBASE(PSB_PIPE_A), 0x00);
+		REG_WRITE(PSB_DSPSTRIDE(PSB_PIPE_A), (mode->hdisplay * 4));
+		REG_WRITE(PSB_DSPSIZE(PSB_PIPE_A),
 			((mode->vdisplay - 1) << 16) | (mode->hdisplay - 1));
 
-		REG_WRITE(DSPACNTR, 0x98000000);
-		REG_WRITE(DSPASURF, 0x00);
+		REG_WRITE(PSB_DSPCNTR(PSB_PIPE_A), 0x98000000);
+		REG_WRITE(PSB_DSPSURF(PSB_PIPE_A), 0x00);
 
 		REG_WRITE(VGACNTRL, 0x80000000);
 		REG_WRITE(DEVICE_READY_REG, 0x00000001);

@@ -1530,8 +1530,9 @@ static int psb_hist_enable_ioctl(struct drm_device *dev, void *data,
 		guardband_reg.interrupt_status = 1;
 		PSB_WVDC32(guardband_reg.data, HISTOGRAM_INT_CONTROL);
 
-		irqCtrl = PSB_RVDC32(PIPEASTAT);
-		PSB_WVDC32(irqCtrl | PIPE_DPST_EVENT_ENABLE, PIPEASTAT);
+		irqCtrl = PSB_RVDC32(PSB_PIPESTAT(PSB_PIPE_A));
+		PSB_WVDC32(irqCtrl | PIPE_DPST_EVENT_ENABLE,
+			   PSB_PIPESTAT(PSB_PIPE_A));
 		/* Wait for two vblanks */
 	} else {
 		guardband_reg.data = PSB_RVDC32(HISTOGRAM_INT_CONTROL);
@@ -1543,9 +1544,9 @@ static int psb_hist_enable_ioctl(struct drm_device *dev, void *data,
 		ie_hist_cont_reg.ie_histogram_enable = 0;
 		PSB_WVDC32(ie_hist_cont_reg.data, HISTOGRAM_LOGIC_CONTROL);
 
-		irqCtrl = PSB_RVDC32(PIPEASTAT);
+		irqCtrl = PSB_RVDC32(PSB_PIPESTAT(PSB_PIPE_A));
 		irqCtrl &= ~PIPE_DPST_EVENT_ENABLE;
-		PSB_WVDC32(irqCtrl, PIPEASTAT);
+		PSB_WVDC32(irqCtrl, PSB_PIPESTAT(PSB_PIPE_A));
 	}
 
 	ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
@@ -1747,8 +1748,8 @@ static int psb_mode_operation_ioctl(struct drm_device *dev, void *data,
 		psb_fb = to_psb_fb(drm_fb);
 
 		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
-			REG_WRITE(DSPASURF, psb_fb->offset);
-			REG_READ(DSPASURF);
+			REG_WRITE(PSB_DSPSURF(PSB_PIPE_A), psb_fb->offset);
+			REG_READ(PSB_DSPSURF(PSB_PIPE_A));
 			ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 		} else {
 			dev_priv->saveDSPASURF = psb_fb->offset;
@@ -2207,18 +2208,27 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 	if (arg->sprite_enable_mask != 0) {
 		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, force_on)) {
 			PSB_WVDC32(0x1F3E, DSPARB);
-			PSB_WVDC32(arg->sprite.dspa_control | PSB_RVDC32(DSPACNTR), DSPACNTR);
+			PSB_WVDC32(arg->sprite.dspa_control |
+					PSB_RVDC32(PSB_DSPCNTR(PSB_PIPE_A)),
+				   PSB_DSPCNTR(PSB_PIPE_A));
 			PSB_WVDC32(arg->sprite.dspa_key_value, DSPAKEYVAL);
 			PSB_WVDC32(arg->sprite.dspa_key_mask, DSPAKEYMASK);
-			PSB_WVDC32(PSB_RVDC32(DSPASURF), DSPASURF);
-			PSB_RVDC32(DSPASURF);
-			PSB_WVDC32(arg->sprite.dspc_control, DSPCCNTR);
-			PSB_WVDC32(arg->sprite.dspc_stride, DSPCSTRIDE);
-			PSB_WVDC32(arg->sprite.dspc_position, DSPCPOS);
-			PSB_WVDC32(arg->sprite.dspc_linear_offset, DSPCLINOFF);
-			PSB_WVDC32(arg->sprite.dspc_size, DSPCSIZE);
-			PSB_WVDC32(arg->sprite.dspc_surface, DSPCSURF);
-			PSB_RVDC32(DSPCSURF);
+			PSB_WVDC32(PSB_RVDC32(PSB_DSPSURF(PSB_PIPE_A)),
+				   PSB_DSPSURF(PSB_PIPE_A));
+			PSB_RVDC32(PSB_DSPSURF(PSB_PIPE_A));
+			PSB_WVDC32(arg->sprite.dspc_control,
+				   PSB_DSPCNTR(PSB_PIPE_C));
+			PSB_WVDC32(arg->sprite.dspc_stride,
+				   PSB_DSPSTRIDE(PSB_PIPE_C));
+			PSB_WVDC32(arg->sprite.dspc_position,
+				   PSB_DSPPOS(PSB_PIPE_C));
+			PSB_WVDC32(arg->sprite.dspc_linear_offset,
+				   PSB_DSPLINOFF(PSB_PIPE_C));
+			PSB_WVDC32(arg->sprite.dspc_size,
+				   PSB_DSPSIZE(PSB_PIPE_C));
+			PSB_WVDC32(arg->sprite.dspc_surface,
+				   PSB_DSPSURF(PSB_PIPE_C));
+			PSB_RVDC32(PSB_DSPSURF(PSB_PIPE_C));
 			ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 		}
 	}
@@ -2226,9 +2236,10 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 	if (arg->sprite_disable_mask != 0) {
 		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, force_on)) {
 			PSB_WVDC32(0x3F3E, DSPARB);
-			PSB_WVDC32(0x0, DSPCCNTR);
-			PSB_WVDC32(arg->sprite.dspc_surface, DSPCSURF);
-			PSB_RVDC32(DSPCSURF);
+			PSB_WVDC32(0x0, PSB_DSPCNTR(PSB_PIPE_C));
+			PSB_WVDC32(arg->sprite.dspc_surface,
+				   PSB_DSPSURF(PSB_PIPE_C));
+			PSB_RVDC32(PSB_DSPSURF(PSB_PIPE_C));
 			ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 		}
 	}
@@ -2237,46 +2248,46 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, force_on)) {
 			uint32_t temp;
 			if (arg->subpicture_enable_mask & REGRWBITS_DSPACNTR) {
-				temp =  PSB_RVDC32(DSPACNTR);
+				temp =  PSB_RVDC32(PSB_DSPCNTR(PSB_PIPE_A));
 				temp &= ~DISPPLANE_PIXFORMAT_MASK;
 				temp &= ~DISPPLANE_BOTTOM;
 				temp |= DISPPLANE_32BPP;
-				PSB_WVDC32(temp, DSPACNTR);
+				PSB_WVDC32(temp, PSB_DSPCNTR(PSB_PIPE_A));
 
-				temp =  PSB_RVDC32(DSPABASE);
-				PSB_WVDC32(temp, DSPABASE);
-				PSB_RVDC32(DSPABASE);
-				temp =  PSB_RVDC32(DSPASURF);
-				PSB_WVDC32(temp, DSPASURF);
-				PSB_RVDC32(DSPASURF);
+				temp =  PSB_RVDC32(PSB_DSPBASE(PSB_PIPE_A));
+				PSB_WVDC32(temp, PSB_DSPBASE(PSB_PIPE_A));
+				PSB_RVDC32(PSB_DSPBASE(PSB_PIPE_A));
+				temp =  PSB_RVDC32(PSB_DSPSURF(PSB_PIPE_A));
+				PSB_WVDC32(temp, PSB_DSPSURF(PSB_PIPE_A));
+				PSB_RVDC32(PSB_DSPSURF(PSB_PIPE_A));
 			}
 			if (arg->subpicture_enable_mask & REGRWBITS_DSPBCNTR) {
-				temp =  PSB_RVDC32(DSPBCNTR);
+				temp =  PSB_RVDC32(PSB_DSPCNTR(PSB_PIPE_B));
 				temp &= ~DISPPLANE_PIXFORMAT_MASK;
 				temp &= ~DISPPLANE_BOTTOM;
 				temp |= DISPPLANE_32BPP;
-				PSB_WVDC32(temp, DSPBCNTR);
+				PSB_WVDC32(temp, PSB_DSPCNTR(PSB_PIPE_B));
 
-				temp =  PSB_RVDC32(DSPBBASE);
-				PSB_WVDC32(temp, DSPBBASE);
-				PSB_RVDC32(DSPBBASE);
-				temp =  PSB_RVDC32(DSPBSURF);
-				PSB_WVDC32(temp, DSPBSURF);
-				PSB_RVDC32(DSPBSURF);
+				temp =  PSB_RVDC32(PSB_DSPBASE(PSB_PIPE_B));
+				PSB_WVDC32(temp, PSB_DSPBASE(PSB_PIPE_B));
+				PSB_RVDC32(PSB_DSPBASE(PSB_PIPE_B));
+				temp =  PSB_RVDC32(PSB_DSPSURF(PSB_PIPE_B));
+				PSB_WVDC32(temp, PSB_DSPSURF(PSB_PIPE_B));
+				PSB_RVDC32(PSB_DSPSURF(PSB_PIPE_B));
 			}
 			if (arg->subpicture_enable_mask & REGRWBITS_DSPCCNTR) {
-				temp =  PSB_RVDC32(DSPCCNTR);
+				temp =  PSB_RVDC32(PSB_DSPCNTR(PSB_PIPE_C));
 				temp &= ~DISPPLANE_PIXFORMAT_MASK;
 				temp &= ~DISPPLANE_BOTTOM;
 				temp |= DISPPLANE_32BPP;
-				PSB_WVDC32(temp, DSPCCNTR);
+				PSB_WVDC32(temp, PSB_DSPCNTR(PSB_PIPE_C));
 
-				temp =  PSB_RVDC32(DSPCBASE);
-				PSB_WVDC32(temp, DSPCBASE);
-				PSB_RVDC32(DSPCBASE);
-				temp =  PSB_RVDC32(DSPCSURF);
-				PSB_WVDC32(temp, DSPCSURF);
-				PSB_RVDC32(DSPCSURF);
+				temp =  PSB_RVDC32(PSB_DSPBASE(PSB_PIPE_C));
+				PSB_WVDC32(temp, PSB_DSPBASE(PSB_PIPE_C));
+				PSB_RVDC32(PSB_DSPBASE(PSB_PIPE_C));
+				temp =  PSB_RVDC32(PSB_DSPSURF(PSB_PIPE_C));
+				PSB_WVDC32(temp, PSB_DSPSURF(PSB_PIPE_C));
+				PSB_RVDC32(PSB_DSPSURF(PSB_PIPE_C));
 			}
 			ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 		}
@@ -2286,43 +2297,43 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, force_on)) {
 			uint32_t temp;
 			if (arg->subpicture_disable_mask & REGRWBITS_DSPACNTR) {
-				temp =  PSB_RVDC32(DSPACNTR);
+				temp =  PSB_RVDC32(PSB_DSPCNTR(PSB_PIPE_A));
 				temp &= ~DISPPLANE_PIXFORMAT_MASK;
 				temp |= DISPPLANE_32BPP_NO_ALPHA;
-				PSB_WVDC32(temp, DSPACNTR);
+				PSB_WVDC32(temp, PSB_DSPCNTR(PSB_PIPE_A));
 
-				temp =  PSB_RVDC32(DSPABASE);
-				PSB_WVDC32(temp, DSPABASE);
-				PSB_RVDC32(DSPABASE);
-				temp =  PSB_RVDC32(DSPASURF);
-				PSB_WVDC32(temp, DSPASURF);
-				PSB_RVDC32(DSPASURF);
+				temp =  PSB_RVDC32(PSB_DSPBASE(PSB_PIPE_A));
+				PSB_WVDC32(temp, PSB_DSPBASE(PSB_PIPE_A));
+				PSB_RVDC32(PSB_DSPBASE(PSB_PIPE_A));
+				temp =  PSB_RVDC32(PSB_DSPSURF(PSB_PIPE_A));
+				PSB_WVDC32(temp, PSB_DSPSURF(PSB_PIPE_A));
+				PSB_RVDC32(PSB_DSPSURF(PSB_PIPE_A));
 			}
 			if (arg->subpicture_disable_mask & REGRWBITS_DSPBCNTR) {
-				temp =  PSB_RVDC32(DSPBCNTR);
+				temp =  PSB_RVDC32(PSB_DSPCNTR(PSB_PIPE_B));
 				temp &= ~DISPPLANE_PIXFORMAT_MASK;
 				temp |= DISPPLANE_32BPP_NO_ALPHA;
-				PSB_WVDC32(temp, DSPBCNTR);
+				PSB_WVDC32(temp, PSB_DSPCNTR(PSB_PIPE_B));
 
-				temp =  PSB_RVDC32(DSPBBASE);
-				PSB_WVDC32(temp, DSPBBASE);
-				PSB_RVDC32(DSPBBASE);
-				temp =  PSB_RVDC32(DSPBSURF);
-				PSB_WVDC32(temp, DSPBSURF);
-				PSB_RVDC32(DSPBSURF);
+				temp =  PSB_RVDC32(PSB_DSPBASE(PSB_PIPE_B));
+				PSB_WVDC32(temp, PSB_DSPBASE(PSB_PIPE_B));
+				PSB_RVDC32(PSB_DSPBASE(PSB_PIPE_B));
+				temp =  PSB_RVDC32(PSB_DSPSURF(PSB_PIPE_B));
+				PSB_WVDC32(temp, PSB_DSPSURF(PSB_PIPE_B));
+				PSB_RVDC32(PSB_DSPSURF(PSB_PIPE_B));
 			}
 			if (arg->subpicture_disable_mask & REGRWBITS_DSPCCNTR) {
-				temp =  PSB_RVDC32(DSPCCNTR);
+				temp =  PSB_RVDC32(PSB_DSPCNTR(PSB_PIPE_C));
 				temp &= ~DISPPLANE_PIXFORMAT_MASK;
 				temp |= DISPPLANE_32BPP_NO_ALPHA;
-				PSB_WVDC32(temp, DSPCCNTR);
+				PSB_WVDC32(temp, PSB_DSPCNTR(PSB_PIPE_C));
 
-				temp =  PSB_RVDC32(DSPCBASE);
-				PSB_WVDC32(temp, DSPCBASE);
-				PSB_RVDC32(DSPCBASE);
-				temp =  PSB_RVDC32(DSPCSURF);
-				PSB_WVDC32(temp, DSPCSURF);
-				PSB_RVDC32(DSPCSURF);
+				temp =  PSB_RVDC32(PSB_DSPBASE(PSB_PIPE_C));
+				PSB_WVDC32(temp, PSB_DSPBASE(PSB_PIPE_C));
+				PSB_RVDC32(PSB_DSPBASE(PSB_PIPE_C));
+				temp =  PSB_RVDC32(PSB_DSPSURF(PSB_PIPE_C));
+				PSB_WVDC32(temp, PSB_DSPSURF(PSB_PIPE_C));
+				PSB_RVDC32(PSB_DSPSURF(PSB_PIPE_C));
 			}
 			ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 		}

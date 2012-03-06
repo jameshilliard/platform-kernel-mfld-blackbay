@@ -1211,7 +1211,7 @@ int android_hdmi_crtc_mode_set(struct drm_crtc *crtc,
 
 		width_align = (otm_adjusted_mode.width + 31) & ~31;
 		pipebstride = 4 * width_align;
-		REG_WRITE(DSPBSTRIDE, pipebstride);
+		REG_WRITE(PSB_DSPSTRIDE(PSB_PIPE_B), pipebstride);
 		fb_width = otm_adjusted_mode.width;
 		fb_height = otm_adjusted_mode.height;
 	}

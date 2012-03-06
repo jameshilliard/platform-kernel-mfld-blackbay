@@ -805,18 +805,18 @@ int mdfld_dsi_pkg_sender_init(struct mdfld_dsi_connector * dsi_connector, int pi
 	/*init regs*/
 	if(pipe == 0) {
 		pkg_sender->dpll_reg = MRST_DPLL_A;
-		pkg_sender->dspcntr_reg = DSPACNTR;
-		pkg_sender->pipeconf_reg = PIPEACONF;
-		pkg_sender->dsplinoff_reg = DSPALINOFF;
-		pkg_sender->dspsurf_reg = DSPASURF;
-		pkg_sender->pipestat_reg = PIPEASTAT;
+		pkg_sender->dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
+		pkg_sender->pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
+		pkg_sender->dsplinoff_reg = PSB_DSPLINOFF(PSB_PIPE_A);
+		pkg_sender->dspsurf_reg = PSB_DSPSURF(PSB_PIPE_A);
+		pkg_sender->pipestat_reg = PSB_PIPESTAT(PSB_PIPE_A);
 	} else if (pipe == 2) {
 		pkg_sender->dpll_reg = MRST_DPLL_A;
-		pkg_sender->dspcntr_reg = DSPCCNTR;
-		pkg_sender->pipeconf_reg = PIPECCONF;
-		pkg_sender->dsplinoff_reg = DSPCLINOFF;
-		pkg_sender->dspsurf_reg = DSPCSURF;
-		pkg_sender->pipestat_reg = PIPECSTAT;
+		pkg_sender->dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
+		pkg_sender->pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
+		pkg_sender->dsplinoff_reg = PSB_DSPLINOFF(PSB_PIPE_C);
+		pkg_sender->dspsurf_reg = PSB_DSPSURF(PSB_PIPE_C);
+		pkg_sender->pipestat_reg = PSB_PIPESTAT(PSB_PIPE_C);
 	}
 
 	pkg_sender->mipi_intr_stat_reg = MIPI_INTR_STAT_REG(pipe);

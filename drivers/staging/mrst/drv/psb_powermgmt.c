@@ -477,7 +477,7 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 	/* regester */
 	u32 dpll_reg = MRST_DPLL_A;
 	u32 fp_reg = MRST_FPA0;
-	u32 pipeconf_reg = PIPEACONF;
+	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 	u32 htot_reg = PSB_HTOTAL(PSB_PIPE_A);
 	u32 hblank_reg = PSB_HBLANK(PSB_PIPE_A);
 	u32 hsync_reg = PSB_HSYNC(PSB_PIPE_A);
@@ -485,15 +485,15 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 	u32 vblank_reg = PSB_VBLANK(PSB_PIPE_A);
 	u32 vsync_reg = PSB_VSYNC(PSB_PIPE_A);
 	u32 pipesrc_reg = PSB_PIPESRC(PSB_PIPE_A);
-	u32 dspstride_reg = DSPASTRIDE;
-	u32 dsplinoff_reg = DSPALINOFF;
-	u32 dsptileoff_reg = DSPATILEOFF;
-	u32 dspsize_reg = DSPASIZE;
-	u32 dsppos_reg = DSPAPOS;
-	u32 dspsurf_reg = DSPASURF;
+	u32 dspstride_reg = PSB_DSPSTRIDE(PSB_PIPE_A);
+	u32 dsplinoff_reg = PSB_DSPLINOFF(PSB_PIPE_A);
+	u32 dsptileoff_reg = PSB_DSPTILEOFF(PSB_PIPE_A);
+	u32 dspsize_reg = PSB_DSPSIZE(PSB_PIPE_A);
+	u32 dsppos_reg = PSB_DSPPOS(PSB_PIPE_A);
+	u32 dspsurf_reg = PSB_DSPSURF(PSB_PIPE_A);
 	u32 mipi_reg = MIPI;
-	u32 dspcntr_reg = DSPACNTR;
-	u32 dspstatus_reg = PIPEASTAT;
+	u32 dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
+	u32 dspstatus_reg = PSB_PIPESTAT(PSB_PIPE_A);
 	u32 palette_reg = PALETTE_A;
 
 	/* pointer to values */
@@ -526,7 +526,7 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 		/* regester */
 		dpll_reg = MDFLD_DPLL_B;
 		fp_reg = MDFLD_DPLL_DIV0;
-		pipeconf_reg = PIPEBCONF;
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_B);
 		htot_reg = PSB_HTOTAL(PSB_PIPE_B);
 		hblank_reg = PSB_HBLANK(PSB_PIPE_B);
 		hsync_reg = PSB_HSYNC(PSB_PIPE_B);
@@ -534,14 +534,14 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 		vblank_reg = PSB_VBLANK(PSB_PIPE_B);
 		vsync_reg = PSB_VSYNC(PSB_PIPE_B);
 		pipesrc_reg = PSB_PIPESRC(PSB_PIPE_B);
-		dspstride_reg = DSPBSTRIDE;
-		dsplinoff_reg = DSPBLINOFF;
-		dsptileoff_reg = DSPBTILEOFF;
-		dspsize_reg = DSPBSIZE;
-		dsppos_reg = DSPBPOS;
-		dspsurf_reg = DSPBSURF;
-		dspcntr_reg = DSPBCNTR;
-		dspstatus_reg = PIPEBSTAT;
+		dspstride_reg = PSB_DSPSTRIDE(PSB_PIPE_B);
+		dsplinoff_reg = PSB_DSPLINOFF(PSB_PIPE_B);
+		dsptileoff_reg = PSB_DSPTILEOFF(PSB_PIPE_B);
+		dspsize_reg = PSB_DSPSIZE(PSB_PIPE_B);
+		dsppos_reg = PSB_DSPPOS(PSB_PIPE_B);
+		dspsurf_reg = PSB_DSPSURF(PSB_PIPE_B);
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_B);
+		dspstatus_reg = PSB_PIPESTAT(PSB_PIPE_B);
 		palette_reg = PALETTE_B;
 
 		/* values */
@@ -567,7 +567,7 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 		break;
 	case 2:
 		/* regester */
-		pipeconf_reg = PIPECCONF;
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
 		htot_reg = PSB_HTOTAL(PSB_PIPE_C);
 		hblank_reg = PSB_HBLANK(PSB_PIPE_C);
 		hsync_reg = PSB_HSYNC(PSB_PIPE_C);
@@ -575,15 +575,15 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 		vblank_reg = PSB_VBLANK(PSB_PIPE_C);
 		vsync_reg = PSB_VSYNC(PSB_PIPE_C);
 		pipesrc_reg = PSB_PIPESRC(PSB_PIPE_C);
-		dspstride_reg = DSPCSTRIDE;
-		dsplinoff_reg = DSPCLINOFF;
-		dsptileoff_reg = DSPCTILEOFF;
-		dspsize_reg = DSPCSIZE;
-		dsppos_reg = DSPCPOS;
-		dspsurf_reg = DSPCSURF;
+		dspstride_reg = PSB_DSPSTRIDE(PSB_PIPE_C);
+		dsplinoff_reg = PSB_DSPLINOFF(PSB_PIPE_C);
+		dsptileoff_reg = PSB_DSPTILEOFF(PSB_PIPE_C);
+		dspsize_reg = PSB_DSPSIZE(PSB_PIPE_C);
+		dsppos_reg = PSB_DSPPOS(PSB_PIPE_C);
+		dspsurf_reg = PSB_DSPSURF(PSB_PIPE_C);
 		mipi_reg = MIPI_C;
-		dspcntr_reg = DSPCCNTR;
-		dspstatus_reg = PIPECSTAT;
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
+		dspstatus_reg = PSB_PIPESTAT(PSB_PIPE_C);
 		palette_reg = PALETTE_C;
 
 		/* pointer to values */
@@ -699,7 +699,7 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 	/* regester */
 	u32 dpll_reg = MRST_DPLL_A;
 	u32 fp_reg = MRST_FPA0;
-	u32 pipeconf_reg = PIPEACONF;
+	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 	u32 htot_reg = PSB_HTOTAL(PSB_PIPE_A);
 	u32 hblank_reg = PSB_HBLANK(PSB_PIPE_A);
 	u32 hsync_reg = PSB_HSYNC(PSB_PIPE_A);
@@ -707,15 +707,15 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 	u32 vblank_reg = PSB_VBLANK(PSB_PIPE_A);
 	u32 vsync_reg = PSB_VSYNC(PSB_PIPE_A);
 	u32 pipesrc_reg = PSB_PIPESRC(PSB_PIPE_A);
-	u32 dspstride_reg = DSPASTRIDE;
-	u32 dsplinoff_reg = DSPALINOFF;
-	u32 dsptileoff_reg = DSPATILEOFF;
-	u32 dspsize_reg = DSPASIZE;
-	u32 dsppos_reg = DSPAPOS;
-	u32 dspsurf_reg = DSPASURF;
-	u32 dspstatus_reg = PIPEASTAT;
+	u32 dspstride_reg = PSB_DSPSTRIDE(PSB_PIPE_A);
+	u32 dsplinoff_reg = PSB_DSPLINOFF(PSB_PIPE_A);
+	u32 dsptileoff_reg = PSB_DSPTILEOFF(PSB_PIPE_A);
+	u32 dspsize_reg = PSB_DSPSIZE(PSB_PIPE_A);
+	u32 dsppos_reg = PSB_DSPPOS(PSB_PIPE_A);
+	u32 dspsurf_reg = PSB_DSPSURF(PSB_PIPE_A);
+	u32 dspstatus_reg = PSB_PIPESTAT(PSB_PIPE_A);
 	u32 mipi_reg = MIPI;
-	u32 dspcntr_reg = DSPACNTR;
+	u32 dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 	u32 palette_reg = PALETTE_A;
 
 	/* values */
@@ -749,7 +749,7 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 		/* regester */
 		dpll_reg = MDFLD_DPLL_B;
 		fp_reg = MDFLD_DPLL_DIV0;
-		pipeconf_reg = PIPEBCONF;
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_B);
 		htot_reg = PSB_HTOTAL(PSB_PIPE_B);
 		hblank_reg = PSB_HBLANK(PSB_PIPE_B);
 		hsync_reg = PSB_HSYNC(PSB_PIPE_B);
@@ -757,14 +757,14 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 		vblank_reg = PSB_VBLANK(PSB_PIPE_B);
 		vsync_reg = PSB_VSYNC(PSB_PIPE_B);
 		pipesrc_reg = PSB_PIPESRC(PSB_PIPE_B);
-		dspstride_reg = DSPBSTRIDE;
-		dsplinoff_reg = DSPBLINOFF;
-		dsptileoff_reg = DSPBTILEOFF;
-		dspsize_reg = DSPBSIZE;
-		dsppos_reg = DSPBPOS;
-		dspsurf_reg = DSPBSURF;
-		dspcntr_reg = DSPBCNTR;
-		dspstatus_reg = PIPEBSTAT;
+		dspstride_reg = PSB_DSPSTRIDE(PSB_PIPE_B);
+		dsplinoff_reg = PSB_DSPLINOFF(PSB_PIPE_B);
+		dsptileoff_reg = PSB_DSPTILEOFF(PSB_PIPE_B);
+		dspsize_reg = PSB_DSPSIZE(PSB_PIPE_B);
+		dsppos_reg = PSB_DSPPOS(PSB_PIPE_B);
+		dspsurf_reg = PSB_DSPSURF(PSB_PIPE_B);
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_B);
+		dspstatus_reg = PSB_PIPESTAT(PSB_PIPE_B);
 		palette_reg = PALETTE_B;
 
 		/* values */
@@ -792,7 +792,7 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 		dsi_output = dev_priv->dbi_output2;
 
 		/* regester */
-		pipeconf_reg = PIPECCONF;
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
 		htot_reg = PSB_HTOTAL(PSB_PIPE_C);
 		hblank_reg = PSB_HBLANK(PSB_PIPE_C);
 		hsync_reg = PSB_HSYNC(PSB_PIPE_C);
@@ -800,15 +800,15 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 		vblank_reg = PSB_VBLANK(PSB_PIPE_C);
 		vsync_reg = PSB_VSYNC(PSB_PIPE_C);
 		pipesrc_reg = PSB_PIPESRC(PSB_PIPE_C);
-		dspstride_reg = DSPCSTRIDE;
-		dsplinoff_reg = DSPCLINOFF;
-		dsptileoff_reg = DSPCTILEOFF;
-		dspsize_reg = DSPCSIZE;
-		dsppos_reg = DSPCPOS;
-		dspsurf_reg = DSPCSURF;
+		dspstride_reg = PSB_DSPSTRIDE(PSB_PIPE_C);
+		dsplinoff_reg = PSB_DSPLINOFF(PSB_PIPE_C);
+		dsptileoff_reg = PSB_DSPTILEOFF(PSB_PIPE_C);
+		dspsize_reg = PSB_DSPSIZE(PSB_PIPE_C);
+		dsppos_reg = PSB_DSPPOS(PSB_PIPE_C);
+		dspsurf_reg = PSB_DSPSURF(PSB_PIPE_C);
 		mipi_reg = MIPI_C;
-		dspcntr_reg = DSPCCNTR;
-		dspstatus_reg = PIPECSTAT;
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
+		dspstatus_reg = PSB_PIPESTAT(PSB_PIPE_C);
 		palette_reg = PALETTE_C;
 
 		/* values */

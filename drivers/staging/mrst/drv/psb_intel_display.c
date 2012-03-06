@@ -215,8 +215,8 @@ static void psb_intel_crtc_save(struct drm_crtc *crtc)
 		return;
 	}
 
-	crtc_state->saveDSPCNTR = REG_READ(pipeA ? DSPACNTR : DSPBCNTR);
-	crtc_state->savePIPECONF = REG_READ(pipeA ? PIPEACONF : PIPEBCONF);
+	crtc_state->saveDSPCNTR = REG_READ(PSB_DSPCNTR(pipe));
+	crtc_state->savePIPECONF = REG_READ(PSB_PIPECONF(pipe));
 	crtc_state->savePIPESRC = REG_READ(PSB_PIPESRC(pipe));
 	crtc_state->saveFP0 = REG_READ(pipeA ? FPA0 : FPB0);
 	crtc_state->saveFP1 = REG_READ(pipeA ? FPA1 : FPB1);
@@ -227,13 +227,13 @@ static void psb_intel_crtc_save(struct drm_crtc *crtc)
 	crtc_state->saveVTOTAL = REG_READ(PSB_VTOTAL(pipe));
 	crtc_state->saveVBLANK = REG_READ(PSB_VBLANK(pipe));
 	crtc_state->saveVSYNC = REG_READ(PSB_VSYNC(pipe));
-	crtc_state->saveDSPSTRIDE = REG_READ(pipeA ? DSPASTRIDE : DSPBSTRIDE);
+	crtc_state->saveDSPSTRIDE = REG_READ(PSB_DSPSTRIDE(pipe));
 
 	/*NOTE: DSPSIZE DSPPOS only for psb*/
-	crtc_state->saveDSPSIZE = REG_READ(pipeA ? DSPASIZE : DSPBSIZE);
-	crtc_state->saveDSPPOS = REG_READ(pipeA ? DSPAPOS : DSPBPOS);
+	crtc_state->saveDSPSIZE = REG_READ(PSB_DSPSIZE(pipe));
+	crtc_state->saveDSPPOS = REG_READ(PSB_DSPPOS(pipe));
 
-	crtc_state->saveDSPBASE = REG_READ(pipeA ? DSPABASE : DSPBBASE);
+	crtc_state->saveDSPBASE = REG_READ(PSB_DSPBASE(pipe));
 
 	DRM_DEBUG("(%x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x)\n",
 			crtc_state->saveDSPCNTR,
@@ -284,8 +284,8 @@ static void psb_intel_crtc_restore(struct drm_crtc *crtc)
 
 	DRM_DEBUG(
 		"current:(%x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x)\n",
-		REG_READ(pipeA ? DSPACNTR : DSPBCNTR),
-		REG_READ(pipeA ? PIPEACONF : PIPEBCONF),
+		REG_READ(PSB_DSPCNTR(pipe)),
+		REG_READ(PSB_PIPECONF(pipe)),
 		REG_READ(PSB_PIPESRC(pipe)),
 		REG_READ(pipeA ? FPA0 : FPB0),
 		REG_READ(pipeA ? FPA1 : FPB1),
@@ -296,10 +296,10 @@ static void psb_intel_crtc_restore(struct drm_crtc *crtc)
 		REG_READ(PSB_VTOTAL(pipe)),
 		REG_READ(PSB_VBLANK(pipe)),
 		REG_READ(PSB_VSYNC(pipe)),
-		REG_READ(pipeA ? DSPASTRIDE : DSPBSTRIDE),
-		REG_READ(pipeA ? DSPASIZE : DSPBSIZE),
-		REG_READ(pipeA ? DSPAPOS : DSPBPOS),
-		REG_READ(pipeA ? DSPABASE : DSPBBASE)
+		REG_READ(PSB_DSPSTRIDE(pipe)),
+		REG_READ(PSB_DSPSIZE(pipe)),
+		REG_READ(PSB_DSPPOS(pipe)),
+		REG_READ(PSB_DSPBASE(pipe))
 		);
 
 	DRM_DEBUG(
@@ -347,19 +347,19 @@ static void psb_intel_crtc_restore(struct drm_crtc *crtc)
 	REG_WRITE(PSB_VTOTAL(pipe), crtc_state->saveVTOTAL);
 	REG_WRITE(PSB_VBLANK(pipe), crtc_state->saveVBLANK);
 	REG_WRITE(PSB_VSYNC(pipe), crtc_state->saveVSYNC);
-	REG_WRITE(pipeA ? DSPASTRIDE : DSPBSTRIDE, crtc_state->saveDSPSTRIDE);
+	REG_WRITE(PSB_DSPSTRIDE(pipe), crtc_state->saveDSPSTRIDE);
 
-	REG_WRITE(pipeA ? DSPASIZE : DSPBSIZE, crtc_state->saveDSPSIZE);
-	REG_WRITE(pipeA ? DSPAPOS : DSPBPOS, crtc_state->saveDSPPOS);
+	REG_WRITE(PSB_DSPSIZE(pipe), crtc_state->saveDSPSIZE);
+	REG_WRITE(PSB_DSPPOS(pipe), crtc_state->saveDSPPOS);
 
 	REG_WRITE(PSB_PIPESRC(pipe), crtc_state->savePIPESRC);
-	REG_WRITE(pipeA ? DSPABASE : DSPBBASE, crtc_state->saveDSPBASE);
-	REG_WRITE(pipeA ? PIPEACONF : PIPEBCONF, crtc_state->savePIPECONF);
+	REG_WRITE(PSB_DSPBASE(pipe), crtc_state->saveDSPBASE);
+	REG_WRITE(PSB_PIPECONF(pipe), crtc_state->savePIPECONF);
 
 	psb_intel_wait_for_vblank(dev);
 
-	REG_WRITE(pipeA ? DSPACNTR : DSPBCNTR, crtc_state->saveDSPCNTR);
-	REG_WRITE(pipeA ? DSPABASE : DSPBBASE, crtc_state->saveDSPBASE);
+	REG_WRITE(PSB_DSPCNTR(pipe), crtc_state->saveDSPCNTR);
+	REG_WRITE(PSB_DSPBASE(pipe), crtc_state->saveDSPBASE);
 
 	psb_intel_wait_for_vblank(dev);
 
@@ -589,21 +589,7 @@ static const struct drm_crtc_helper_funcs mdfld_helper_funcs = {
 void mdfldWaitForPipeDisable(struct drm_device *dev, int pipe)
 {
 	int count, temp;
-	u32 pipeconf_reg = PIPEACONF;
-	
-	switch (pipe) {
-	case 0:
-		break;
-	case 1:
-		pipeconf_reg = PIPEBCONF;
-		break;
-	case 2:
-		pipeconf_reg = PIPECCONF;
-		break;
-	default:
-		DRM_ERROR("Illegal Pipe Number. \n");
-		return;
-	}
+	u32 pipeconf_reg = PSB_PIPECONF(pipe);
 
 	/* FIXME JLIU7_PO */
 	psb_intel_wait_for_vblank(dev);
@@ -622,16 +608,16 @@ void mdfldWaitForPipeDisable(struct drm_device *dev, int pipe)
 void mdfldWaitForPipeEnable(struct drm_device *dev, int pipe)
 {
 	int count, temp;
-	u32 pipeconf_reg = PIPEACONF;
+	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 	
 	switch (pipe) {
 	case 0:
 		break;
 	case 1:
-		pipeconf_reg = PIPEBCONF;
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_B);
 		break;
 	case 2:
-		pipeconf_reg = PIPECCONF;
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
 		break;
 	default:
 		DRM_ERROR("Illegal Pipe Number. \n");
@@ -869,7 +855,7 @@ static struct drm_device globle_dev;
 void mdfld__intel_plane_set_alpha(int enable)
 {
 	struct drm_device *dev = &globle_dev;
-	int dspcntr_reg = DSPACNTR;
+	int dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 	u32 dspcntr;
 
 	dspcntr = REG_READ(dspcntr_reg);
@@ -911,10 +897,10 @@ static int mdfld__intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 	struct psb_framebuffer *psbfb = to_psb_fb(crtc->fb);
 	int pipe = psb_intel_crtc->pipe;
 	unsigned long Start, Offset;
-	int dsplinoff = DSPALINOFF;
-	int dspsurf = DSPASURF;
-	int dspstride = DSPASTRIDE;
-	int dspcntr_reg = DSPACNTR;
+	int dsplinoff = PSB_DSPLINOFF(PSB_PIPE_A);
+	int dspsurf = PSB_DSPSURF(PSB_PIPE_A);
+	int dspstride = PSB_DSPSTRIDE(PSB_PIPE_A);
+	int dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 	u32 dspcntr;
 	int ret;
 
@@ -934,19 +920,19 @@ static int mdfld__intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 
 	switch (pipe) {
 	case 0:
-		dsplinoff = DSPALINOFF;
+		dsplinoff = PSB_DSPLINOFF(PSB_PIPE_A);
 		break;
 	case 1:
-		dsplinoff = DSPBLINOFF;
-		dspsurf = DSPBSURF;
-		dspstride = DSPBSTRIDE;
-		dspcntr_reg = DSPBCNTR;
+		dsplinoff = PSB_DSPLINOFF(PSB_PIPE_B);
+		dspsurf = PSB_DSPSURF(PSB_PIPE_B);
+		dspstride = PSB_DSPSTRIDE(PSB_PIPE_B);
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_B);
 		break;
 	case 2:
-		dsplinoff = DSPCLINOFF;
-		dspsurf = DSPCSURF;
-		dspstride = DSPCSTRIDE;
-		dspcntr_reg = DSPCCNTR;
+		dsplinoff = PSB_DSPLINOFF(PSB_PIPE_C);
+		dspsurf = PSB_DSPSURF(PSB_PIPE_C);
+		dspstride = PSB_DSPSTRIDE(PSB_PIPE_C);
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
 		break;
 	default:
 		DRM_ERROR("Illegal Pipe Number. \n");
@@ -999,9 +985,9 @@ static int mdfld__intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 void mdfld_disable_crtc (struct drm_device *dev, int pipe)
 {
 	int dpll_reg = MRST_DPLL_A;
-	int dspcntr_reg = DSPACNTR;
-	int dspbase_reg = MRST_DSPABASE;
-	int pipeconf_reg = PIPEACONF;
+	int dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
+	int dspbase_reg = PSB_DSPBASE(PSB_PIPE_A);
+	int pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 	u32 temp;
 
 	PSB_DEBUG_ENTRY("pipe = %d \n", pipe);
@@ -1012,15 +998,15 @@ void mdfld_disable_crtc (struct drm_device *dev, int pipe)
 		break;
 	case 1:
 		dpll_reg = MDFLD_DPLL_B;
-		dspcntr_reg = DSPBCNTR;
-		dspbase_reg = DSPBSURF;
-		pipeconf_reg = PIPEBCONF;
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_B);
+		dspbase_reg = PSB_DSPSURF(PSB_PIPE_B);
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_B);
 		break;
 	case 2:
 		dpll_reg = MRST_DPLL_A;
-		dspcntr_reg = DSPCCNTR;
-		dspbase_reg = MDFLD_DSPCBASE;
-		pipeconf_reg = PIPECCONF;
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
+		dspbase_reg = PSB_DSPBASE(PSB_PIPE_C);
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
 		break;
 	default:
 		DRM_ERROR("Illegal Pipe Number. \n");
@@ -1058,7 +1044,9 @@ void mdfld_disable_crtc (struct drm_device *dev, int pipe)
 
 	temp = REG_READ(dpll_reg);
 	if (temp & DPLL_VCO_ENABLE) {
-		if (((pipe != 1) && !((REG_READ(PIPEACONF) | REG_READ(PIPECCONF)) & PIPEACONF_ENABLE))
+		if (((pipe != 1) &&
+		    !((REG_READ(PSB_PIPECONF(PSB_PIPE_A)) |
+		       REG_READ(PSB_PIPECONF(PSB_PIPE_C))) & PIPEACONF_ENABLE))
 				|| (pipe == 1)){
 			temp &= ~(DPLL_VCO_ENABLE);
 			REG_WRITE(dpll_reg, temp);
@@ -1091,10 +1079,10 @@ static void mdfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 	struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(crtc);
 	int pipe = psb_intel_crtc->pipe;
 	int dpll_reg = MRST_DPLL_A;
-	int dspcntr_reg = DSPACNTR;
-	int dspbase_reg = MRST_DSPABASE;
-	int pipeconf_reg = PIPEACONF;
-	u32 pipestat_reg = PIPEASTAT;
+	int dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
+	int dspbase_reg = PSB_DSPBASE(PSB_PIPE_A);
+	int pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
+	u32 pipestat_reg = PSB_PIPESTAT(PSB_PIPE_A);
 	u32 pipeconf = dev_priv->pipeconf;
 	u32 dspcntr = dev_priv->dspcntr;
 	u32 temp;
@@ -1111,19 +1099,19 @@ static void mdfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 		break;
 	case 1:
 		dpll_reg = DPLL_B;
-		dspcntr_reg = DSPBCNTR;
-		dspbase_reg = MRST_DSPBBASE;
-		pipeconf_reg = PIPEBCONF;
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_B);
+		dspbase_reg = PSB_DSPBASE(PSB_PIPE_B);
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_B);
 		pipeconf = dev_priv->pipeconf1;
 		dspcntr = dev_priv->dspcntr1;
 		dpll_reg = MDFLD_DPLL_B;
 		break;
 	case 2:
 		dpll_reg = MRST_DPLL_A;
-		dspcntr_reg = DSPCCNTR;
-		dspbase_reg = MDFLD_DSPCBASE;
-		pipeconf_reg = PIPECCONF;
-		pipestat_reg = PIPECSTAT;
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
+		dspbase_reg = PSB_DSPBASE(PSB_PIPE_C);
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
+		pipestat_reg = PSB_PIPESTAT(PSB_PIPE_C);
 		pipeconf = dev_priv->pipeconf2;
 		dspcntr = dev_priv->dspcntr2;
 		break;
@@ -1279,8 +1267,11 @@ static void mdfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 
 		temp = REG_READ(dpll_reg);
 		if (temp & DPLL_VCO_ENABLE) {
-			if (((pipe != 1) && !((REG_READ(PIPEACONF) | REG_READ(PIPECCONF)) & PIPEACONF_ENABLE))
-					|| (pipe == 1)){
+			if (((pipe != 1) &&
+			     !((REG_READ(PSB_PIPECONF(PSB_PIPE_A)) |
+				REG_READ(PSB_PIPECONF(PSB_PIPE_C))) &
+						PIPEACONF_ENABLE)) ||
+			    (pipe == 1)) {
 				temp &= ~(DPLL_VCO_ENABLE);
 				REG_WRITE(dpll_reg, temp);
 				REG_READ(dpll_reg);
@@ -1540,16 +1531,16 @@ static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 	int pipe = psb_intel_crtc->pipe;
 	int fp_reg = MRST_FPA0;
 	int dpll_reg = MRST_DPLL_A;
-	int dspcntr_reg = DSPACNTR;
-	int pipeconf_reg = PIPEACONF;
+	int dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
+	int pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 	int htot_reg = PSB_HTOTAL(PSB_PIPE_A);
 	int hblank_reg = PSB_HBLANK(PSB_PIPE_A);
 	int hsync_reg = PSB_HSYNC(PSB_PIPE_A);
 	int vtot_reg = PSB_VTOTAL(PSB_PIPE_A);
 	int vblank_reg = PSB_VBLANK(PSB_PIPE_A);
 	int vsync_reg = PSB_VSYNC(PSB_PIPE_A);
-	int dspsize_reg = DSPASIZE; 
-	int dsppos_reg = DSPAPOS; 
+	int dspsize_reg = PSB_DSPSIZE(PSB_PIPE_A);
+	int dsppos_reg = PSB_DSPPOS(PSB_PIPE_A);
 	int pipesrc_reg = PSB_PIPESRC(PSB_PIPE_A);
 	u32 *pipeconf = &dev_priv->pipeconf;
 	u32 *dspcntr = &dev_priv->dspcntr;
@@ -1584,16 +1575,16 @@ static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 	case 1:
 		fp_reg = FPB0;
 		dpll_reg = DPLL_B;
-		dspcntr_reg = DSPBCNTR;
-		pipeconf_reg = PIPEBCONF;
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_B);
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_B);
 		htot_reg = PSB_HTOTAL(PSB_PIPE_B);
 		hblank_reg = PSB_HBLANK(PSB_PIPE_B);
 		hsync_reg = PSB_HSYNC(PSB_PIPE_B);
 		vtot_reg = PSB_VTOTAL(PSB_PIPE_B);
 		vblank_reg = PSB_VBLANK(PSB_PIPE_B);
 		vsync_reg = PSB_VSYNC(PSB_PIPE_B);
-		dspsize_reg = DSPBSIZE; 
-		dsppos_reg = DSPBPOS; 
+		dspsize_reg = PSB_DSPSIZE(PSB_PIPE_B);
+		dsppos_reg = PSB_DSPPOS(PSB_PIPE_B);
 		pipesrc_reg = PSB_PIPESRC(PSB_PIPE_B);
 		pipeconf = &dev_priv->pipeconf1;
 		dspcntr = &dev_priv->dspcntr1;
@@ -1602,16 +1593,16 @@ static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 		break;
 	case 2:
 		dpll_reg = MRST_DPLL_A;
-		dspcntr_reg = DSPCCNTR;
-		pipeconf_reg = PIPECCONF;
+		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
+		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
 		htot_reg = PSB_HTOTAL(PSB_PIPE_C);
 		hblank_reg = PSB_HBLANK(PSB_PIPE_C);
 		hsync_reg = PSB_HSYNC(PSB_PIPE_C);
 		vtot_reg = PSB_VTOTAL(PSB_PIPE_C);
 		vblank_reg = PSB_VBLANK(PSB_PIPE_C);
 		vsync_reg = PSB_VSYNC(PSB_PIPE_C);
-		dspsize_reg = DSPCSIZE; 
-		dsppos_reg = DSPCPOS; 
+		dspsize_reg = PSB_DSPSIZE(PSB_PIPE_C);
+		dsppos_reg = PSB_DSPPOS(PSB_PIPE_C);
 		pipesrc_reg = PSB_PIPESRC(PSB_PIPE_C);
 		pipeconf = &dev_priv->pipeconf2;
 		dspcntr = &dev_priv->dspcntr2;
