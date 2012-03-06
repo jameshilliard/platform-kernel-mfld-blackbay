@@ -17,6 +17,8 @@
 #ifndef __PSB_INTEL_REG_H__
 #define __PSB_INTEL_REG_H__
 
+#include <linux/bitops.h>
+
 #ifdef DEBUG
 #define PSB_CHECK_PIPE(pipe, valid_pipes) ({		\
 	const typeof(pipe) __pipe = (pipe);		\
@@ -61,6 +63,30 @@
 #define I855_CLOCK_100_200			(1 << 0)
 #define I855_CLOCK_100_133			(2 << 0)
 #define I855_CLOCK_166_250			(3 << 0)
+
+#define CHECK_PREG_PIPE(pipe)	\
+	PSB_CHECK_PIPE(pipe, BIT(0) | BIT(1) | BIT(2))
+
+#define PSB_PREG_OFFSET(pipe)	\
+	(CHECK_PREG_PIPE(pipe) * 0x1000)
+
+enum psb_pipe {
+	PSB_PIPE_A,
+	PSB_PIPE_B,
+	PSB_PIPE_C,
+
+	PSB_PIPE_NUM,
+};
+
+#define PSB_HTOTAL(pipe)	(0x60000 + PSB_PREG_OFFSET(pipe))
+#define PSB_HBLANK(pipe)	(0x60004 + PSB_PREG_OFFSET(pipe))
+#define PSB_HSYNC(pipe)		(0x60008 + PSB_PREG_OFFSET(pipe))
+#define PSB_VTOTAL(pipe)	(0x6000C + PSB_PREG_OFFSET(pipe))
+#define PSB_VBLANK(pipe)	(0x60010 + PSB_PREG_OFFSET(pipe))
+#define PSB_VSYNC(pipe)		(0x60014 + PSB_PREG_OFFSET(pipe))
+#define PSB_PIPESRC(pipe)	(0x6001C + PSB_PREG_OFFSET(pipe))
+#define PSB_BCLRPAT(pipe)	(0x60020 + PSB_PREG_OFFSET(pipe))
+#define PSB_VSYNCSHIFT(pipe)	(0x60028 + PSB_PREG_OFFSET(pipe))
 
 /* I830 CRTC registers */
 #define HTOTAL_A	0x60000
