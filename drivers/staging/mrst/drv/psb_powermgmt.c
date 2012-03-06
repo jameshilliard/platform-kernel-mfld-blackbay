@@ -478,17 +478,13 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 	/* regester */
 	u32 dpll_reg = MRST_DPLL_A;
 	u32 fp_reg = MRST_FPA0;
-	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 	u32 mipi_reg = MIPI;
-	u32 dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 	u32 palette_reg = PALETTE_A;
 
 	/* pointer to values */
 	u32 *dpll_val = &dev_priv->saveDPLL_A;
 	u32 *fp_val = &dev_priv->saveFPA0;
-	u32 *pipeconf_val = &dev_priv->savePIPEACONF;
 	u32 *mipi_val = &dev_priv->saveMIPI;
-	u32 *dspcntr_val = &dev_priv->saveDSPACNTR;
 	u32 *palette_val = dev_priv->save_palette_a;
 	PSB_DEBUG_ENTRY("\n");
 
@@ -499,28 +495,20 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 		/* regester */
 		dpll_reg = MDFLD_DPLL_B;
 		fp_reg = MDFLD_DPLL_DIV0;
-		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_B);
-		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_B);
 		palette_reg = PALETTE_B;
 
 		/* values */
 		dpll_val = &dev_priv->saveDPLL_B;
 		fp_val = &dev_priv->saveFPB0;
-		pipeconf_val = &dev_priv->savePIPEBCONF;
-		dspcntr_val = &dev_priv->saveDSPBCNTR;
 		palette_val = dev_priv->save_palette_b;
 		break;
 	case 2:
 		/* regester */
-		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
 		mipi_reg = MIPI_C;
-		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
 		palette_reg = PALETTE_C;
 
 		/* pointer to values */
-		pipeconf_val = &dev_priv->savePIPECCONF;
 		mipi_val = &dev_priv->saveMIPI_C;
-		dspcntr_val = &dev_priv->saveDSPCCNTR;
 		palette_val = dev_priv->save_palette_c;
 		break;
 	default:
@@ -531,8 +519,8 @@ static int mdfld_save_display_registers(struct drm_device *dev, int pipe)
 	/* Pipe & plane A info */
 	*dpll_val = PSB_RVDC32(dpll_reg);
 	*fp_val = PSB_RVDC32(fp_reg);
-	*pipeconf_val = PSB_RVDC32(pipeconf_reg);
-	*dspcntr_val = PSB_RVDC32(dspcntr_reg);
+	pr->pipe_conf = PSB_RVDC32(PSB_PIPECONF(pipe));
+	pr->dsp_cntr = PSB_RVDC32(PSB_DSPCNTR(pipe));
 
 	pr->htotal		= PSB_RVDC32(PSB_HTOTAL(pipe));
 	pr->hblank		= PSB_RVDC32(PSB_HBLANK(pipe));
@@ -618,17 +606,13 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 	/* regester */
 	u32 dpll_reg = MRST_DPLL_A;
 	u32 fp_reg = MRST_FPA0;
-	u32 pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 	u32 mipi_reg = MIPI;
-	u32 dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 	u32 palette_reg = PALETTE_A;
 
 	/* values */
 	u32 dpll_val = dev_priv->saveDPLL_A & ~DPLL_VCO_ENABLE;
 	u32 fp_val = dev_priv->saveFPA0;
-	u32 pipeconf_val = dev_priv->savePIPEACONF;
 	u32 mipi_val = dev_priv->saveMIPI;
-	u32 dspcntr_val = dev_priv->saveDSPACNTR;
 	u32 *palette_val = dev_priv->save_palette_a;
 	PSB_DEBUG_ENTRY("\n");
 
@@ -640,30 +624,22 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 		/* regester */
 		dpll_reg = MDFLD_DPLL_B;
 		fp_reg = MDFLD_DPLL_DIV0;
-		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_B);
-		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_B);
 		palette_reg = PALETTE_B;
 
 		/* values */
 		dpll_val = dev_priv->saveDPLL_B & ~DPLL_VCO_ENABLE;
 		fp_val = dev_priv->saveFPB0;
-		pipeconf_val = dev_priv->savePIPEBCONF;
-		dspcntr_val = dev_priv->saveDSPBCNTR;
 		palette_val = dev_priv->save_palette_b;
 		break;
 	case 2:
 		dsi_output = dev_priv->dbi_output2;
 
 		/* regester */
-		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
 		mipi_reg = MIPI_C;
-		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
 		palette_reg = PALETTE_C;
 
 		/* values */
-		pipeconf_val = dev_priv->savePIPECCONF;
 		mipi_val = dev_priv->saveMIPI_C;
-		dspcntr_val = dev_priv->saveDSPCCNTR;
 		palette_val = dev_priv->save_palette_c;
 
 		dsi_config = dev_priv->dsi_configs[1];
@@ -686,6 +662,7 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 		dpll = PSB_RVDC32(dpll_reg);
 
 		if (!(dpll & DPLL_VCO_ENABLE)) {
+			unsigned long pipeconf_reg;
 
 			/* When ungating power of DPLL, needs to wait 0.5us before enable the VCO */
 			if (dpll & MDFLD_PWR_GATE_EN) {
@@ -704,6 +681,7 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 			PSB_WVDC32(dpll_val, dpll_reg);
 			PSB_RVDC32(dpll_reg);
 
+			pipeconf_reg = PSB_PIPECONF(pipe);
 			/* wait for DSI PLL to lock */
 			while ((timeout < 20000) && !(PSB_RVDC32(pipeconf_reg) & PIPECONF_DSIPLL_LOCK)) {
 				udelay(150);
@@ -746,7 +724,8 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 		/*TODO: resume pipe*/
 
 		/*enable the plane*/
-		PSB_WVDC32(dspcntr_val & ~DISPLAY_PLANE_ENABLE, dspcntr_reg);
+		PSB_WVDC32(pr->dsp_cntr & ~DISPLAY_PLANE_ENABLE,
+			   PSB_DSPCNTR(pipe));
 
 		return 0;
 	}
@@ -764,7 +743,7 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 		msleep(20);
 
 	/*enable the plane*/
-	PSB_WVDC32(dspcntr_val, dspcntr_reg);
+	PSB_WVDC32(pr->dsp_cntr, PSB_DSPCNTR(pipe));
 
 	if (in_atomic() || in_interrupt())
 		mdelay(20);
@@ -793,7 +772,7 @@ static int mdfld_restore_display_registers(struct drm_device *dev, int pipe)
 	mdelay(1);
 
 	/*enable the pipe*/
-	PSB_WVDC32(pipeconf_val, pipeconf_reg);
+	PSB_WVDC32(pr->pipe_conf, PSB_PIPECONF(pipe));
 
 	/* restore palette (gamma) */
 	/*DRM_UDELAY(50000); */

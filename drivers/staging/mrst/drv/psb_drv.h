@@ -709,12 +709,10 @@ struct drm_psb_private {
 		uint32_t dsp_pos;
 		uint32_t dsp_surf;
 		uint32_t dsp_status;
+		uint32_t dsp_cntr;
+		uint32_t pipe_conf;
 	} pipe_regs[PSB_PIPE_NUM];
 
-	uint32_t saveDSPACNTR;
-	uint32_t saveDSPBCNTR;
-	uint32_t savePIPEACONF;
-	uint32_t savePIPEBCONF;
 	uint32_t saveFPA0;
 	uint32_t saveFPA1;
 	uint32_t saveDPLL_A;
@@ -792,8 +790,6 @@ struct drm_psb_private {
 	 */
 	uint32_t saveHDMIPHYMISCCTL;
 	uint32_t saveHDMIB_CONTROL;
-	uint32_t saveDSPCCNTR;
-	uint32_t savePIPECCONF;
 	uint32_t saveDSPCCURSOR_CTRL;
 	uint32_t saveDSPCCURSOR_BASE;
 	uint32_t saveDSPCCURSOR_POS;
