@@ -88,37 +88,6 @@ enum psb_pipe {
 #define PSB_BCLRPAT(pipe)	(0x60020 + PSB_PREG_OFFSET(pipe))
 #define PSB_VSYNCSHIFT(pipe)	(0x60028 + PSB_PREG_OFFSET(pipe))
 
-/* I830 CRTC registers */
-#define HTOTAL_A	0x60000
-#define HBLANK_A	0x60004
-#define HSYNC_A 	0x60008
-#define VTOTAL_A	0x6000c
-#define VBLANK_A	0x60010
-#define VSYNC_A 	0x60014
-#define PIPEASRC	0x6001c
-#define BCLRPAT_A	0x60020
-#define VSYNCSHIFT_A	0x60028
-
-#define HTOTAL_B	0x61000
-#define HBLANK_B	0x61004
-#define HSYNC_B 	0x61008
-#define VTOTAL_B	0x6100c
-#define VBLANK_B	0x61010
-#define VSYNC_B 	0x61014
-#define PIPEBSRC	0x6101c
-#define BCLRPAT_B	0x61020
-#define VSYNCSHIFT_B	0x61028
-
-#define HTOTAL_C	0x62000
-#define HBLANK_C	0x62004
-#define HSYNC_C 	0x62008
-#define VTOTAL_C	0x6200c
-#define VBLANK_C	0x62010
-#define VSYNC_C 	0x62014
-#define PIPECSRC	0x6201c
-#define BCLRPAT_C	0x62020
-#define VSYNCSHIFT_C	0x62028
-
 #define PP_STATUS	0x61200
 # define PP_ON					(1 << 31)
 /**
