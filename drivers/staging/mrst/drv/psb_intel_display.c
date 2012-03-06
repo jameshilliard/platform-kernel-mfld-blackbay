@@ -147,27 +147,15 @@ void psb_intel_crtc_load_lut(struct drm_crtc *crtc)
 	struct drm_psb_private *dev_priv =
 				(struct drm_psb_private *)dev->dev_private;
 	struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(crtc);
-	int palreg = PALETTE_A;
+	int palreg;
 	int i;
 
 	/* The clocks have to be on to load the palette. */
 	if (!crtc->enabled)
 		return;
 
-	switch (psb_intel_crtc->pipe) {
-	case 0:
-		break;
-	case 1:
-		palreg = PALETTE_B;
-		break;
-	case 2:
-		palreg = PALETTE_C;
-		break;
-	default:
-		DRM_ERROR("Illegal Pipe Number. \n");
-		return;
-	}
-	
+	palreg = PSB_PALETTE(psb_intel_crtc->pipe);
+
 	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
 		for (i = 0; i < 256; i++) {
 			REG_WRITE(palreg + 4 * i,
@@ -254,7 +242,7 @@ static void psb_intel_crtc_save(struct drm_crtc *crtc)
 			crtc_state->saveDSPBASE
 		);
 
-	paletteReg = pipeA ? PALETTE_A : PALETTE_B;
+	paletteReg = PSB_PALETTE(pipe);
 	for (i = 0; i < 256; ++i)
 		crtc_state->savePalette[i] = REG_READ(paletteReg + (i << 2));
 }
@@ -363,7 +351,7 @@ static void psb_intel_crtc_restore(struct drm_crtc *crtc)
 
 	psb_intel_wait_for_vblank(dev);
 
-	paletteReg = pipeA ? PALETTE_A : PALETTE_B;
+	paletteReg = PSB_PALETTE(pipe);
 	for (i = 0; i < 256; ++i)
 		REG_WRITE(paletteReg + (i << 2), crtc_state->savePalette[i]);
 }
