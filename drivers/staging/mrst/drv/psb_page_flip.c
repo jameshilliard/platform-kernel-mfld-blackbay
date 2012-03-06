@@ -60,26 +60,6 @@ struct pending_flip {
 	struct psb_pending_values pending_values;
 };
 
-static const u32 dspsurf_reg[] = {
-	DSPASURF, DSPBSURF, DSPCSURF,
-};
-
-static const u32 pipe_dsl_reg[] = {
-	PIPEA_DSL, PIPEB_DSL, PIPEC_DSL,
-};
-
-static const u32 pipe_frame_pixel_reg[] = {
-	PIPEAFRAMEPIXEL, PIPEBFRAMEPIXEL, PIPECFRAMEPIXEL,
-};
-
-static const u32 pipe_frame_high_reg[] = {
-	PIPEAFRAMEHIGH, PIPEBFRAMEHIGH, PIPECFRAMEHIGH,
-};
-
-static const u32 pipeconf_reg[] = {
-	PIPEACONF, PIPEBCONF, PIPECCONF,
-};
-
 enum {
 	/* somwehat arbitrary value */
 	PSB_VBL_CNT_TIMEOUT = 5,
@@ -95,10 +75,15 @@ static u32 get_vbl_count(struct drm_crtc *crtc)
 
 	/* All reads must be satisfied during the same frame */
 	do {
-		low1 = ioread32(dev_priv->vdc_reg + pipe_frame_pixel_reg[pipe]) >> PIPE_FRAME_LOW_SHIFT;
-		high = ioread32(dev_priv->vdc_reg + pipe_frame_high_reg[pipe]) << 8;
-		dsl = ioread32(dev_priv->vdc_reg + pipe_dsl_reg[pipe]);
-		low2 = ioread32(dev_priv->vdc_reg + pipe_frame_pixel_reg[pipe]) >> PIPE_FRAME_LOW_SHIFT;
+		void __iomem *reg_pixel;
+		void __iomem *reg_high;
+
+		reg_pixel = dev_priv->vdc_reg + PSB_PIPEFRAMEPIXEL(pipe);
+		reg_high = dev_priv->vdc_reg + PSB_PIPEFRAMEHIGH(pipe);
+		low1 = ioread32(reg_pixel) >> PIPE_FRAME_LOW_SHIFT;
+		high = ioread32(reg_high) << 8;
+		dsl = ioread32(dev_priv->vdc_reg + PSB_PIPE_DSL(pipe));
+		low2 = ioread32(reg_pixel) >> PIPE_FRAME_LOW_SHIFT;
 	} while (low1 != low2 && timeout++ < PSB_VBL_CNT_TIMEOUT);
 
 	WARN_ON(timeout >= PSB_VBL_CNT_TIMEOUT);
@@ -147,7 +132,7 @@ static void avoid_danger_zone(struct drm_crtc *crtc)
 	drm_vblank_get(dev, pipe);
 
 	psb_intel_crtc->vbl_received = false;
-	val = ioread32(dev_priv->vdc_reg + pipe_dsl_reg[pipe]);
+	val = ioread32(dev_priv->vdc_reg + PSB_PIPE_DSL(pipe));
 
 	while (val >= min && val <= max && timeout > 0) {
 		local_irq_enable();
@@ -159,7 +144,7 @@ static void avoid_danger_zone(struct drm_crtc *crtc)
 		local_irq_disable();
 
 		psb_intel_crtc->vbl_received = false;
-		val = ioread32(dev_priv->vdc_reg + pipe_dsl_reg[pipe]);
+		val = ioread32(dev_priv->vdc_reg + PSB_PIPE_DSL(pipe));
 	}
 
 	drm_vblank_put(dev, pipe);
@@ -239,7 +224,7 @@ static void psb_flip_driver_flush(struct drm_flip_driver *driver)
 		container_of(driver, struct drm_psb_private, flip_driver);
 
 	/* Flush posted writes */
-	(void)ioread32(dev_priv->vdc_reg + PIPEASTAT);
+	(void)ioread32(dev_priv->vdc_reg + PSB_PIPESTAT(PSB_PIPE_A));
 }
 
 static void free_flip(struct pending_flip *crtc_flip)
@@ -341,7 +326,7 @@ static bool crtc_flip(struct drm_flip *flip,
 
 	vbl_count = get_vbl_count(crtc);
 
-	iowrite32(crtc_flip->offset, dev_priv->vdc_reg + dspsurf_reg[pipe]);
+	iowrite32(crtc_flip->offset, dev_priv->vdc_reg + PSB_DSPSURF(pipe));
 
 	/* This flip will happen on the next vblank */
 	crtc_flip->vbl_count = (vbl_count + 1) & 0xffffff;
@@ -466,7 +451,7 @@ sync_callback(struct pvr_pending_sync *pending_sync, bool from_misr)
 		int pipe = to_psb_intel_crtc(crtc)->pipe;
 		u32 val;
 
-		val = ioread32(dev_priv->vdc_reg + pipeconf_reg[pipe]);
+		val = ioread32(dev_priv->vdc_reg + PSB_PIPECONF(pipe));
 
 		pipe_enabled = val & PIPEACONF_ENABLE;
 
