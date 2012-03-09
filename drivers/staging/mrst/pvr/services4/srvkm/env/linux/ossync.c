@@ -50,7 +50,10 @@ void
 PVRSRVCallbackOnSync2(struct pvr_pending_sync *pending_sync)
 {
 	bool complete = false;
-	spin_lock_irq(&sync_lock);
+	unsigned long flags;
+
+	spin_lock_irqsave(&sync_lock, flags);
+
 	/* If the object is already in sync, don't add it to the list */
 	if (!pending_ops_completed(pending_sync->sync_info,
 				  pending_sync->flags,
@@ -60,7 +63,7 @@ PVRSRVCallbackOnSync2(struct pvr_pending_sync *pending_sync)
 	else
 		complete = true;
 
-	spin_unlock_irq(&sync_lock);
+	spin_unlock_irqrestore(&sync_lock, flags);
 
 	if (complete)
 		pending_sync->callback(pending_sync, false);
