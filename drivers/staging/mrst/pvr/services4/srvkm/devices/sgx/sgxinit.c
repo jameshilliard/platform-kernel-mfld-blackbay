@@ -86,7 +86,7 @@ PVRSRV_ERROR SGXResetPDump(PVRSRV_DEVICE_NODE *psDeviceNode);
 static IMG_VOID SGXCommandComplete(PVRSRV_DEVICE_NODE *psDeviceNode)
 {
 #if defined(OS_SUPPORTS_IN_LISR)
-	if (OSInLISR(psDeviceNode->psSysData))
+	if (OSInLISR(psDeviceNode->psSysData) || in_atomic())
 	{
 		
 		psDeviceNode->bReProcessDeviceCommandComplete = IMG_TRUE;
