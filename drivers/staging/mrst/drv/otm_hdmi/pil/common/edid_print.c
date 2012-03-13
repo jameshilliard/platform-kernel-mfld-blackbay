@@ -64,12 +64,6 @@
 #include <linux/kernel.h>
 #include "edid_internal.h"
 
-/* __fake_printf */
-static int __fake_printf(const char *fmt, ...)
-{
-	return 0;
-}
-
 /* Convert the refresh rate enum to a string for printing */
 static char *_refresh_string(otm_hdmi_refresh_t r)
 {
@@ -151,29 +145,37 @@ static char *_stereo_string(otm_hdmi_stereo_t stereo_type)
 
 /* print_pd_timing */
 void print_pd_timing(const otm_hdmi_timing_t *t,
-		     unsigned int order, printf_t print)
+		     unsigned int order)
 {
-	printf_t p = print ? print : __fake_printf;
+	LOG_PRINT(LOG_LEVEL_DETAIL,
+		"%dx%d @ %s %s [%s] [%d] [%s]\n",
+		t->width, t->height, _refresh_string(t->refresh),
+		((t->mode_info_flags & PD_SCAN_INTERLACE) ? "i" : "p"),
+		((t->mode_info_flags & PD_AR_16_BY_9) ? "16:9" : "4:3"),
+		order, _stereo_string(t->stereo_type));
 
-	p(" - %dx%d @ %s", t->width, t->height, _refresh_string(t->refresh));
-	p("%s", (t->mode_info_flags & PD_SCAN_INTERLACE) ? "i" : "p");
-	p(" [%s]", (t->mode_info_flags & PD_AR_16_BY_9) ? "16:9" : "4:3");
-	p(" [%d]", order);
-	p(" [%s]\n", _stereo_string(t->stereo_type));
-
-#ifdef PRINT_DETAILED_TIMINGS
-	p(" - htotal      : %d\n", t->htotal);
-	p(" - hblank_start: %d\n", t->hblank_start);
-	p(" - hblank_end  : %d\n", t->hblank_end);
-	p(" - hsync_start : %d\n", t->hsync_start);
-	p(" - hsync_end   : %d\n", t->hsync_end);
-	p(" - vtotal      : %d\n", t->vtotal);
-	p(" - vblank_start: %d\n", t->vblank_start);
-	p(" - vblank_end  : %d\n", t->vblank_end);
-	p(" - vsync_start : %d\n", t->vsync_start);
-	p(" - vsync_end   : %d\n", t->vsync_end);
-	p(" - clock       : %dMhz\n", (int)(t->dclk / 1000));
-#endif
+	LOG_PRINT(LOG_LEVEL_DETAIL, "htotal      : %d\n",
+				t->htotal);
+	LOG_PRINT(LOG_LEVEL_DETAIL,
+		"hblank_start: %d\n", t->hblank_start);
+	LOG_PRINT(LOG_LEVEL_DETAIL,
+		"hblank_end  : %d\n", t->hblank_end);
+	LOG_PRINT(LOG_LEVEL_DETAIL, "hsync_start : %d\n",
+			t->hsync_start);
+	LOG_PRINT(LOG_LEVEL_DETAIL, "hsync_end   : %d\n",
+			t->hsync_end);
+	LOG_PRINT(LOG_LEVEL_DETAIL, "vtotal      : %d\n",
+			t->vtotal);
+	LOG_PRINT(LOG_LEVEL_DETAIL, "vblank_start: %d\n",
+		t->vblank_start);
+	LOG_PRINT(LOG_LEVEL_DETAIL, "vblank_end  : %d\n",
+		t->vblank_end);
+	LOG_PRINT(LOG_LEVEL_DETAIL, "vsync_start : %d\n",
+		t->vsync_start);
+	LOG_PRINT(LOG_LEVEL_DETAIL, "vsync_end   : %d\n",
+		t->vsync_end);
+	LOG_PRINT(LOG_LEVEL_DETAIL,
+		"clock       : %dMhz\n", (int)(t->dclk / 1000));
 }
 
 /* Convert audio format enum to a string for printing */
@@ -269,17 +271,18 @@ static char *_sampling_rate(otm_hdmi_audio_fs_t fs)
 }
 
 /* print_audio_capability() */
-void print_audio_capability(otm_hdmi_audio_cap_t *cap, printf_t print)
+void print_audio_capability(otm_hdmi_audio_cap_t *cap)
 {
-	printf_t p = print ? print : __fake_printf;
 	int i;
 
-	p(" - Format: %s; Max channels: %d; Sampling rates, KHz:",
-	  _audio_format(cap->format), cap->max_channels);
+	LOG_PRINT(LOG_LEVEL_DETAIL,
+		"Format: %s; Max channels: %d; Sampling rates, KHz:",
+		  _audio_format(cap->format), cap->max_channels);
 
 	for (i = 0; i < 7; i++)
-		p(" %s", (cap->fs & (1 << i)) ? _sampling_rate(1 << i) : "");
-	p("\n");
+		LOG_PRINT(LOG_LEVEL_DETAIL,
+		" %s", (cap->fs & (1 << i)) ? _sampling_rate(1 << i) : "");
+	LOG_PRINT(LOG_LEVEL_DETAIL, "\n");
 }
 
 /* Convert a speaker map enum to a string for printing */
@@ -331,28 +334,26 @@ static char *_speaker_map(otm_hdmi_audio_speaker_map_t map)
 }
 
 /* print_speaker_layout() */
-void print_speaker_layout(unsigned int layout, printf_t print)
+void print_speaker_layout(unsigned int layout)
 {
-	printf_t p = print ? print : __fake_printf;
 	int i;
 
-	p(" - Speaker layout map:");
+	LOG_PRINT(LOG_LEVEL_DETAIL, "Speaker layout map:");
 	for (i = 0; i < 11; i++)
-		p(" %s", (layout & (1 << i)) ? _speaker_map(1 << i) : "");
-	p("\n");
+		LOG_PRINT(LOG_LEVEL_DETAIL,
+		" %s", (layout & (1 << i)) ? _speaker_map(1 << i) : "");
+	LOG_PRINT(LOG_LEVEL_DETAIL, "\n");
 }
 
 /* print_raw_block() */
-void print_raw_block(unsigned char *buffer, int size, bool print)
+void print_raw_block(unsigned char *buffer, int size)
 {
 	int i;
 
-	if (!print)
-		return;
-
 	for (i = 0; i < size; i++) {
-		pr_debug("%s", (i % 0x10) ? "" : "\n");
-		pr_debug("%02X ", buffer[i]);
+		if (i != 0 && ((i % 0x10) == 0))
+			LOG_PRINT(LOG_LEVEL_DETAIL, "\n");
+		LOG_PRINT(LOG_LEVEL_DETAIL, "%02X\n", buffer[i]);
 	}
-	pr_debug("\n");
+	LOG_PRINT(LOG_LEVEL_DETAIL, "\n");
 }

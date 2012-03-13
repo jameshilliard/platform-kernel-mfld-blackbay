@@ -88,42 +88,12 @@
 #define EDID_SIGNATURE 0x00FFFFFFFFFFFF00ull
 
 /*
- * Debug printing setup
- */
-/* TODO: All printing should use one method,either PD_LOG_PRINT,
- * EDID_PRINT, DRM printing, pr_debug. The solution should be run-time
- * instead of compile-time switches. Will need some work to get
- * that done. Deferring for the time-being. Keep EDID prints
- * disabled as they are invoked on every DRM get_mode query
- * and prove costly and add problems like slow, jittery playback */
-#ifndef OTM_HDMI_FIXME
-static int EDID_PRINT(const char *fmt, ...)
-{
-	return 0;
-}
-#else
-static int EDID_PRINT(const char *fmt, ...)
-{
-	va_list arg_list;
-
-	va_start(arg_list, fmt);
-	vprintk(fmt, arg_list);
-	va_end(arg_list);
-	return 0;
-}
-#endif
-
-/*
  * Structure to keep state of read operation
  */
 typedef struct {
 	unsigned char *buffer;
 	int position;
 } read_context_t;
-
-static void fetch_generic_descriptor(generic_descriptor_t *gd,
-				read_context_t *rctx)
-				__attribute__((unused));
 
 static void fetch_timing_descriptor(timing_descriptor_t *td,
 				read_context_t *rctx)
@@ -473,7 +443,7 @@ static otm_hdmi_ret_t add_timings(edid_info_t *edid,
 				OTM_HDMI_ERR_INVAL, exit);
 
 	/* Print info about it */
-	print_pd_timing(pdt, order, EDID_PRINT);
+	print_pd_timing(pdt, order);
 
 	/* Do not add modes that we dont support */
 	i = find_timing_tp(edid->ref_timings, edid->num_ref_timings, pdt);
@@ -523,12 +493,12 @@ static void decode_speaker_allocation_data_block(unsigned char *e, int n,
 {
 	int ne = n / 3;
 
-	EDID_PRINT("[speaker block]\n");
+	LOG_PRINT(LOG_LEVEL_DETAIL, "[speaker block]\n");
 
 	while (ne-- > 0) {
 		edid->speaker_map =
 		    (unsigned)*e | (unsigned)(*(e + 1) & 0x7) << 8;
-		print_speaker_layout(edid->speaker_map, EDID_PRINT);
+		print_speaker_layout(edid->speaker_map);
 		e++;
 		e++;		 /* skip the rest of the block */
 	}
@@ -541,11 +511,12 @@ static void decode_video_data_block(unsigned char *e, int n, edid_info_t *edid)
 {
 	int vic, j, i = 0;
 
-	EDID_PRINT("[video data block]\n");
+	LOG_PRINT(LOG_LEVEL_DETAIL, "[video data block]\n");
 
 	while (n-- > 0) {
 		vic = *e & 0x7F;
-		EDID_PRINT("- mode #%d %s\n", vic, (*e & 0x80) ? "native" : "");
+		LOG_PRINT(LOG_LEVEL_DETAIL,
+			 "- mode #%d %s\n", vic, (*e & 0x80) ? "native" : "");
 
 		if ((j =
 		     find_timing_by_vic_tp(edid->ref_timings,
@@ -572,7 +543,7 @@ static void decode_audio_data_block(unsigned char *e, int n, edid_info_t *edid)
 	int ne = n / 3;
 	otm_hdmi_audio_cap_t *adb = (otm_hdmi_audio_cap_t *) &edid->audio_caps;
 
-	EDID_PRINT("[audio data block... %d entries]\n", ne);
+	LOG_PRINT(LOG_LEVEL_DETAIL, "[audio data block... %d entries]\n", ne);
 
 	while (ne-- > 0) {
 		/* Do we have room for another capability? */
@@ -581,8 +552,7 @@ static void decode_audio_data_block(unsigned char *e, int n, edid_info_t *edid)
 			adb[edid->num_caps].max_channels = (*e & 0x07) + 1;
 			adb[edid->num_caps].fs = *(e + 1) & 0x7F;
 			adb[edid->num_caps].ss_bitrate = *(e + 2);
-			print_audio_capability(&adb[edid->num_caps],
-					       EDID_PRINT);
+			print_audio_capability(&adb[edid->num_caps]);
 			edid->num_caps++;
 		}
 		/* Go to the next entry of the block */
@@ -718,7 +688,7 @@ void decode_3D_modes(unsigned char *e, int n, int layout, edid_info_t *edid)
 {
 	unsigned int offset;
 
-	EDID_PRINT("- 3D modes supported:\n");
+	LOG_PRINT(LOG_LEVEL_DETAIL, "- 3D modes supported:\n");
 
 	/* Declare mandatory modes */
 	declare_mandatory_3d(edid);
@@ -766,13 +736,14 @@ static void decode_vendor_data_block(unsigned char *e,
 	unsigned int len_3d, len_hdmi;
 #endif
 
-	EDID_PRINT("[vendor specific data block.. length %d]\n", n);
+	LOG_PRINT(LOG_LEVEL_DETAIL,
+		"[vendor specific data block.. length %d]\n", n);
 
 	/* Look for HDMI signature [0x030C00] */
 	if (n >= 3) {
 		if ((e[0] == 0x03) && (e[1] == 0x0C) && (e[2] == 0x00)) {
 			edid->hdmi = true;
-			EDID_PRINT("- HDMI signature found\n");
+			LOG_PRINT(LOG_LEVEL_DETAIL, "- HDMI signature found\n");
 		}
 	}
 	/* Parse Source Physical Address */
@@ -847,32 +818,34 @@ static void decode_vendor_data_block(unsigned char *e,
 static void decode_extended_data_block(unsigned char *e,
 				int n, edid_info_t *edid)
 {
-	EDID_PRINT("[extended data block.. length %d]\n", n);
+	LOG_PRINT(LOG_LEVEL_DETAIL, "[extended data block.. length %d]\n", n);
 
 	switch (*(e + 0)) {
 	case 0x00:		 /* Video Capability Block */
-		EDID_PRINT("Video Capability Block\n");
+		LOG_PRINT(LOG_LEVEL_DETAIL, "Video Capability Block\n");
 		edid->rgb_quant_selectable = *(e + 1) & 0x40;
 		edid->ycc_quant_selectable = *(e + 1) & 0x80;
 		break;
 	case 0x01:		 /* Vendor Specific Video Data Block */
-		EDID_PRINT("Vendor Specific Video Data Block\n");
+		LOG_PRINT(LOG_LEVEL_DETAIL,
+			"Vendor Specific Video Data Block\n");
 		break;
 	case 0x05:		 /* Colorimetry Block */
-		EDID_PRINT("Colorimetry Block\n");
+		LOG_PRINT(LOG_LEVEL_DETAIL, "Colorimetry Block\n");
 		if (n == 3) {
 			edid->xvycc601 = (*(e + 1) & 0x01) != 0;
 			edid->xvycc709 = (*(e + 1) & 0x02) != 0;
 		}
 		break;
 	case 0x11:		 /* CEA Misc Audio Block */
-		EDID_PRINT("CEA Misc Audio Block\n");
+		LOG_PRINT(LOG_LEVEL_DETAIL, "CEA Misc Audio Block\n");
 		break;
 	case 0x12:		 /* Vendor specific audio data block */
-		EDID_PRINT("Vendor specific audio data Block\n");
+		LOG_PRINT(LOG_LEVEL_DETAIL,
+			"Vendor specific audio data Block\n");
 		break;
 	default:		 /* reserved blocks */
-		EDID_PRINT("Reserved Block\n");
+		LOG_PRINT(LOG_LEVEL_DETAIL, "Reserved Block\n");
 		break;
 	}
 
@@ -929,14 +902,16 @@ static void decode_block_collection(extention_block_cea_t *eb,
 								  payload_size,
 								  edid);
 			} else {
-				EDID_PRINT("[block 0x%x.. TBA]\n", block_type);
+				LOG_PRINT(LOG_LEVEL_DETAIL,
+					 "[block 0x%x.. TBA]\n", block_type);
 			}
 		}
 		/* Unknown */
 		else
-			EDID_PRINT("[unknown block 0x%x]\n", (int)*c);
+			LOG_PRINT(LOG_LEVEL_DETAIL,
+					"[unknown block 0x%x]\n", (int)*c);
 
-		EDID_PRINT("\n");
+		LOG_PRINT(LOG_LEVEL_DETAIL, "\n");
 		c += (*c & 0x1F) + 1;
 	}
 }
@@ -976,7 +951,7 @@ static void decode_standard_timings(unsigned short st, edid_info_t *edid)
 		/* Indicate no stereo support */
 		pdt.stereo_type = OTM_HDMI_STEREO_NONE;
 
-		EDID_PRINT("[Standart timing]\n");
+		LOG_PRINT(LOG_LEVEL_DETAIL, "[Standart timing]\n");
 		add_timings(edid, &pdt, 0);
 	}
 }
@@ -1011,20 +986,27 @@ static bool decode_detailed_timings(timing_descriptor_t *td,
 	int h_img_size = ((td->hv_image_size & 0xF0) << 4) | td->h_image_size;
 	int v_img_size = ((td->hv_image_size & 0x0F) << 8) | td->v_image_size;
 
-	EDID_PRINT("[detailed timing descriptor]\n");
-
-#ifndef PRINT_DETAILED_TIMINGS
-	EDID_PRINT(" - pixel_clock     : %d KHz\n", pixel_clock);
-	EDID_PRINT(" - horz_active     : %d pixels\n", h_active);
-	EDID_PRINT(" - horz_blanking   : %d pixels\n", h_blanking);
-	EDID_PRINT(" - vert_active     : %d lines\n", v_active);
-	EDID_PRINT(" - vert_blanking   : %d lines\n", v_blanking);
-	EDID_PRINT(" - horz_sync_off   : %d pixels\n", h_sync_off);
-	EDID_PRINT(" - horz_sync_pw    : %d pixels\n", h_sync_pw);
-	EDID_PRINT(" - vert_sync_off   : %d lines\n", v_sync_off);
-	EDID_PRINT(" - vert_sync_pw    : %d lines\n", v_sync_pw);
-	EDID_PRINT(" - image ratio     : %d : %d\n", h_img_size, v_img_size);
-#endif
+	LOG_PRINT(LOG_LEVEL_DETAIL, "[detailed timing descriptor]\n");
+	LOG_PRINT(LOG_LEVEL_DETAIL,
+		" - pixel_clock     : %d KHz\n", pixel_clock);
+	LOG_PRINT(LOG_LEVEL_DETAIL,
+		" - horz_active     : %d pixels\n", h_active);
+	LOG_PRINT(LOG_LEVEL_DETAIL,
+		" - horz_blanking   : %d pixels\n", h_blanking);
+	LOG_PRINT(LOG_LEVEL_DETAIL,
+		" - vert_active     : %d lines\n", v_active);
+	LOG_PRINT(LOG_LEVEL_DETAIL,
+		" - vert_blanking   : %d lines\n", v_blanking);
+	LOG_PRINT(LOG_LEVEL_DETAIL,
+		" - horz_sync_off   : %d pixels\n", h_sync_off);
+	LOG_PRINT(LOG_LEVEL_DETAIL,
+		" - horz_sync_pw    : %d pixels\n", h_sync_pw);
+	LOG_PRINT(LOG_LEVEL_DETAIL,
+		" - vert_sync_off   : %d lines\n", v_sync_off);
+	LOG_PRINT(LOG_LEVEL_DETAIL,
+		" - vert_sync_pw    : %d lines\n", v_sync_pw);
+	LOG_PRINT(LOG_LEVEL_DETAIL,
+		" - image ratio     : %d : %d\n", h_img_size, v_img_size);
 
 	pdt->width = h_active;
 	pdt->htotal = h_active + h_blanking;
@@ -1083,20 +1065,24 @@ static void decode_generic_descriptor(generic_descriptor_t *gd,
 	    && (gd->flag == 0)) {
 		switch (gd->data_type_tag) {
 		case 0xFF:
-			EDID_PRINT("[Monitor Serial Number ]\n");
-			EDID_PRINT(" - %s\n", gd->payload);
+			LOG_PRINT(LOG_LEVEL_DETAIL,
+				"[Monitor Serial Number ]\n");
+			LOG_PRINT(LOG_LEVEL_DETAIL, " - %s\n", gd->payload);
 			break;
 		case 0xFE:
-			EDID_PRINT("[ASCII String          ]\n");
-			EDID_PRINT(" - %s\n", gd->payload);
+			LOG_PRINT(LOG_LEVEL_DETAIL,
+				"[ASCII String          ]\n");
+			LOG_PRINT(LOG_LEVEL_DETAIL, " - %s\n", gd->payload);
 			break;
 		case 0xFD:
-			EDID_PRINT("[Monitor Range Limits  ]\n");
-			EDID_PRINT(" - ...\n");
+			LOG_PRINT(LOG_LEVEL_DETAIL,
+				"[Monitor Range Limits  ]\n");
+			LOG_PRINT(LOG_LEVEL_DETAIL, " - ...\n");
 			break;
 		case 0xFC:
-			EDID_PRINT("[Monitor Name          ]\n");
-			EDID_PRINT(" - %s\n", gd->payload);
+			LOG_PRINT(LOG_LEVEL_DETAIL,
+				"[Monitor Name          ]\n");
+			LOG_PRINT(LOG_LEVEL_DETAIL, " - %s\n", gd->payload);
 			for (i = 0; i < 13; i++) {
 				if (gd->payload[i] == '\n')
 					break;
@@ -1105,10 +1091,12 @@ static void decode_generic_descriptor(generic_descriptor_t *gd,
 			}
 			break;
 		case 0xFB:
-			EDID_PRINT("[Color Data            ]\n");
+			LOG_PRINT(LOG_LEVEL_DETAIL,
+				"[Color Data            ]\n");
 			break;
 		case 0xFA:
-			EDID_PRINT("[More Standard Timings ]\n");
+			LOG_PRINT(LOG_LEVEL_DETAIL,
+				"[More Standard Timings ]\n");
 			for (i = 0; i < 12; i += 2) {
 				/* TODO: Need more info on proper byte order */
 				decode_standard_timings
@@ -1117,10 +1105,12 @@ static void decode_generic_descriptor(generic_descriptor_t *gd,
 			}
 			break;
 		case 0x10:
-			EDID_PRINT("[Dummy                 ]\n");
+			LOG_PRINT(LOG_LEVEL_DETAIL,
+				"[Dummy                 ]\n");
 			break;
 		default:
-			EDID_PRINT("[Manufacturer/Undefined]\n");
+			LOG_PRINT(LOG_LEVEL_DETAIL,
+				"[Manufacturer/Undefined]\n");
 			break;
 		}
 	}
@@ -1254,7 +1244,7 @@ static otm_hdmi_ret_t block_decode(edid_info_t *edid_info, unsigned int type,
 	otm_hdmi_ret_t rc = OTM_HDMI_SUCCESS;
 	extention_block_cea_t eb;
 
-	EDID_PRINT("Decoding extension 0x%x\n", type);
+	LOG_PRINT(LOG_LEVEL_DETAIL, "Decoding extension 0x%x\n", type);
 
 	switch (type) {
 	case 0x02:
@@ -1265,7 +1255,8 @@ static otm_hdmi_ret_t block_decode(edid_info_t *edid_info, unsigned int type,
 		break;
 
 	default:
-		EDID_PRINT("Extension 0x%x is not supported; Bypassing\n",
+		LOG_PRINT(LOG_LEVEL_DETAIL,
+			"Extension 0x%x is not supported; Bypassing\n",
 			   type);
 		break;
 	}
@@ -1302,8 +1293,7 @@ int edid_parse_pd_timing_from_cea_block(edid_info_t *edid_info,
  * edid_parse()
  */
 otm_hdmi_ret_t edid_parse(edid_info_t *edid_info,
-			i2c_read_t data_read, void *cd,
-			bool hex_dump)
+			i2c_read_t data_read, void *cd)
 {
 	unsigned char buffer[SEGMENT_SIZE];
 	edid_block_zero_t ebz;
@@ -1315,7 +1305,7 @@ otm_hdmi_ret_t edid_parse(edid_info_t *edid_info,
 	/* Read block zero */
 	rc = data_read(cd, 0, 0, buffer, SEGMENT_SIZE);
 	VERIFY_QUICK(rc == OTM_HDMI_SUCCESS, exit);
-	print_raw_block(buffer, SEGMENT_SIZE, (bool) hex_dump);
+	print_raw_block(buffer, SEGMENT_SIZE);
 	VERIFY(checksum_valid(buffer, SEGMENT_SIZE), rc,
 				OTM_HDMI_ERR_FAILED, exit);
 
@@ -1354,7 +1344,7 @@ otm_hdmi_ret_t edid_parse(edid_info_t *edid_info,
 	/* Read next block */
 	rc = data_read(cd, 0, SEGMENT_SIZE, buffer, SEGMENT_SIZE);
 	VERIFY_QUICK(rc == OTM_HDMI_SUCCESS, exit);
-	print_raw_block(buffer, SEGMENT_SIZE, (bool) hex_dump);
+	print_raw_block(buffer, SEGMENT_SIZE);
 	VERIFY(checksum_valid(buffer, SEGMENT_SIZE), rc,
 				OTM_HDMI_ERR_FAILED, exit);
 
@@ -1384,7 +1374,7 @@ otm_hdmi_ret_t edid_parse(edid_info_t *edid_info,
 			/* Read extension block */
 			rc = data_read(cd, sp, offset, buffer, SEGMENT_SIZE);
 			VERIFY_QUICK(rc == OTM_HDMI_SUCCESS, exit);
-			print_raw_block(buffer, SEGMENT_SIZE, (bool) hex_dump);
+			print_raw_block(buffer, SEGMENT_SIZE);
 			VERIFY(checksum_valid(buffer, SEGMENT_SIZE), rc,
 			       OTM_HDMI_ERR_FAILED, exit);
 

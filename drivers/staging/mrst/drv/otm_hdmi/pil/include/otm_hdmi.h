@@ -304,42 +304,42 @@ void otm_hdmi_restore_and_enable_display(void *context, bool connected);
 /*
  * Logging macros
  */
-#define ATTRIBUTES otm_hdmi_attributes_table
+
+/*
+ * Table of attributes
+ */
+extern otm_hdmi_attribute_t otm_hdmi_attributes_table[];
+
+#define ATTR otm_hdmi_attributes_table
 
 typedef enum {
-	PD_LOG_LEVEL_ERROR = 0,	/* Error messages; Will always be printed */
-	__PD_LOG_LEVEL_MIN = PD_LOG_LEVEL_ERROR,
+	LOG_LEVEL_ERROR = 0,	/* Error messages; Will always be printed */
+	__LOG_LEVEL_MIN = LOG_LEVEL_ERROR,
 	/* Add log levels below this line */
-	PD_LOG_LEVEL_HIGH = 1,	/* Printed if 'debug' is set to 1 or higher */
-	PD_LOG_LEVEL_LOW,	/* Printed if 'debug' is set to 2 or higher */
-	PD_LOG_LEVEL_VBLANK,	/* Printed if 'debug' at highest level */
+	LOG_LEVEL_HIGH = 1,	/* Printed if 'debug' is set to 1 or higher */
+	LOG_LEVEL_LOW,	/* Printed if 'debug' is set to 2 or higher */
+	LOG_LEVEL_VBLANK,	/* Printed if 'debug' at highest level */
+	LOG_LEVEL_DETAIL, /* Print detailed info */
 	/* Add log levels above this line */
-	__PD_LOG_LEVEL_TEMP_UPPER__,	/* DO NOT USE */
-	__PD_LOG_LEVEL_MAX = __PD_LOG_LEVEL_TEMP_UPPER__ - 1,
-} pd_log_level_t;
+	__LOG_LEVEL_TEMP_UPPER__,	/* DO NOT USE */
+	__LOG_LEVEL_MAX = __LOG_LEVEL_TEMP_UPPER__ - 1,
+} log_level_t;
 
 /* Used to log entry in to a function */
-#define PD_LOG_ENTRY(log_level) \
-	if ((log_level) <= (int) PD_ATTR_UINT( \
-					ATTRIBUTES[OTM_HDMI_ATTR_ID_DEBUG])) \
+#define LOG_ENTRY(log_level) \
+	if ((log_level) <= (int) PD_ATTR_UINT(ATTR[OTM_HDMI_ATTR_ID_DEBUG])) \
 		printk("OTM_HDMI: Entering %s\n", __func__)
 
 /* Used to log exit from a function */
-#define PD_LOG_EXIT(log_level, rc) \
-	if ((log_level) <= (int) PD_ATTR_UINT( \
-					ATTRIBUTES[OTM_HDMI_ATTR_ID_DEBUG])) \
+#define LOG_EXIT(log_level, rc) \
+	if ((log_level) <= (int) PD_ATTR_UINT(ATTR[OTM_HDMI_ATTR_ID_DEBUG])) \
 		printk("OTM_HDMI: Exiting %s with %d\n", __func__, rc)
 
-#ifdef OTM_HDMI_FIXME
-#define PD_LOG_PRINT(log_level, args...) \
-	if ((log_level) <= (int) PD_ATTR_UINT( \
-					ATTRIBUTES[OTM_HDMI_ATTR_ID_DEBUG])) \
-		printk(args)
-#else
-#define PD_LOG_PRINT(log_level, args...) printk("OTM_HDMI: " args)
-#endif
+#define LOG_PRINT(log_level, args...) \
+	if ((log_level) <= (int) PD_ATTR_UINT(ATTR[OTM_HDMI_ATTR_ID_DEBUG])) \
+		printk("OTM_HDMI:" args)
 
-#define PD_LOG_ERROR(msg, args...) PD_LOG_PRINT(PD_LOG_LEVEL_ERROR, msg, ##args)
+#define LOG_ERROR(msg, args...) LOG_PRINT(LOG_LEVEL_ERROR, msg, ##args)
 
 /*
  * Bits in 'mode_info_flags' field
@@ -366,5 +366,13 @@ typedef enum {
 #ifdef OTM_HDMI_UNIT_TEST
 void test_otm_hdmi_report_edid(void);
 #endif
+
+/*
+ * Description: function to get hdmi_context
+ *		handle
+ *
+ * Returns:	hdmi_context
+ */
+extern void *otm_hdmi_get_context(void);
 
 #endif /* _OTM_HDMI_H */

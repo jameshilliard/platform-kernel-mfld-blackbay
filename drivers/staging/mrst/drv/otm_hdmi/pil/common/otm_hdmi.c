@@ -159,82 +159,64 @@ static otm_hdmi_ret_t __program_clocks(hdmi_context_t *ctx, unsigned int dclk)
 	return rc;
 }
 
-/*
- * Wrapper over printing to both console and SVEN. Note that Both underlying
- * routines accept frame stack pointer
- */
-static int __vprintf(const char *fmt, ...)
-{
-	int rc = 0;
-	va_list argp;
-
-	/* Log on console only if debug is on */
-	if (PD_ATTR_UINT(ATTRS[OTM_HDMI_ATTR_ID_DEBUG]) >= PD_LOG_LEVEL_ERROR) {
-		va_start(argp, fmt);
-		rc = vprintk(fmt, argp);
-		va_end(argp);
-	}
-	return rc;
-}
-
 static void __hdmi_report_edid(hdmi_context_t *ctx, edid_info_t *edid)
 {
 	int i = 0;
 
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "----------------------\n");
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "Name     : %s\n", edid->product_name);
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "Year     : %d\n", edid->product_year);
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "SN       : %d\n", edid->product_sn);
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "Type     : %s\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "----------------------\n");
+	LOG_PRINT(LOG_LEVEL_HIGH, "Name     : %s\n", edid->product_name);
+	LOG_PRINT(LOG_LEVEL_HIGH, "Year     : %d\n", edid->product_year);
+	LOG_PRINT(LOG_LEVEL_HIGH, "SN       : %d\n", edid->product_sn);
+	LOG_PRINT(LOG_LEVEL_HIGH, "Type     : %s\n",
 			edid->hdmi ? "HDMI" : "DVI");
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "YCbCr444 : %s\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "YCbCr444 : %s\n",
 			edid->ycbcr444 ? "Y" : "N");
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "YCbCr422 : %s\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "YCbCr422 : %s\n",
 			edid->ycbcr422 ? "Y" : "N");
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "30 bpp   : %s\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "30 bpp   : %s\n",
 			edid->dc_30 ? "Y" : "N");
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "36 bpp   : %s\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "36 bpp   : %s\n",
 			edid->dc_36 ? "Y" : "N");
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "48 bpp   : %s\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "48 bpp   : %s\n",
 			edid->dc_48 ? "Y" : "N");
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "DC_YUV   : %s\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "DC_YUV   : %s\n",
 			edid->dc_y444 ? "Y" : "N");
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "Max CLK  : %d\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "Max CLK  : %d\n",
 			edid->max_tmds_clock);
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "Lip sync : %s\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "Lip sync : %s\n",
 			edid->latency_present ? "Y" : "N");
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "ILip sync: %s\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "ILip sync: %s\n",
 			edid->latency_int_present ? "Y" : "N");
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "Vid lat  : %d\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "Vid lat  : %d\n",
 			edid->latency_video);
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "Aud lat  : %d\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "Aud lat  : %d\n",
 			edid->latency_audio);
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "IVid lat : %d\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "IVid lat : %d\n",
 			edid->latency_video_interlaced);
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "IAud lat : %d\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "IAud lat : %d\n",
 			edid->latency_audio_interlaced);
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "HDMI VID : %s\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "HDMI VID : %s\n",
 			edid->hdmi_video_present ? "Y" : "N");
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "HDMI 3D  : %s\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "HDMI 3D  : %s\n",
 			edid->enabled_3d ? "Y" : "N");
 
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "SPA      : %d.%d.%d.%d\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "SPA      : %d.%d.%d.%d\n",
 		  (edid->spa & 0xF000) >> 12,
 		  (edid->spa & 0x0F00) >> 8,
 		  (edid->spa & 0x00F0) >> 4, (edid->spa & 0x000F) >> 0);
 
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "Supported timings [%d]:\n",
+	LOG_PRINT(LOG_LEVEL_HIGH, "Supported timings [%d]:\n",
 		  edid->num_timings);
 
 	for (i = 0; i < edid->num_timings; i++)
-		print_pd_timing(&edid->timings[i], edid->order[i], __vprintf);
+		print_pd_timing(&edid->timings[i], edid->order[i]);
 
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "Audio capabilities:\n");
+	LOG_PRINT(LOG_LEVEL_HIGH, "Audio capabilities:\n");
 	for (i = 0; i < edid->num_caps; i++)
-		print_audio_capability(&edid->audio_caps[i], __vprintf);
+		print_audio_capability(&edid->audio_caps[i]);
 
-	print_speaker_layout(edid->speaker_map, __vprintf);
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "----------------------\n");
+	print_speaker_layout(edid->speaker_map);
+	LOG_PRINT(LOG_LEVEL_HIGH, "----------------------\n");
 }
 
 static otm_hdmi_ret_t __hdmi_edid_override(hdmi_context_t *ctx,
@@ -353,7 +335,7 @@ otm_hdmi_ret_t otm_hdmi_edid_parse(void *context, otm_hdmi_use_edid_t use_edid)
 		/* Try reading EDID. If reading failed pick overriding strategy
 		 * based on cable status
 		*/
-		rc = edid_parse(edid, edid_foo, ctx, false);
+		rc = edid_parse(edid, edid_foo, ctx);
 		if (rc != OTM_HDMI_SUCCESS) {
 			pr_debug("Failed to read EDID info\n");
 			use_edid = cable ? OTM_HDMI_USE_EDID_SAFE :
@@ -362,7 +344,7 @@ otm_hdmi_ret_t otm_hdmi_edid_parse(void *context, otm_hdmi_use_edid_t use_edid)
 		break;
 	case OTM_HDMI_USE_EDID_SAFE:
 		/* In safe mode we still need real EDID */
-		edid_parse(edid, edid_foo, ctx, false);
+		edid_parse(edid, edid_foo, ctx);
 		break;
 	case OTM_HDMI_USE_EDID_NONE:
 		/* In full override mode we dont care of real EDID
@@ -410,11 +392,11 @@ twin_caps:
 
 	/* Print warning message in case there are no timings */
 	if (ctx->edid_int.num_timings == 0) {
-		PD_LOG_ERROR
+		LOG_ERROR
 		    ("----------------- WARNING -----------------------\n");
-		PD_LOG_ERROR
+		LOG_ERROR
 		    ("-- TV timings are not available		--\n");
-		PD_LOG_ERROR
+		LOG_ERROR
 		    ("-- To resolve this switch to static TV timings --\n");
 	}
 	/* Update EDID availability indicator */
@@ -619,7 +601,7 @@ static otm_hdmi_ret_t __hdmi_phy_enable(void *context, bool status)
 	ctx->phy_status = status;
 
 	/* Debug print */
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "PHY -> %s\n", status ? "on" : "off");
+	LOG_PRINT(LOG_LEVEL_HIGH, "PHY -> %s\n", status ? "on" : "off");
 
 exit:
 	return rc;
@@ -699,7 +681,7 @@ static otm_hdmi_ret_t __hdmi_context_init(void *context, struct pci_dev *pdev)
 	hdmi_context_t *ctx = NULL;
 	unsigned int isr_address;
 
-	PD_LOG_ENTRY(PD_LOG_LEVEL_HIGH);
+	LOG_ENTRY(LOG_LEVEL_HIGH);
 
 	/* Verify pointers */
 	if (context == NULL) {
@@ -756,7 +738,7 @@ static otm_hdmi_ret_t __hdmi_context_init(void *context, struct pci_dev *pdev)
 	mutex_init (&ctx->mute_sema);
 
 exit:
-	PD_LOG_EXIT(PD_LOG_LEVEL_HIGH, rc);
+	LOG_EXIT(LOG_LEVEL_HIGH, rc);
 	return rc;
 }
 
@@ -765,7 +747,7 @@ void otm_hdmi_deinit(void *context)
 	otm_hdmi_ret_t rc = OTM_HDMI_SUCCESS;
 	hdmi_context_t *ctx = NULL;
 
-	PD_LOG_ENTRY(PD_LOG_LEVEL_HIGH);
+	LOG_ENTRY(LOG_LEVEL_HIGH);
 
 	/* Verify pointers */
 	if (context == NULL) {
@@ -821,7 +803,7 @@ void otm_hdmi_deinit(void *context)
 
 	pr_debug("Exiting deinit with error code %d\n", rc);
 exit:
-	PD_LOG_EXIT(PD_LOG_LEVEL_HIGH, rc);
+	LOG_EXIT(LOG_LEVEL_HIGH, rc);
 	return;
 }
 
@@ -945,7 +927,7 @@ otm_hdmi_ret_t otm_hdmi_device_init(void **context, struct pci_dev *pdev)
 	hdmi_context_t *ctx = NULL;
 	int n;
 
-	PD_LOG_ENTRY(PD_LOG_LEVEL_HIGH);
+	LOG_ENTRY(LOG_LEVEL_HIGH);
 
 	/* Verify pointers */
 	if (context == NULL) {
@@ -1040,7 +1022,7 @@ exit:
 	if ((rc != OTM_HDMI_SUCCESS) && (ctx != NULL))
 		otm_hdmi_deinit((void *)ctx);
 
-	PD_LOG_EXIT(PD_LOG_LEVEL_HIGH, rc);
+	LOG_EXIT(LOG_LEVEL_HIGH, rc);
 	return rc;
 }
 
@@ -1198,7 +1180,7 @@ static otm_hdmi_ret_t __set_attr_csc(hdmi_context_t *ctx)
 	int in, out;
 
 	if (NULL == ctx) {
-		PD_LOG_ERROR("Invalid argument passed (ctx)\n");
+		LOG_ERROR("Invalid argument passed (ctx)\n");
 		rc = OTM_HDMI_ERR_FAILED;
 		goto exit;
 	}
@@ -1236,18 +1218,18 @@ static otm_hdmi_ret_t otm_hdmi_attr_set_validate(otm_hdmi_attribute_id_t id,
 	int str_len = 0;
 
 	if (id < 0 || id >= OTM_HDMI_MAX_SUPPORTED_ATTRIBUTES) {
-		PD_LOG_ERROR("Invalid argument passed (id): %d\n", id);
+		LOG_ERROR("Invalid argument passed (id): %d\n", id);
 		rc = OTM_HDMI_ERR_FAILED;
 		goto exit;
 	}
 	if (NULL == value) {
-		PD_LOG_ERROR("Invalid argument passed (value): %d\n", id);
+		LOG_ERROR("Invalid argument passed (value): %d\n", id);
 		rc = OTM_HDMI_ERR_FAILED;
 		goto exit;
 	}
 
-	if (OTM_HDMI_ATTR_FLAG_WRITE != ATTRS[id].flags) {
-		PD_LOG_ERROR("Attribute id: %d is read-only\n", id);
+	if ((OTM_HDMI_ATTR_FLAG_WRITE & ATTRS[id].flags) != 1) {
+		LOG_ERROR("Attribute id: %d is read-only\n", id);
 		rc = OTM_HDMI_ERR_FAILED;
 		goto exit;
 	}
@@ -1279,13 +1261,13 @@ static otm_hdmi_ret_t otm_hdmi_attr_set_validate(otm_hdmi_attribute_id_t id,
 		}
 		break;
 	default:
-		PD_LOG_ERROR("Invalid attribute id (%d)\n", id);
+		LOG_ERROR("Invalid attribute id (%d)\n", id);
 		rc = OTM_HDMI_ERR_FAILED;
 		break;
 	}
 
 exit:
-	PD_LOG_EXIT(PD_LOG_LEVEL_HIGH, rc);
+	LOG_EXIT(LOG_LEVEL_HIGH, rc);
 	return rc;
 }
 
@@ -1320,10 +1302,10 @@ otm_hdmi_ret_t otm_hdmi_set_attribute(void *context,
 	bool abool;
 	unsigned int auint, out, depth;
 	otm_hdmi_attribute_flag_t flags;
-	PD_LOG_ENTRY(PD_LOG_LEVEL_HIGH);
+	LOG_ENTRY(LOG_LEVEL_HIGH);
 
 	if (NULL == ctx) {
-		PD_LOG_ERROR("Invalid argument passed (context): %d\n", id);
+		LOG_ERROR("Invalid argument passed (context): %d\n", id);
 		rc = OTM_HDMI_ERR_FAILED;
 		goto exit;
 	}
@@ -1336,7 +1318,7 @@ otm_hdmi_ret_t otm_hdmi_set_attribute(void *context,
 		goto exit;
 	abool = *(bool *) (data);
 	auint = *(unsigned int *) (data);
-	PD_LOG_PRINT(PD_LOG_LEVEL_HIGH, "ATTR[%d] -> %d\n", id, auint);
+	LOG_PRINT(LOG_LEVEL_HIGH, "ATTR[%d] -> %d\n", id, auint);
 
 #ifdef OTM_HDMI_FIXME
 	/*
@@ -1351,7 +1333,7 @@ otm_hdmi_ret_t otm_hdmi_set_attribute(void *context,
 
 	rc = __update_edid(ctx);
 	if (rc != OTM_HDMI_SUCCESS) {
-		PD_LOG_ERROR("ERR: %s at %d code = %d\n",
+		LOG_ERROR("ERR: %s at %d code = %d\n",
 				__func__, __LINE__, rc);
 		goto exit;
 	}
@@ -1374,7 +1356,7 @@ otm_hdmi_ret_t otm_hdmi_set_attribute(void *context,
 #ifdef OTM_HDMI_FIXME
 		rc = ctx->support->pd_setmode_required(pipe);
 		if (rc != OTM_HDMI_SUCCESS) {
-			PD_LOG_ERROR("ERR: %s at %d code = %d\n",
+			LOG_ERROR("ERR: %s at %d code = %d\n",
 					__func__, __LINE__, rc);
 			goto exit;
 		}
@@ -1401,7 +1383,7 @@ otm_hdmi_ret_t otm_hdmi_set_attribute(void *context,
 #ifdef OTM_HDMI_FIXME
 		rc = ctx->support->pd_setmode_required(pipe);
 		if (rc != OTM_HDMI_SUCCESS) {
-			PD_LOG_ERROR("ERR: %s at %d code = %d\n",
+			LOG_ERROR("ERR: %s at %d code = %d\n",
 					__func__, __LINE__, rc);
 			goto exit;
 		}
@@ -1425,7 +1407,7 @@ otm_hdmi_ret_t otm_hdmi_set_attribute(void *context,
 	case OTM_HDMI_ATTR_ID_BG_COLOR:
 		rc  = hdmi_video_set_pixel_color(&ctx->dev, auint);
 		if (rc != OTM_HDMI_SUCCESS) {
-			PD_LOG_ERROR("ERR: %s at %d code = %d\n",
+			LOG_ERROR("ERR: %s at %d code = %d\n",
 					__func__, __LINE__, rc);
 			goto exit;
 		}
@@ -1443,7 +1425,7 @@ otm_hdmi_ret_t otm_hdmi_set_attribute(void *context,
 #ifdef OTM_HDMI_FIXME
 		rc  = ctx->support->pd_setmode_required(pipe);
 		if (rc != OTM_HDMI_SUCCESS) {
-			PD_LOG_ERROR("ERR: %s at %d code = %d\n",
+			LOG_ERROR("ERR: %s at %d code = %d\n",
 					__func__, __LINE__, rc);
 			goto exit;
 		}
@@ -1463,7 +1445,7 @@ otm_hdmi_ret_t otm_hdmi_set_attribute(void *context,
 				rc = service_hdcp_set(ctx, false,
 							true);
 				if (rc != OTM_HDMI_SUCCESS) {
-					PD_LOG_ERROR("ERR: %s at %d code :%d\n",
+					LOG_ERROR("ERR: %s at %d code :%d\n",
 						 __func__, __LINE__, rc);
 					goto exit;
 				}
@@ -1483,7 +1465,7 @@ otm_hdmi_ret_t otm_hdmi_set_attribute(void *context,
 #ifdef OTM_HDMI_FIXME
 		rc = hdmi_i2c_set_ddc_speed(&ctx->dev, abool);
 		if (rc != OTM_HDMI_SUCCESS) {
-			PD_LOG_ERROR("ERR: %s at %d code = %d\n",
+			LOG_ERROR("ERR: %s at %d code = %d\n",
 					__func__, __LINE__, rc);
 			goto exit;
 		}
@@ -1531,7 +1513,7 @@ otm_hdmi_ret_t otm_hdmi_set_attribute(void *context,
 			goto exit;
 		rc = __switch_pipe(ctx);
 		if (rc != OTM_HDMI_SUCCESS) {
-			PD_LOG_ERROR("ERR: %s at %d code = %d\n",
+			LOG_ERROR("ERR: %s at %d code = %d\n",
 					__func__, __LINE__, rc);
 			goto exit;
 		}
@@ -1551,7 +1533,7 @@ otm_hdmi_ret_t otm_hdmi_set_attribute(void *context,
 #ifdef OTM_HDMI_FIXME
 		rc = hdmi_video_set_video_indicator(&ctx->dev, abool);
 		if (rc != OTM_HDMI_SUCCESS) {
-			PD_LOG_ERROR("ERR: %s at %d code = %d\n",
+			LOG_ERROR("ERR: %s at %d code = %d\n",
 					__func__, __LINE__, rc);
 			goto exit;
 		}
@@ -1562,7 +1544,7 @@ otm_hdmi_ret_t otm_hdmi_set_attribute(void *context,
 #ifdef OTM_HDMI_FIXME
 		rc = ctx->support->pd_setmode_required(pipe);
 		if (rc != OTM_HDMI_SUCCESS) {
-			PD_LOG_ERROR("ERR: %s at %d code = %d\n",
+			LOG_ERROR("ERR: %s at %d code = %d\n",
 					__func__, __LINE__, rc);
 			goto exit;
 		}
@@ -1573,7 +1555,7 @@ otm_hdmi_ret_t otm_hdmi_set_attribute(void *context,
 #ifdef OTM_HDMI_FIXME
 		rc = hdmi_hdcp_set_enc(ctx, abool && HDCP_OFF != hdcp_status);
 		if (rc != OTM_HDMI_SUCCESS) {
-			PD_LOG_ERROR("ERR: %s at %d code = %d\n",
+			LOG_ERROR("ERR: %s at %d code = %d\n",
 					__func__, __LINE__, rc);
 			goto exit;
 		}
@@ -1584,7 +1566,7 @@ otm_hdmi_ret_t otm_hdmi_set_attribute(void *context,
 #ifdef OTM_HDMI_FIXME
 		rc = ctx->support->pd_setmode_required(pipe);
 		if (rc != OTM_HDMI_SUCCESS) {
-			PD_LOG_ERROR("ERR: %s at %d code = %d\n",
+			LOG_ERROR("ERR: %s at %d code = %d\n",
 					__func__, __LINE__, rc);
 			goto exit;
 		}
@@ -1598,7 +1580,9 @@ otm_hdmi_ret_t otm_hdmi_set_attribute(void *context,
 			goto exit;
 		}
 		break;
-
+	case OTM_HDMI_ATTR_ID_DEBUG:
+		ATTRS[id].content._uint.value = auint;
+		break;
 	default:
 		break;
 	}
@@ -1606,7 +1590,7 @@ otm_hdmi_ret_t otm_hdmi_set_attribute(void *context,
 #ifdef OTM_HDMI_FIXME
 	rc = ctx->support->pd_attr_set(ATTRS, id, data, flags);
 	if (rc != OTM_HDMI_SUCCESS) {
-		PD_LOG_ERROR("ERR: %s at %d code = %d\n",
+		LOG_ERROR("ERR: %s at %d code = %d\n",
 				__func__, __LINE__, rc);
 		goto exit;
 	}
@@ -1640,7 +1624,7 @@ otm_hdmi_ret_t otm_hdmi_set_attribute(void *context,
 	}
 
 exit:
-	PD_LOG_EXIT(PD_LOG_LEVEL_HIGH, rc);
+	LOG_EXIT(LOG_LEVEL_HIGH, rc);
 	return rc;
 }
 EXPORT_SYMBOL(otm_hdmi_set_attribute);
@@ -1660,34 +1644,30 @@ static otm_hdmi_ret_t otm_hdmi_attr_get_validate(otm_hdmi_attribute_id_t id)
 {
 	otm_hdmi_ret_t rc = OTM_HDMI_SUCCESS;
 	if (id < 0 || id >= OTM_HDMI_MAX_SUPPORTED_ATTRIBUTES) {
-		PD_LOG_ERROR("Invalid argument passed (id): %d\n", id);
+		LOG_ERROR("Invalid argument passed (id): %d\n", id);
 		rc = OTM_HDMI_ERR_FAILED;
 		goto exit;
 	}
 	/*
 	 * Based on attribute type perform appropriate check
 	*/
-	switch (ATTRS[id].flags) {
-	case OTM_HDMI_ATTR_FLAG_WRITE:
-		break;
-
-	case OTM_HDMI_ATTR_FLAG_SUPPORTED:
+	if (OTM_HDMI_ATTR_FLAG_WRITE & ATTRS[id].flags) {
+		return rc;
+	} else if (OTM_HDMI_ATTR_FLAG_SUPPORTED & ATTRS[id].flags) {
 		/*
 		 * Needs a Fix.
 		 */
-		rc = OTM_HDMI_SUCCESS;
-		break;
-
-	case OTM_HDMI_ATTR_FLAG_INTERNAL:
+		return rc;
+	} else if (OTM_HDMI_ATTR_FLAG_INTERNAL & ATTRS[id].flags) {
 		rc = OTM_HDMI_ERR_INTERNAL;
-		break;
-	default:
-		PD_LOG_ERROR("Invalid attribute accessed: (%d)\n", id);
+		return rc;
+	} else {
+		LOG_ERROR("Invalid attribute accessed: (%d)\n", id);
 		rc = OTM_HDMI_ERR_FAILED;
-		break;
+		return rc;
 	}
 exit:
-	PD_LOG_EXIT(PD_LOG_LEVEL_HIGH, rc);
+	LOG_EXIT(LOG_LEVEL_HIGH, rc);
 	return rc;
 }
 
@@ -1703,20 +1683,20 @@ otm_hdmi_ret_t otm_hdmi_get_attribute(void *context,
 					bool log)
 {
 	otm_hdmi_ret_t rc = OTM_HDMI_SUCCESS;
-	PD_LOG_ENTRY((log) ? PD_LOG_LEVEL_HIGH : PD_LOG_LEVEL_VBLANK);
+	LOG_ENTRY((log) ? LOG_LEVEL_HIGH : LOG_LEVEL_VBLANK);
 
 	rc = otm_hdmi_attr_get_validate(id);
 	if (OTM_HDMI_SUCCESS != rc)
 		goto exit;
 	if (NULL == attribute || NULL == context) {
-		PD_LOG_ERROR("Invalid argument passed (attribute): %d\n", id);
+		LOG_ERROR("Invalid argument passed (attribute): %d\n", id);
 		rc = OTM_HDMI_ERR_FAILED;
 		goto exit;
 	}
 
 	*attribute = ATTRS[id];
 exit:
-	PD_LOG_EXIT((log) ? PD_LOG_LEVEL_HIGH : PD_LOG_LEVEL_VBLANK, rc);
+	LOG_EXIT((log) ? LOG_LEVEL_HIGH : LOG_LEVEL_VBLANK, rc);
 	return rc;
 }
 EXPORT_SYMBOL(otm_hdmi_get_attribute);
@@ -1755,7 +1735,7 @@ static otm_hdmi_ret_t __pd_attr_declare(otm_hdmi_attribute_t *table,
 	if ((name != NULL) && (strlen(name) < OTM_HDMI_MAX_STRING_LENGTH))
 		strncpy(table[id].name, name, strlen(table[id].name));
 	else if (strlen(table[id].name) == 0)
-		PD_LOG_ERROR("set default name\n");
+		LOG_ERROR("set default name\n");
 		/* TODO: set default name */
 
 	table[id].flags = flags;
@@ -1798,7 +1778,7 @@ otm_hdmi_ret_t otm_hdmi_declare_attributes(pd_attr_declare_t declare,
 
 	otm_hdmi_attribute_t *table = otm_hdmi_attributes_table;
 
-	PD_LOG_ENTRY(PD_LOG_LEVEL_HIGH);
+	LOG_ENTRY(LOG_LEVEL_HIGH);
 
 	/*
 	 * declare(table, OTM_HDMI_ATTR_ID_NAME,
@@ -1874,8 +1854,8 @@ otm_hdmi_ret_t otm_hdmi_declare_attributes(pd_attr_declare_t declare,
 		OTM_HDMI_ATTR_ID_DEBUG,
 		PD_ATTR_FLAGS_RWS,
 		get_name,
-		PD_LOG_LEVEL_ERROR,
-		__PD_LOG_LEVEL_MIN, __PD_LOG_LEVEL_MAX);
+		LOG_LEVEL_ERROR,
+		__LOG_LEVEL_MIN, __LOG_LEVEL_MAX);
 
 	PD_DECLARE_ATTRIBUTE_UINT(declare, table,
 		OTM_HDMI_ATTR_ID_VERSION_MAJOR,
@@ -1980,7 +1960,7 @@ otm_hdmi_ret_t otm_hdmi_declare_attributes(pd_attr_declare_t declare,
 		OTM_HDMI_ATTR_ID_HDCP_RI_RETRY,
 		PD_ATTR_FLAGS_RWS, get_name, 40, 0, 50);
 
-	PD_LOG_EXIT(PD_LOG_LEVEL_HIGH, rc);
+	LOG_EXIT(LOG_LEVEL_HIGH, rc);
 	return rc;
 }
 EXPORT_SYMBOL(otm_hdmi_declare_attributes);
@@ -2224,17 +2204,36 @@ void test_otm_hdmi_report_edid(void)
 {
 	edid_info_t *edid = NULL;
 	if (NULL == g_context) {
-		PD_LOG_PRINT(PD_LOG_LEVEL_HIGH,
+		LOG_PRINT(LOG_LEVEL_HIGH,
 			     "Cant print EDID, Initialize otm_hdmi first!\n");
 		return;
 	}
 	edid = &g_context->edid_int;
 	if (NULL == edid) {
-		PD_LOG_PRINT(PD_LOG_LEVEL_HIGH,
+		LOG_PRINT(LOG_LEVEL_HIGH,
 			     "EDID not initialized in driver.\n");
 		return;
 	}
 	__hdmi_report_edid(g_context, edid);
 }
 EXPORT_SYMBOL_GPL(test_otm_hdmi_report_edid);
+#endif
+
+#ifdef OTM_HDMI_UNIT_TEST
+
+/**
+ *	get_hdmi_context() - Getting hdmi_context
+ *
+ *	This routine gives a handle to hdmi_context
+ *	to be used with other function calls like
+ *	set_attribute which requires hdmi_context
+ *	as one of the params
+ *
+ *	Returns - hdmi_context
+ */
+void *otm_hdmi_get_context(void)
+{
+	return (void *)g_context;
+}
+EXPORT_SYMBOL_GPL(otm_hdmi_get_context);
 #endif

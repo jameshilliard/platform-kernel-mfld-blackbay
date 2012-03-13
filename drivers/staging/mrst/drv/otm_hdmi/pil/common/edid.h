@@ -134,13 +134,12 @@ typedef struct {
 } edid_info_t;
 
 otm_hdmi_ret_t edid_parse(edid_info_t *edid_info, i2c_read_t data_read,
-			  void *cd, bool hex_dump);
+			  void *cd);
 
-void print_pd_timing(const otm_hdmi_timing_t *pdt, unsigned int order,
-		     printf_t print);
-void print_audio_capability(otm_hdmi_audio_cap_t *adb, printf_t print);
-void print_speaker_layout(unsigned int layout, printf_t print);
-void print_raw_block(unsigned char *buffer, int size, bool print);
+void print_pd_timing(const otm_hdmi_timing_t *pdt, unsigned int order);
+void print_audio_capability(otm_hdmi_audio_cap_t *adb);
+void print_speaker_layout(unsigned int layout);
+void print_raw_block(unsigned char *buffer, int size);
 
 int find_timing(const otm_hdmi_timing_t *set, int size,
 		const otm_hdmi_timing_t *e);
