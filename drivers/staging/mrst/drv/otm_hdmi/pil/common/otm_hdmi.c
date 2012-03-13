@@ -86,7 +86,7 @@
 /* TODO: Leave it here or move to some .h? */
 #define OTM_HDMI_NAME "OTM HDMI"
 
-/**
+/*
  * Table of attributes
  */
 otm_hdmi_attribute_t otm_hdmi_attributes_table
@@ -159,6 +159,14 @@ static otm_hdmi_ret_t __program_clocks(hdmi_context_t *ctx, unsigned int dclk)
 	return rc;
 }
 
+/**
+ * This function called by edid_print tool internally
+ * @ctx		: hdmi context handle
+ * @edid		: edid information
+ *
+ * Returns nothing. Called by edid_print tool to print
+ * edid information to dmesg for debugging purposes
+ */
 static void __hdmi_report_edid(hdmi_context_t *ctx, edid_info_t *edid)
 {
 	int i = 0;
@@ -219,6 +227,16 @@ static void __hdmi_report_edid(hdmi_context_t *ctx, edid_info_t *edid)
 	LOG_PRINT(LOG_LEVEL_HIGH, "----------------------\n");
 }
 
+/**
+ * This function overrides the edid information with static timings
+ * @ctx		: hdmi context handle
+ * @edid		: edid information
+ * @safe		: boolean for edid option
+ *
+ * Returns OTM_HDMI_SUCCESS or OTM_HDMI_ERR_INTERNAL
+ *
+ * This function overrides the edid information with static timings
+ */
 static otm_hdmi_ret_t __hdmi_edid_override(hdmi_context_t *ctx,
 				edid_info_t *edid,
 				bool safe)
@@ -291,13 +309,13 @@ exit:
 }
 
 /**
- *	otm_hdmi_edid_parse() - fill capability table
- *	@ctx:      hdmi context
- *	@use_edid: True or False
+ * otm_hdmi_edid_parse() - fill capability table
+ * @context:      hdmi context
+ * @use_edid: True or False
  *
- *	This routine files capability table.
+ * Returns - check otm_hdmi_ret_t
  *
- *	Returns - check otm_hdmi_ret_t
+ * This routine files capability table.
  */
 otm_hdmi_ret_t otm_hdmi_edid_parse(void *context, otm_hdmi_use_edid_t use_edid)
 {
@@ -410,11 +428,11 @@ exit:
 }
 
 /**
- *  otm_hdmi_timing_from_cea_modes() - get timings for cea modes
- *	@buffer: the extension block buffer
- *	@timings: the result CEA timings extacted from the buffer
+ * otm_hdmi_timing_from_cea_modes() - get timings for cea modes
+ * @buffer: the extension block buffer
+ * @timings: the result CEA timings extacted from the buffer
  *
- *	Returns - the number of modes in the timings
+ * Returns - the number of modes in the timings
  */
 int otm_hdmi_timing_from_cea_modes(unsigned char *buffer,
 				   otm_hdmi_timing_t *timings)
@@ -440,9 +458,9 @@ int otm_hdmi_timing_from_cea_modes(unsigned char *buffer,
 	return edid_parse_pd_timing_from_cea_block(edid, buffer, timings);
 }
 
-/*
+/**
  * otm_hdmi_get_mode_timings() - get timings of a mode, given:
- * @ctx     : HDMI context
+ * @context : HDMI context
  * @hdisplay: mode width
  * @vdisplay: mode height
  * @vrefresh: mode refresh rate
@@ -473,7 +491,14 @@ exit:
 	return NULL;
 }
 
-/* This routine fills given table with timings according to current unit version
+/**
+ * This function fills the given table with timings
+ * @unit_id	: hdmi unit revision id
+ * @table	: handle to table to be filled
+ * @max_size	: max number of entries in the table
+ * @reference	: is this table reference table?
+ *
+ * This routine fills given table with timings according to current unit version
  * and subsequent use of table
  */
 static int __init_tx_modes(hdmi_unit_revision_id_t unit_id,
@@ -550,13 +575,13 @@ exit:
 }
 
 /**
- *	otm_hdmi_phy_enable() - PHY power programming wrapper
- *	@ctx:    hdmi context
- *	@status: status
+ * otm_hdmi_phy_enable() - PHY power programming wrapper
+ * @context:    hdmi context
+ * @status: status
  *
- *	This routine is PHY power programming wrapper
+ * Returns - check otm_hdmi_ret_t
  *
- *	Returns - check otm_hdmi_ret_t
+ * This routine is PHY power programming wrapper
  */
 #ifdef OTM_HDMI_FIXME
 static otm_hdmi_ret_t __hdmi_phy_enable(void *context, bool status)
@@ -607,7 +632,14 @@ exit:
 	return rc;
 }
 
-/* Enable hdmi HW device */
+/**
+ * __hdmi_enable - enable HDMI HW device
+ * @ctx:    hdmi context
+ *
+ * Returns - check otm_hdmi_ret_t
+ *
+ * Enable hdmi HW device
+ */
 static otm_hdmi_ret_t __hdmi_enable(hdmi_context_t *ctx)
 {
 	otm_hdmi_ret_t rc = OTM_HDMI_SUCCESS;
@@ -675,6 +707,14 @@ static bool __poll_timeout(void *poll_timer)
 				I2C_SW_TIMEOUT;
 }
 
+/**
+ * This function initializes hdmi_context
+ * @context	: opaque hdmi_context
+ * @pdev		: pci_device
+ *
+ * Returns check otm_hdmi_ret_t
+ * Initializes hdmi_context
+ */
 static otm_hdmi_ret_t __hdmi_context_init(void *context, struct pci_dev *pdev)
 {
 	otm_hdmi_ret_t rc = OTM_HDMI_SUCCESS;
@@ -742,6 +782,13 @@ exit:
 	return rc;
 }
 
+/**
+ * otm_hdmi_deinit - deinit called during shutdown
+ * @context	:opaque hdmi_context
+ *
+ * Returns nothing. de-initializes and frees pointers
+ * Called during power down
+ */
 void otm_hdmi_deinit(void *context)
 {
 	otm_hdmi_ret_t rc = OTM_HDMI_SUCCESS;
@@ -832,7 +879,15 @@ bool otm_hdmi_power_rails_on(void)
 	return ipil_hdmi_power_rails_on();
 }
 
-/* get pixel clock range */
+/**
+ * get pixel clock range
+ * @pc_min	: min pixel clock
+ * @pc_max	: max pixel clock
+ *
+ * Returns check otm_hdmi_ret_t
+ * This functions returns the minimum and maximum
+ * pixel clock values
+ */
 otm_hdmi_ret_t otm_hdmi_get_pixel_clock_range(unsigned int *pc_min,
 						unsigned int *pc_max)
 {
@@ -844,17 +899,16 @@ otm_hdmi_ret_t otm_hdmi_get_pixel_clock_range(unsigned int *pc_min,
 	return OTM_HDMI_SUCCESS;
 }
 
-/*
- * Description: hdmi interrupt handler (upper half).
- *		handles the interrupts by reading hdmi status register
- *		and waking up bottom half if needed.
- *
+/**
+ * hdmi interrupt handler (upper half).
  * @irq:	irq number
  * @data:	data for the interrupt handler
  *
  * Returns:	IRQ_HANDLED on NULL input arguments, and if the
  *			interrupt is not HDMI HPD interrupts.
  *		IRQ_WAKE_THREAD if this is a HDMI HPD interrupt.
+ * hdmi interrupt handler (upper half). handles the interrupts
+ * by reading hdmi status register and waking up bottom half if needed.
  */
 static irqreturn_t __hdmi_irq_handler(int irq, void *data)
 {
@@ -865,15 +919,15 @@ static irqreturn_t __hdmi_irq_handler(int irq, void *data)
 }
 
 /**
- *	otm_hdmi_setup_irq	-       install HPD IRQ call back
- *	@context: hdmi device context
- *	@pdev: pci device
- *	@phdmi_irq_cb: function pointer for hotplug/unplug IRQ callbacks.
- *	data: data for irq callback
+ * otm_hdmi_setup_irq	-       install HPD IRQ call back
+ * @context: hdmi device context
+ * @pdev: pci device
+ * @phdmi_irq_cb: function pointer for hotplug/unplug IRQ callbacks.
+ * @data: data for irq callback
  *
- *	Perform HPD IRQ call back initialization
+ * Perform HPD IRQ call back initialization
  *
- *	Returns - check otm_hdmi_ret_t
+ * Returns - check otm_hdmi_ret_t
  */
 otm_hdmi_ret_t otm_hdmi_setup_irq(void *context, struct pci_dev *pdev,
 				irqreturn_t (*phdmi_irq_cb) (int, void*),
@@ -910,16 +964,16 @@ exit:
 }
 
 /**
- *	otm_hdmi_device_init	-	init hdmi device driver
- *	@context: hdmi device context
- *	@pdev: pci device
+ * otm_hdmi_device_init	-	init hdmi device driver
+ * @context: hdmi device context
+ * @pdev: pci device
  *
- *	Perform HDMI device initialization which includes 3 steps:
- *	1) otm context create,
- *	2) os specific context init,
- *	3) device enable
+ * Perform HDMI device initialization which includes 3 steps:
+ * 1) otm context create,
+ * 2) os specific context init,
+ * 3) device enable
  *
- *	Returns - check otm_hdmi_ret_t
+ * Returns - check otm_hdmi_ret_t
  */
 otm_hdmi_ret_t otm_hdmi_device_init(void **context, struct pci_dev *pdev)
 {
@@ -1026,6 +1080,14 @@ exit:
 	return rc;
 }
 
+/**
+ * Returns if the given values is preferred mode or not
+ * @hdisplay	: width
+ * @vdisplay	: height
+ * @refresh	: refresh rate
+ *
+ * Returns true if preferred mode else false
+ */
 bool otm_hdmi_is_preferred_mode(int hdisplay, int vdisplay, int refresh)
 {
 	if (hdisplay == IPIL_PREFERRED_HDISPLAY &&
@@ -1036,6 +1098,14 @@ bool otm_hdmi_is_preferred_mode(int hdisplay, int vdisplay, int refresh)
 		return false;
 }
 
+/**
+ * Set raw edid to the hdmi context
+ * @context	: opaque hdmi_context
+ * @raw_edid	: raw edid information
+ *
+ * Returns - check otm_hdmi_ret_t
+ * Copy raw edid to the hdmi context
+ */
 otm_hdmi_ret_t otm_hdmi_set_raw_edid(void *context, char *raw_edid)
 {
 	hdmi_context_t *ctx = (hdmi_context_t *)context;
@@ -1049,6 +1119,14 @@ otm_hdmi_ret_t otm_hdmi_set_raw_edid(void *context, char *raw_edid)
 	return OTM_HDMI_SUCCESS;
 }
 
+/**
+ * Get raw edid to the hdmi context
+ * @context	: opaque hdmi_context
+ * @raw_edid	: raw edid information
+ *
+ * Returns - check otm_hdmi_ret_t
+ * Retrieves raw edid in the hdmi context
+ */
 otm_hdmi_ret_t otm_hdmi_get_raw_edid(void *context, char **raw_edid)
 {
 	hdmi_context_t *ctx = (hdmi_context_t *)context;
@@ -1061,6 +1139,13 @@ otm_hdmi_ret_t otm_hdmi_get_raw_edid(void *context, char **raw_edid)
 	return OTM_HDMI_SUCCESS;
 }
 
+/**
+ * Check if monitor connected is hdmi
+ * @context	: opaque hdmi_context
+ *
+ * Returns true if hdmi else false
+ * Check if monitor connected is hdmi
+ */
 bool otm_hdmi_is_monitor_hdmi(void *context)
 {
 	hdmi_context_t *ctx = (hdmi_context_t *)context;
@@ -1071,7 +1156,13 @@ bool otm_hdmi_is_monitor_hdmi(void *context)
 	return ctx->edid_int.hdmi;
 }
 
-/*
+/**
+ * HDMI video mute handling
+ * @ctx		: hdmi_context
+ * @type	: mute
+ * @source	: mute source
+ *
+ * Returns true if hdmi else false
  * HDMI video mute handling
  */
 static void hdmi_mute(hdmi_context_t *ctx,
@@ -1103,8 +1194,13 @@ static void hdmi_mute(hdmi_context_t *ctx,
 	mutex_unlock(&ctx->mute_sema);
 }
 
-/*
- * __check_opd_support()
+/**
+ * Checks the output pixel depth
+ * @depth	: pixel depth
+ * @depth_30	: ycbcr422 boolean
+ * @depth_36	: ycbcr444 boolean
+ *
+ * Returns check otm_hdmi_ret_t. Checks the output pixel depth
  */
 static otm_hdmi_ret_t __check_opd_support(otm_hdmi_output_pixel_depth_t depth,
 							bool depth_30,
@@ -1130,8 +1226,12 @@ static otm_hdmi_ret_t __check_opd_support(otm_hdmi_output_pixel_depth_t depth,
 	return rc;
 }
 
-/*
- * __check_pixel_depth_cfg()
+/**
+ * Checks the pixel depth configuration
+ * @opf		: output pixel format
+ * @opd		: output pixel depth
+ *
+ * Returns check otm_hdmi_ret_t. Checks the pixel depth config
  */
 static otm_hdmi_ret_t __check_pixel_depth_cfg(
 				otm_hdmi_output_pixel_format_t opf,
@@ -1142,8 +1242,13 @@ static otm_hdmi_ret_t __check_pixel_depth_cfg(
 	return rc ? OTM_HDMI_SUCCESS : OTM_HDMI_ERR_INTERNAL;
 }
 
-/*
- * __check_opf_support()
+/**
+ * Checks the output pixel format
+ * @format	: output pixel format
+ * @yuv444	: is pixel format yuv444
+ * @yuv422	: is pixel format yuv422
+ *
+ * Returns check otm_hdmi_ret_t. Checks the output pixel format
  */
 static otm_hdmi_ret_t __check_opf_support(otm_hdmi_output_pixel_format_t format,
 						bool yuv444,
@@ -1171,8 +1276,12 @@ static otm_hdmi_ret_t __check_opf_support(otm_hdmi_output_pixel_format_t format,
 	return rc;
 }
 
-/*
- * __set_attr_csc()
+/**
+ * set color space conversion
+ * @ctx	: hdmi_context
+ *
+ * Returns check otm_hdmi_ret_t. Sets the color space
+ * conversion attribute
  */
 static otm_hdmi_ret_t __set_attr_csc(hdmi_context_t *ctx)
 {
@@ -1198,15 +1307,17 @@ exit:
 }
 
 /**
- *	otm_hdmi_attr_set_validate - validates the attribute to
- *					be written or not.
+ * validates the attribute to be written or not.
+ * @id	: attribute id
+ * @value  : value to be set to the attribute
  *
- *	Write's the attributes value.
+ * Write's the attributes value.
+ * validates the attribute to be written or not.
  *
- *	Returns -
- *		OTM_HDMI_SUCCESS - if the attribute value is writable.
- *		OTM_HDMI_ERR_INTERNAL - if the attribute value is non-writable.
- *		OTM_HDMI_ERR_FAILED - if the attribute is not in range.
+ * Returns -
+ *	OTM_HDMI_SUCCESS - if the attribute value is writable.
+ *	OTM_HDMI_ERR_INTERNAL - if the attribute value is non-writable.
+ *	OTM_HDMI_ERR_FAILED - if the attribute is not in range.
  */
 static otm_hdmi_ret_t otm_hdmi_attr_set_validate(otm_hdmi_attribute_id_t id,
 						void *value)
@@ -1277,7 +1388,8 @@ exit:
  * @param [in] id       : attribute id
  * @param [in] data     : user provided buffer with attribute value
  * @param [in] internal : internal [driver] or external [app] call
-
+ *
+ * Setting given attribute
  * Note: Some attributes settings can not be applied until mode change was done.
  * Hence such attributes are set logically and the actual HW will be set during
  * mode change.
@@ -1630,15 +1742,15 @@ exit:
 EXPORT_SYMBOL(otm_hdmi_set_attribute);
 
 /**
- *	otm_hdmi_attr_get_validate - validates the attribute
- *					to be read or not.
+ * validates the attribute to be read or not.
+ * @id	: attribute id to be validated
  *
- *	Read's the attributes flag value.
+ * Read's the attributes flag value.
  *
- *	Returns -
- *		OTM_HDMI_SUCCESS - if the attribute is readable.
- *		OTM_HDMI_ERR_INTERNAL -	if the attribute is non-readable.
- *		OTM_HDMI_ERR_FAILED - if the attribute is not in range.
+ * Returns -
+ *	OTM_HDMI_SUCCESS - if the attribute is readable.
+ *	OTM_HDMI_ERR_INTERNAL -	if the attribute is non-readable.
+ *	OTM_HDMI_ERR_FAILED - if the attribute is not in range.
  */
 static otm_hdmi_ret_t otm_hdmi_attr_get_validate(otm_hdmi_attribute_id_t id)
 {
@@ -1671,11 +1783,14 @@ exit:
 	return rc;
 }
 
-/*
- *  Getting given attribute
- *  @param [in ] id      : attribute id
- *  @param [out] data    : user provided buffer for attribute details
- *  @param [in ] log     : a hint wether port driver should log the call
+/**
+ * Getting given attribute
+ * @context		:opaque hdmi context
+ * @id			: attribute id
+ * @attribute		:user provided buffer for attribute details
+ * @log			: a hint wether port driver should log the call
+ *
+ * Returns otm_hdmi_ret_t check. Getting given attribute values
  */
 otm_hdmi_ret_t otm_hdmi_get_attribute(void *context,
 					otm_hdmi_attribute_id_t id,
@@ -1702,7 +1817,10 @@ exit:
 EXPORT_SYMBOL(otm_hdmi_get_attribute);
 
 /**
- *  Attribute name getting routine
+ * Attribute name getting routine
+ * @id		: attribute id
+ *
+ * Returns attribute name corresponding to id
  */
 char *__pd_attr_get_name(otm_hdmi_attribute_id_t id)
 {
@@ -1716,7 +1834,17 @@ char *__pd_attr_get_name(otm_hdmi_attribute_id_t id)
 EXPORT_SYMBOL(__pd_attr_get_name);
 
 /**
- *  Generic attribute declaration routine
+ * Generic attribute declaration routine
+ * @table	: attribute table to be updated
+ * @id		: id to be updated to the table
+ * @type		: attribute type
+ * @flags	: attribute flags
+ * @name		: attribute name
+ * @value	: attribute default value
+ * @min		: min value possible for the attribute
+ * @max		: max value possible for the attribute
+ *
+ * Returns check otm_hdmi_ret_t
  */
 static otm_hdmi_ret_t __pd_attr_declare(otm_hdmi_attribute_t *table,
 				otm_hdmi_attribute_id_t id,
@@ -1767,9 +1895,11 @@ static otm_hdmi_ret_t __pd_attr_declare(otm_hdmi_attribute_t *table,
 }
 
 /**
- *	otm_hdmi_declare_attributes - init hdmi global attributes table
+ * otm_hdmi_declare_attributes - init hdmi global attributes table
+ * @declare	: declare attribute
+ * @get_name	: name of the attribute
  *
- *	Returns - check otm_hdmi_ret_t
+ * Returns - check otm_hdmi_ret_t
  */
 otm_hdmi_ret_t otm_hdmi_declare_attributes(pd_attr_declare_t declare,
 						pd_attr_get_name_t get_name)
@@ -1965,13 +2095,14 @@ otm_hdmi_ret_t otm_hdmi_declare_attributes(pd_attr_declare_t declare,
 }
 EXPORT_SYMBOL(otm_hdmi_declare_attributes);
 
-/*
+/**
  * Description: crtc mode set function for hdmi.
  *
- * @context:		hdmi_context
- * @mode:		mode requested
- * @adjusted_mode:	adjusted mode
- * @fb_width, fb_height:allocated frame buffer dimensions
+ * @context		:hdmi_context
+ * @mode		:mode requested
+ * @adjusted_mode	:adjusted mode
+ * @fb_width		:allocated frame buffer dimensions
+ * @fb_height		:allocated frame buffer dimensions
  * @pclk_khz:		tmds clk value for the best pll and is needed for audio.
  *			This field has to be moved into OTM audio
  *			interfaces when implemented
@@ -2055,16 +2186,16 @@ otm_hdmi_ret_t otm_hdmi_crtc_mode_set(void *context, otm_hdmi_timing_t *mode,
 	return rc;
 }
 
-/*
- * Description: encoder mode set function for hdmi. enables phy.
- *		set correct polarity for the current mode.
- *
+/**
+ * encoder mode set function for hdmi
  * @context:		hdmi_context
  * @mode:		mode requested
  * @adjusted_mode:	adjusted mode
  *
  * Returns:	OTM_HDMI_SUCCESS on success
  *		OTM_HDMI_ERR_INVAL on NULL input arguments
+ * encoder mode set function for hdmi. enables phy.
+ * set correct polarity for the current mode.
  */
 otm_hdmi_ret_t otm_hdmi_enc_mode_set(void *context, otm_hdmi_timing_t *mode,
 			otm_hdmi_timing_t *adjusted_mode)
@@ -2104,12 +2235,13 @@ otm_hdmi_ret_t otm_hdmi_enc_mode_set(void *context, otm_hdmi_timing_t *mode,
 	return rc;
 }
 
-/*
- * Description: restore HDMI registers and enable the display
- *
- * @context:	hdmi_context
+/**
+ * Restore HDMI registers and enable the display
+ * @context	:hdmi_context
+ * @connected	:hdmi connected or not
  *
  * Returns:	none
+ * Restore HDMI registers and enable the display
  */
 void otm_hdmi_restore_and_enable_display(void *context, bool connected)
 {
@@ -2135,12 +2267,13 @@ void otm_hdmi_restore_and_enable_display(void *context, bool connected)
 	}
 }
 
-/*
- * Description: save HDMI display registers
- *
- * @context:	hdmi_context
+/**
+ * save HDMI display registers
+ * @context	:hdmi_context
+ * @connected	:hdmi connected or not
  *
  * Returns:	none
+ * save HDMI display registers
  */
 void otm_hdmi_save_display_registers(void *context, bool connected)
 {
@@ -2160,12 +2293,12 @@ void otm_hdmi_save_display_registers(void *context, bool connected)
 	}
 }
 
-/*
- * Description: disable HDMI display
- *
+/**
+ * disable HDMI display
  * @context:	hdmi_context
  *
  * Returns:	none
+ * disable HDMI display
  */
 void otm_disable_hdmi(void *context)
 {
@@ -2181,7 +2314,7 @@ void otm_disable_hdmi(void *context)
 	}
 }
 
-/**
+/*
  *
  * Internal scripts wrapper functions.
  *
@@ -2194,11 +2327,11 @@ void otm_disable_hdmi(void *context)
 #ifdef OTM_HDMI_UNIT_TEST
 
 /**
- *	test_otm_hdmi_report_edid() - Report current EDID information
+ * test_otm_hdmi_report_edid() - Report current EDID information
  *
- *	This routine simply dumps the EDID information
+ * This routine simply dumps the EDID information
  *
- *	Returns - nothing
+ * Returns - nothing
  */
 void test_otm_hdmi_report_edid(void)
 {
@@ -2222,14 +2355,14 @@ EXPORT_SYMBOL_GPL(test_otm_hdmi_report_edid);
 #ifdef OTM_HDMI_UNIT_TEST
 
 /**
- *	get_hdmi_context() - Getting hdmi_context
+ * get_hdmi_context() - Getting hdmi_context
  *
- *	This routine gives a handle to hdmi_context
- *	to be used with other function calls like
- *	set_attribute which requires hdmi_context
- *	as one of the params
+ * This routine gives a handle to hdmi_context
+ * to be used with other function calls like
+ * set_attribute which requires hdmi_context
+ * as one of the params
  *
- *	Returns - hdmi_context
+ * Returns - hdmi_context
  */
 void *otm_hdmi_get_context(void)
 {

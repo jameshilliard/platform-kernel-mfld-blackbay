@@ -107,14 +107,6 @@ static const struct {
 };
 
 /* Function declarations for interrupt routines */
-/*
- * android_hdmi_irq_callback:
- * Description:IRQ interrupt bottomhalf handler callback. This callback
- *		will be called for hdmi plug/unplug interrupts.
- * Parameters : irq: IRQ number
- *		data: hdmi_priv data
- * Return     : IRQ_HANDLED
- */
 static irqreturn_t android_hdmi_irq_callback(int irq, void *data);
 static irqreturn_t __hdmi_irq_handler_bottomhalf(void *data);
 
@@ -183,6 +175,16 @@ static unsigned char default_edid[] = {
  *in HPD (1) or not (0)*/
 static int edid_ready_in_hpd = 0;
 
+/**
+ * This function handles bottom half of HDMI hotplug interrupts
+ * @data	: android hdmi private structure
+ *
+ * Returns the behavior of the interrupt handler
+ *	IRQ_HANDLED - if interrupt handled
+ * This function handles bottom half of HDMI hotplug interrupts.
+ * IRQ interrupt bottomhalf handler callback. This callback
+ * will be called for hdmi plug/unplug interrupts
+ */
 static irqreturn_t __hdmi_irq_handler_bottomhalf(void *data)
 {
 	struct android_hdmi_priv *hdmi_priv = data;
@@ -322,6 +324,17 @@ static int hdmi_ddc_read_write(bool read,
 #define android_hdmi_enc_helper_funcs mdfld_hdmi_helper_funcs
 #define android_hdmi_enc_funcs psb_intel_lvds_enc_funcs
 
+/**
+ * This function initializes the hdmi driver called during bootup
+ * @dev		: handle to drm_device
+ * @mode_dev	: device mode
+ *
+ * Returns nothing
+ *
+ * This function initializes the hdmi driver called during bootup
+ * which includes initializing drm_connector, drm_encoder, hdmi audio
+ * and msic and collects all information reqd in hdmi private.
+ */
 void android_hdmi_driver_init(struct drm_device *dev,
 				    void *mode_dev)
 {
@@ -385,7 +398,19 @@ void android_hdmi_driver_init(struct drm_device *dev,
 
 	pr_debug("%s X", __func__);
 }
-
+/**
+ * This function setups the interrupt handler for hotplug
+ * @dev		: handle to drm_device
+ *
+ * Returns nothing
+ *
+ * This function enables the interrupt handler to handle
+ * incoming Hot plug events and prints an error message
+ * incase of failure to initialize the hotplug interrupt
+ * request.
+ * The hotplug interrupt should be enabled after the
+ * psb_fbdev_init (after all drm_ object is ready)
+ */
 void android_hdmi_enable_hotplug(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv = dev->dev_private;
@@ -400,13 +425,14 @@ void android_hdmi_enable_hotplug(struct drm_device *dev)
 	}
 }
 
-/*
- * android_hdmi_irq_callback:
- * Description: IRQ interrupt bottomhalf handler callback. This callback
- *		will be called for hdmi plug/unplug interrupts.
- * Parameters : irq: IRQ number
- *		data: hdmi_priv data
- * Return     : IRQ_HANDLED
+/**
+ * IRQ interrupt bottomhalf handler callback.
+ * @irq		: IRQ number
+ * @data		: hdmi_priv data
+ *
+ * Returns IRQ_HANDLED when the interrupt has been handled.
+ * IRQ interrupt bottomhalf handler callback.
+ * This callback will be called for hdmi plug/unplug interrupts.
  */
 static irqreturn_t android_hdmi_irq_callback(int irq, void *data)
 {
@@ -415,6 +441,15 @@ static irqreturn_t android_hdmi_irq_callback(int irq, void *data)
 	return __hdmi_irq_handler_bottomhalf(data);
 }
 
+/**
+ * This function sets the hdmi driver during bootup
+ * @dev		: handle to drm_device
+ *
+ * Returns nothing
+ *
+ * This function is called from psb driver to setup the
+ * hdmi driver. Called only once during boot-up of the system
+ */
 void android_hdmi_driver_setup(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv = dev->dev_private;
@@ -514,6 +549,16 @@ typedef struct {
 
 static otm_cmdline_mode cmdline_mode = { 0, 0, 0, 0, 0, 0, 0 };
 
+/**
+ * This function is used by external tools to force modes
+ * @cmdoption		: cmd line option parameter
+ *
+ * Returns -1 on error 0 on success -2 on invalid output
+ * This function gets the input parameters mentioned and sets the
+ * driver to the mentioned mode. These utility functions are
+ * for validating the various modes and useful for compliance
+ * testing as well as easy debug
+ */
 int otm_cmdline_parse_option(char *cmdoption)
 {
 	int ret = 0;
@@ -560,6 +605,16 @@ int otm_cmdline_parse_option(char *cmdoption)
 }
 EXPORT_SYMBOL_GPL(otm_cmdline_parse_option);
 
+/**
+ * This function is used by external tools to force the vic#
+ * @vic		: vic number
+ *
+ * Returns 0 on success and -1 on invalid input vic
+ * This function gets the input parameters mentioned and sets the
+ * driver to the mentioned vic number. These utility functions are
+ * for validating the various modes and useful for compliance
+ * testing as well as easy debug
+ */
 int otm_cmdline_set_vic_option(int vic)
 {
 	int i = 0;
@@ -586,6 +641,13 @@ int otm_cmdline_set_vic_option(int vic)
 }
 EXPORT_SYMBOL_GPL(otm_cmdline_set_vic_option);
 
+/**
+ * This function is used by tools to print the cmdline options
+ *
+ * Returns nothing
+ * This function is used by external tools to print
+ * the cmdline options passed through tools
+ */
 void otm_print_cmdline_option(void)
 {
 	if (1 == cmdline_mode.specified) {
@@ -608,8 +670,20 @@ void otm_print_cmdline_option(void)
 }
 EXPORT_SYMBOL_GPL(otm_print_cmdline_option);
 
-/*
+/**
  * DRM connector helper routine.
+ * @connector	: drm_connector handle
+ * @mode		: drm_display_mode handle
+ *
+ * Returns integer values which tell whether the hdmi mode
+ * is valid or not
+ * MODE_CLOCK_LOW - mode clock less than min pixel clock value
+ * MODE_CLOCK_HIGH - mode clock greater than min pixel clock value
+ * MODE_BAD - mode values are incorrect
+ * MODE_OK - mode values are correct
+ * MODE_NO_DBLESCAN - double scan mode not supported
+ * MODE_NO_INTERLACE - interlace mode not supported
+ * This is the DRM connector helper routine
  */
 int android_hdmi_mode_valid(struct drm_connector *connector,
 				struct drm_display_mode *mode)
@@ -663,6 +737,15 @@ int android_hdmi_mode_valid(struct drm_connector *connector,
 	return MODE_OK;
 }
 
+/**
+ * This function maps the timings to drm_display_mode
+ * @timings	: This holds the timings information
+ * @dev		: drm_device handle
+ *
+ * Returns the mapped drm_display_mode
+ * This function maps the timings in EDID information
+ * to drm_display_mode and returns the same
+ */
 static struct drm_display_mode
 *android_hdmi_get_drm_mode_from_pdt(const otm_hdmi_timing_t *timings,
 				    struct drm_device *dev)
@@ -727,6 +810,13 @@ static struct drm_display_mode
 	return mode;
 }
 
+/**
+ * This function adds the cea modes in block 1 of EDID
+ * @connector	: handle to drm_connector
+ * @edid	: holds edid information
+ *
+ * Returns the number of modes added
+ */
 static int android_hdmi_add_cea_edid_modes(struct drm_connector *connector,
 					   struct edid *edid)
 {
@@ -784,6 +874,18 @@ exit:
 	return false;
 }
 
+/**
+ * This function adds the edid information from cmdline
+ * @context	: handle hdmi_context
+ * @connector	: handle drm_connector
+ * @hdisplay	: width
+ * @vdisplay	: height
+ * @vrefresh	: refresh rate
+ *
+ * Returns true if mode added, false if not added
+ * This function is used to set the user requested mode
+ * into the mode list
+ */
 static bool android_hdmi_add_noedid_mode(
 				void *context,
 				struct drm_connector *connector,
@@ -812,7 +914,12 @@ exit:
 }
 #endif
 
-/* Calculate refresh rate from mode */
+/**
+ * Calculate refresh rate from mode
+ * @mode	: handle to drm_display_mode
+ *
+ * Returns the calculated refresh rate
+ */
 static int calculate_refresh_rate(struct drm_display_mode *mode)
 {
 	int refresh_rate = 0;
@@ -827,6 +934,18 @@ static int calculate_refresh_rate(struct drm_display_mode *mode)
 	return refresh_rate;
 }
 
+/**
+ * DRM get modes helper routine
+ * @connector	: handle to drm_connector
+ *
+ * Returns the number of modes added
+ * This is a helper routines for DRM get modes.
+ * This function gets the edid information from the external sink
+ * device using i2c when connected and parses the edid information
+ * obtained and adds the modes to connector list
+ * If sink device is not connected, then static edid timings are
+ * used and those modes are added to the connector list
+ */
 int android_hdmi_get_modes(struct drm_connector *connector)
 {
 	struct drm_device *dev = connector->dev;
@@ -986,9 +1105,8 @@ edid_is_ready:
 	return ret - i;
 }
 
-/*
- * Description: helper function to print the display mode details.
- *
+/**
+ * helper function to print the display mode details.
  * @mode:		drm display mode to print
  *
  * Returns:	none.
@@ -1017,10 +1135,8 @@ static int __f5994(int dotclock)
 	return DIV_ROUND_UP(dotclock*1000, 1001);
 }
 
-/*
- * Description: helper function to convert drm_display_mode to
- *		otm_hdmi_timing.
- *
+/**
+ * helper function to convert drm_display_mode to otm_hdmi_timing.
  * @otm_mode:		otm hdmi mode to be populated
  * @drm_mode:		drm_display_mode
  *
@@ -1092,13 +1208,14 @@ static void __android_hdmi_drm_mode_to_otm_timing(otm_hdmi_timing_t *otm_mode,
 #define OTM_HDMI_MDFLD_MIPI_NATIVE_VDISPLAY 800
 #define OTM_HDMI_MDFLD_PFIT_WIDTH_LIMIT 1024
 
-/*
- * Description: crtc mode set for hdmi pipe.
- *
- * @crtc:		crtc
- * @mode:		mode requested
- * @adjusted_mode:	adjusted mode
- * @x, y, old_fb:	old frame buffer values used for flushing old plane.
+/**
+ * crtc mode set for hdmi pipe.
+ * @crtc		: crtc
+ * @mode		:mode requested
+ * @adjusted_mode:adjusted mode
+ * @x		:x value
+ * @y		:y value
+ * @old_fb	: old frame buffer values for flushing old planes
  *
  * Returns:	0 on success
  *		-EINVAL on NULL input arguments
@@ -1254,9 +1371,8 @@ int android_hdmi_crtc_mode_set(struct drm_crtc *crtc,
 	return 0;
 }
 
-/*
- * Description: encoder mode set for hdmi pipe.
- *
+/**
+ * encoder mode set for hdmi pipe.
  * @encoder:		hdmi encoder
  * @mode:		mode requested
  * @adjusted_mode:	adjusted mode
@@ -1328,9 +1444,8 @@ void android_hdmi_enc_mode_set(struct drm_encoder *encoder,
 	return;
 }
 
-/*
- * Description: save the register for HDMI display
- *
+/**
+ * save the register for HDMI display
  * @dev:		drm device
  *
  * Returns:	none.
@@ -1356,9 +1471,8 @@ void android_hdmi_save_display_registers(struct drm_device *dev)
 	return;
 }
 
-/*
- * Description: restore the register and enable the HDMI display
- *
+/**
+ * Restore the register and enable the HDMI display
  * @dev:		drm device
  *
  * Returns:	none.
@@ -1383,9 +1497,8 @@ void android_hdmi_restore_and_enable_display(struct drm_device *dev)
 			(data & HPD_SIGNAL_STATUS));
 }
 
-/*
- * Description: disable HDMI display
- *
+/**
+ * disable HDMI display
  * @dev:		drm device
  *
  * Returns:	none.
@@ -1406,10 +1519,8 @@ void android_disable_hdmi(struct drm_device *dev)
 	return;
 }
 
-/*
- * Description: hdmi helper function to detect whether hdmi/dvi
- *		is connected or not.
- *
+/**
+ * hdmi helper function to detect whether hdmi/dvi is connected or not.
  * @connector:	hdmi connector
  *
  * Returns:	connector_status_connected if hdmi/dvi is connected.
@@ -1475,9 +1586,8 @@ enum drm_connector_status android_hdmi_detect(struct drm_connector *connector)
 	}
 }
 
-/*
- * Description: hdmi helper function to manage power to the display (dpms)
- *
+/**
+ * hdmi helper function to manage power to the display (dpms)
  * @encoder:	hdmi encoder
  * @mode:	dpms on or off
  *
@@ -1502,7 +1612,7 @@ void android_hdmi_dpms(struct drm_encoder *encoder, int mode)
 #endif
 }
 
-/**
+/*
  *
  * Internal scripts wrapper functions.
  *
@@ -1519,11 +1629,10 @@ void android_hdmi_dpms(struct drm_encoder *encoder, int mode)
 #ifdef OTM_HDMI_UNIT_TEST
 
 /**
- *	test_otm_hdmi_report_edid_full() - Report current EDID information
+ * test_otm_hdmi_report_edid_full() - Report current EDID information
  *
- *	This routine simply dumps the EDID information
- *
- *	Returns - nothing
+ * This routine simply dumps the EDID information
+ * Returns - nothing
  */
 void test_otm_hdmi_report_edid_full(void)
 {
