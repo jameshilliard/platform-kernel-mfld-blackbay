@@ -369,8 +369,8 @@ otm_hdmi_ret_t ipil_hdmi_crtc_mode_set_program_dspregs(hdmi_device_t *dev,
 	 * Frame buffer size may beyond active region in case of
 	 * panning mode.
 	 */
-	sprite_width = min(fb_width, adjusted_mode->width);
-	sprite_height = min(fb_height, adjusted_mode->height);
+	sprite_width = min_t(int, fb_width, adjusted_mode->width);
+	sprite_height = min_t(int, fb_height, adjusted_mode->height);
 
 	switch (scalingtype) {
 	case IPIL_TIMING_SCALE_NONE:
