@@ -933,6 +933,8 @@ int ospm_power_suspend(struct device *dev)
 	 * status?!
 	 */
 
+	pci_save_state(pdev);
+	pci_set_power_state(pdev, PCI_D3hot);
 out:
 	mutex_unlock(&g_ospm_mutex);
 	return ret;
@@ -1032,6 +1034,8 @@ int ospm_power_resume(struct device *dev)
 
 	ospm_resume_pci(pdev);
 
+	pci_set_power_state(pdev, PCI_D0);
+	pci_restore_state(pdev);
 	ospm_resume_display(drm_dev);
 	psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
 	psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
