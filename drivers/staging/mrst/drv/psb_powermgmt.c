@@ -415,51 +415,6 @@ static void gfx_late_resume(struct early_suspend *es)
 }
 #endif
 
-/*
- * ospm_power_init
- *
- * Description: Initialize this ospm power management module
- */
-void ospm_power_init(struct drm_device *dev)
-{
-	struct drm_psb_private *dev_priv = (struct drm_psb_private *)dev->dev_private;
-
-	gpDrmDevice = dev;
-
-	dev_priv->apm_base = MDFLD_MSG_READ32(PSB_PUNIT_PORT, PSB_APMBA) &
-		0xffff;
-
-	mutex_init(&g_ospm_mutex);
-	g_hw_power_status_mask = OSPM_ALL_ISLANDS;
-	atomic_set(&g_display_access_count, 0);
-	atomic_set(&g_graphics_access_count, 0);
-	atomic_set(&g_videoenc_access_count, 0);
-	atomic_set(&g_videodec_access_count, 0);
-
-#ifdef CONFIG_EARLYSUSPEND
-	dev_priv->early_suspend.suspend = gfx_early_suspend;
-	dev_priv->early_suspend.resume = gfx_late_resume;
-	dev_priv->early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING;
-	register_early_suspend(&dev_priv->early_suspend);
-#endif
-
-	/* Runtime PM for PCI drivers. */
-	pm_runtime_put_noidle(&dev->pdev->dev);
-}
-
-/*
- * ospm_power_uninit
- *
- * Description: Uninitialize this ospm power management module
- */
-void ospm_power_uninit(struct drm_device *drm_dev)
-{
-	/* Runtime PM for PCI drivers. */
-	pm_runtime_get_noresume(&drm_dev->pdev->dev);
-
-	mutex_destroy(&g_ospm_mutex);
-}
-
 static inline unsigned long palette_reg(int pipe, int idx)
 {
 	return PSB_PALETTE(pipe) + (idx << 2);
@@ -1344,4 +1299,49 @@ int psb_runtime_resume(struct device *dev)
 	psb_runtime_hdmi_audio_resume(drm_dev);
 
 	return 0;
+}
+
+/*
+ * ospm_power_init
+ *
+ * Description: Initialize this ospm power management module
+ */
+void ospm_power_init(struct drm_device *dev)
+{
+	struct drm_psb_private *dev_priv = dev->dev_private;
+
+	gpDrmDevice = dev;
+
+	dev_priv->apm_base = MDFLD_MSG_READ32(PSB_PUNIT_PORT, PSB_APMBA) &
+		0xffff;
+
+	mutex_init(&g_ospm_mutex);
+	g_hw_power_status_mask = OSPM_ALL_ISLANDS;
+	atomic_set(&g_display_access_count, 0);
+	atomic_set(&g_graphics_access_count, 0);
+	atomic_set(&g_videoenc_access_count, 0);
+	atomic_set(&g_videodec_access_count, 0);
+
+#ifdef CONFIG_EARLYSUSPEND
+	dev_priv->early_suspend.suspend = gfx_early_suspend;
+	dev_priv->early_suspend.resume = gfx_late_resume;
+	dev_priv->early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING;
+	register_early_suspend(&dev_priv->early_suspend);
+#endif
+
+	/* Runtime PM for PCI drivers. */
+	pm_runtime_put_noidle(&dev->pdev->dev);
+}
+
+/*
+ * ospm_power_uninit
+ *
+ * Description: Uninitialize this ospm power management module
+ */
+void ospm_power_uninit(struct drm_device *drm_dev)
+{
+	/* Runtime PM for PCI drivers. */
+	pm_runtime_get_noresume(&drm_dev->pdev->dev);
+
+	mutex_destroy(&g_ospm_mutex);
 }
