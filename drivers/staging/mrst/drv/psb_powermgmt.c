@@ -1316,7 +1316,18 @@ void ospm_power_init(struct drm_device *dev)
 		0xffff;
 
 	mutex_init(&g_ospm_mutex);
+
+	/* Specify the islands to keep powered up at boot */
 	g_hw_power_status_mask = OSPM_ALL_ISLANDS;
+#ifndef CONFIG_MDFD_GL3
+	g_hw_power_status_mask &= ~OSPM_GL3_CACHE_ISLAND;
+#endif
+
+	/* Set power island states according to g_hw_power_status_mask */
+	ospm_set_power_state(OSPM_ISLAND_UP, g_hw_power_status_mask);
+	ospm_set_power_state(OSPM_ISLAND_DOWN,
+			OSPM_ALL_ISLANDS ^ g_hw_power_status_mask);
+
 	atomic_set(&g_display_access_count, 0);
 	atomic_set(&g_graphics_access_count, 0);
 	atomic_set(&g_videoenc_access_count, 0);
