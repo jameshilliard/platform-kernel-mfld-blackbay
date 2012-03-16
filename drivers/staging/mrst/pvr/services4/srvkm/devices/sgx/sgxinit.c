@@ -1987,7 +1987,7 @@ static int fw_version_supported(const int fw_ver[4])
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(sup_versions); i++)
-		if (!memcmp(fw_ver, sup_versions[i], sizeof(fw_ver)))
+		if (!memcmp(fw_ver, sup_versions[i], 4 * sizeof(int)))
 			return 1;
 
 	return 0;
