@@ -28,10 +28,17 @@
 #include "tc35876x-dsi-lvds.h"
 #include <linux/i2c/tc35876x.h>
 #include <linux/kernel.h>
+#include <linux/regulator/consumer.h>
 #include <asm/intel_scu_ipc.h>
 
 static struct i2c_client *tc35876x_client;
 static struct i2c_client *cmi_lcd_i2c_client;
+
+struct cmi_lcd_data {
+	struct regulator *regulator;
+	bool enabled;
+	struct mutex lock; /* for enabled */
+};
 
 #define FLD_MASK(start, end)	(((1 << ((start) - (end) + 1)) - 1) << (end))
 #define FLD_VAL(val, start, end) (((val) << (end)) & FLD_MASK(start, end))
@@ -506,6 +513,8 @@ void tc35876x_brightness_control(struct drm_device *dev, int level)
 void tc35876x_toshiba_bridge_panel_off(struct drm_device *dev)
 {
 	struct tc35876x_platform_data *pdata;
+	struct cmi_lcd_data *lcd_data = cmi_lcd_i2c_client ?
+		i2c_get_clientdata(cmi_lcd_i2c_client) : NULL;
 
 	if (WARN(!tc35876x_client, "%s called before probe", __func__))
 		return;
@@ -517,14 +526,22 @@ void tc35876x_toshiba_bridge_panel_off(struct drm_device *dev)
 	if (pdata->gpio_panel_bl_en != -1)
 		gpio_set_value_cansleep(pdata->gpio_panel_bl_en, 0);
 
-	if (pdata->gpio_panel_vadd != -1)
-		gpio_set_value_cansleep(pdata->gpio_panel_vadd, 0);
+	if (lcd_data && lcd_data->regulator) {
+		mutex_lock(&lcd_data->lock);
+		if (lcd_data->enabled) {
+			regulator_disable(lcd_data->regulator);
+			lcd_data->enabled = false;
+		}
+		mutex_unlock(&lcd_data->lock);
+	}
 }
 
 void tc35876x_toshiba_bridge_panel_on(struct drm_device *dev)
 {
 	struct tc35876x_platform_data *pdata;
 	struct drm_psb_private *dev_priv = dev->dev_private;
+	struct cmi_lcd_data *lcd_data = cmi_lcd_i2c_client ?
+		i2c_get_clientdata(cmi_lcd_i2c_client) : NULL;
 
 	if (WARN(!tc35876x_client, "%s called before probe", __func__))
 		return;
@@ -533,8 +550,13 @@ void tc35876x_toshiba_bridge_panel_on(struct drm_device *dev)
 
 	pdata = dev_get_platdata(&tc35876x_client->dev);
 
-	if (pdata->gpio_panel_vadd != -1) {
-		gpio_set_value_cansleep(pdata->gpio_panel_vadd, 1);
+	if (lcd_data && lcd_data->regulator) {
+		mutex_lock(&lcd_data->lock);
+		if (!lcd_data->enabled) {
+			regulator_enable(lcd_data->regulator);
+			lcd_data->enabled = true;
+		}
+		mutex_unlock(&lcd_data->lock);
 		msleep(260);
 	}
 
@@ -656,11 +678,6 @@ static int tc35876x_bridge_probe(struct i2c_client *client,
 		gpio_direction_output(pdata->gpio_panel_bl_en, 0);
 	}
 
-	if (pdata->gpio_panel_vadd != -1) {
-		gpio_request(pdata->gpio_panel_vadd, "tc35876x panel vadd");
-		gpio_direction_output(pdata->gpio_panel_vadd, 0);
-	}
-
 	tc35876x_client = client;
 
 	return 0;
@@ -677,9 +694,6 @@ static int tc35876x_bridge_remove(struct i2c_client *client)
 
 	if (pdata->gpio_panel_bl_en != -1)
 		gpio_free(pdata->gpio_panel_bl_en);
-
-	if (pdata->gpio_panel_vadd != -1)
-		gpio_free(pdata->gpio_panel_vadd);
 
 	tc35876x_client = NULL;
 
@@ -705,6 +719,8 @@ static struct i2c_driver tc35876x_bridge_i2c_driver = {
 static int cmi_lcd_i2c_probe(struct i2c_client *client,
 			     const struct i2c_device_id *id)
 {
+	struct cmi_lcd_data *lcd_data;
+
 	dev_info(&client->dev, "%s\n", __func__);
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
@@ -713,6 +729,23 @@ static int cmi_lcd_i2c_probe(struct i2c_client *client,
 		return -ENODEV;
 	}
 
+	lcd_data = devm_kzalloc(&client->dev, sizeof(*lcd_data), GFP_KERNEL);
+	if (!lcd_data) {
+		dev_err(&client->dev, "out of memory\n");
+		return -ENOMEM;
+	}
+
+	lcd_data->regulator = regulator_get(&client->dev, "vlcm_dvdd");
+	if (IS_ERR(lcd_data->regulator)) {
+		dev_err(&client->dev, "could not get regulator (%ld)\n",
+			PTR_ERR(lcd_data->regulator));
+		lcd_data->regulator = NULL;
+	}
+
+	mutex_init(&lcd_data->lock);
+
+	i2c_set_clientdata(client, lcd_data);
+
 	cmi_lcd_i2c_client = client;
 
 	return 0;
@@ -720,7 +753,16 @@ static int cmi_lcd_i2c_probe(struct i2c_client *client,
 
 static int cmi_lcd_i2c_remove(struct i2c_client *client)
 {
+	struct cmi_lcd_data *lcd_data = i2c_get_clientdata(client);
+
 	dev_dbg(&client->dev, "%s\n", __func__);
+
+	if (lcd_data && lcd_data->regulator) {
+		if (lcd_data->enabled)
+			regulator_disable(lcd_data->regulator);
+
+		regulator_put(lcd_data->regulator);
+	}
 
 	cmi_lcd_i2c_client = NULL;
 
