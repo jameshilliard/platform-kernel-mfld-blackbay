@@ -1436,3 +1436,23 @@ int psb_msvdx_restore_context(struct drm_device *dev)
 {
 	return 0;
 }
+
+int psb_msvdx_check_reset_fw(struct drm_device *dev)
+{
+	struct drm_psb_private *dev_priv = dev->dev_private;
+	struct msvdx_private *msvdx_priv = dev_priv->msvdx_private;
+	unsigned long irq_flags;
+
+	spin_lock_irqsave(&msvdx_priv->msvdx_lock, irq_flags);
+
+	/* handling fw upload here if required */
+	/* power off first, then hw_begin will power up/upload FW correctly */
+	if (msvdx_priv->msvdx_needs_reset & MSVDX_RESET_NEEDS_REUPLOAD_FW) {
+		msvdx_priv->msvdx_needs_reset &= ~MSVDX_RESET_NEEDS_REUPLOAD_FW;
+		ospm_power_island_down(OSPM_VIDEO_DEC_ISLAND);
+	}
+
+	spin_unlock_irqrestore(&msvdx_priv->msvdx_lock, irq_flags);
+
+	return 0;
+}

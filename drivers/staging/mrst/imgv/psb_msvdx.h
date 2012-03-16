@@ -99,6 +99,7 @@ int psb_cmdbuf_video(struct drm_file *priv,
 		     struct psb_ttm_fence_rep *fence_arg);
 int psb_msvdx_save_context(struct drm_device *dev);
 int psb_msvdx_restore_context(struct drm_device *dev);
+int psb_msvdx_check_reset_fw(struct drm_device *dev);
 
 bool
 psb_host_second_pass(struct drm_device *dev,

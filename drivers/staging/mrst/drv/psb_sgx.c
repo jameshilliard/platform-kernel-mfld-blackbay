@@ -746,6 +746,7 @@ int psb_cmdbuf_ioctl(struct drm_device *dev, void *data,
 		return ret;
 
 	if (arg->engine == PSB_ENGINE_VIDEO) {
+		psb_msvdx_check_reset_fw(dev);
 		if (!ospm_power_using_hw_begin(OSPM_VIDEO_DEC_ISLAND, true))
 			return -EBUSY;
 	} else if (arg->engine == LNC_ENGINE_ENCODE) {
