@@ -3218,7 +3218,6 @@ static struct drm_property_blob *drm_property_create_blob(struct drm_device *dev
 		return NULL;
 	}
 
-	blob->data = (void *)((char *)blob + sizeof(struct drm_property_blob));
 	blob->length = length;
 
 	memcpy(blob->data, data, length);

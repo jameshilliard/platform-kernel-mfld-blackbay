@@ -256,7 +256,7 @@ struct drm_property_blob {
 	struct drm_mode_object base;
 	struct list_head head;
 	unsigned int length;
-	void *data;
+	unsigned char data[];
 };
 
 struct drm_property_enum {
