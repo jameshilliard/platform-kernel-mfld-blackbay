@@ -122,7 +122,7 @@ struct drm_display_mode {
 
 	int connector_count;
 	enum drm_mode_status status;
-	int type;
+	unsigned int type;
 
 	/* Proposed mode values */
 	int clock;		/* in kHz */
