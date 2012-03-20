@@ -1090,10 +1090,16 @@ void drm_crtc_convert_to_umode(struct drm_mode_modeinfo *out,
  *
  * Convert a drm_mode_modeinfo into a drm_display_mode structure to return to
  * the caller.
+ *
+ * RETURNS:
+ * Zero on success, errno on failure.
  */
-void drm_crtc_convert_umode(struct drm_display_mode *out,
-			    struct drm_mode_modeinfo *in)
+int drm_crtc_convert_umode(struct drm_display_mode *out,
+			   struct drm_mode_modeinfo *in)
 {
+	if (in->clock > INT_MAX || in->vrefresh > INT_MAX)
+		return -ERANGE;
+
 	out->clock = in->clock;
 	out->hdisplay = in->hdisplay;
 	out->hsync_start = in->hsync_start;
@@ -1110,6 +1116,8 @@ void drm_crtc_convert_umode(struct drm_display_mode *out,
 	out->type = in->type;
 	strncpy(out->name, in->name, DRM_DISPLAY_MODE_LEN);
 	out->name[DRM_DISPLAY_MODE_LEN-1] = 0;
+
+	return 0;
 }
 
 /**
@@ -2029,7 +2037,12 @@ int drm_mode_setcrtc(struct drm_device *dev, void *data,
 			goto out;
 		}
 
-		drm_crtc_convert_umode(mode, &crtc_req->mode);
+		ret = drm_crtc_convert_umode(mode, &crtc_req->mode);
+		if (ret) {
+			DRM_DEBUG_KMS("Invalid mode\n");
+			goto out;
+		}
+
 		drm_mode_set_crtcinfo(mode, CRTC_INTERLACE_HALVE_V);
 	}
 
@@ -2815,7 +2828,12 @@ int drm_mode_attachmode_ioctl(struct drm_device *dev,
 		goto out;
 	}
 
-	drm_crtc_convert_umode(mode, umode);
+	ret = drm_crtc_convert_umode(mode, umode);
+	if (ret) {
+		DRM_DEBUG_KMS("Invalid mode\n");
+		drm_mode_destroy(dev, mode);
+		goto out;
+	}
 
 	drm_mode_attachmode(dev, connector, mode);
 out:
@@ -2858,7 +2876,12 @@ int drm_mode_detachmode_ioctl(struct drm_device *dev,
 	}
 	connector = obj_to_connector(obj);
 
-	drm_crtc_convert_umode(&mode, umode);
+	ret = drm_crtc_convert_umode(&mode, umode);
+	if (ret) {
+		DRM_DEBUG_KMS("Invalid mode\n");
+		goto out;
+	}
+
 	ret = drm_mode_detachmode(dev, connector, &mode);
 out:
 	mutex_unlock(&dev->mode_config.mutex);
