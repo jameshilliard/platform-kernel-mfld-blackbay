@@ -68,6 +68,10 @@ void psb_gtt_takedown(struct psb_gtt *pg, int free)
 		PSB_WVDC32(pg->pge_ctl, PSB_PGETBL_CTL);
 		(void) PSB_RVDC32(PSB_PGETBL_CTL);
 	}
+	if (pg->vram_addr) {
+		iounmap(pg->vram_addr);
+		pg->vram_addr = NULL;
+	}
 	if (free)
 		kfree(pg);
 }
