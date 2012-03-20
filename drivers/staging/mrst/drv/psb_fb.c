@@ -68,8 +68,8 @@ static int psbfb_setcolreg(unsigned regno, unsigned red, unsigned green,
 			   unsigned blue, unsigned transp,
 			   struct fb_info *info)
 {
-	struct psb_fbdev * fbdev = info->par;
-	struct drm_framebuffer *fb = fbdev->psb_fb_helper.fb;
+	struct drm_fb_helper *fb_helper = info->par;
+	struct drm_framebuffer *fb = fb_helper->fb;
 	uint32_t v;
 
 	if (!fb)
@@ -422,7 +422,7 @@ static int psbfb_create(struct psb_fbdev * fbdev, struct drm_fb_helper_surface_s
 		goto out_err1;
 	}
 
-	info->par = fbdev;
+	info->par = &fbdev->psb_fb_helper;
 
 	psbfb->fbdev = info;
 
