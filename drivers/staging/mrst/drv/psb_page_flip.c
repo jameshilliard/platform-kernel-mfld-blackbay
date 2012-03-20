@@ -86,7 +86,10 @@ static u32 get_vbl_count(struct drm_crtc *crtc)
 		low2 = ioread32(reg_pixel) >> PIPE_FRAME_LOW_SHIFT;
 	} while (low1 != low2 && timeout++ < PSB_VBL_CNT_TIMEOUT);
 
-	WARN_ON(timeout >= PSB_VBL_CNT_TIMEOUT);
+	if (timeout >= PSB_VBL_CNT_TIMEOUT)
+		dev_warn(crtc->dev->dev,
+			 "Timed out while determining VBL count for pipe %d\n",
+			 psb_intel_crtc->pipe);
 
 	/*
 	 * The frame counter seems to increment at the beginning of the
@@ -149,7 +152,10 @@ static void avoid_danger_zone(struct drm_crtc *crtc)
 
 	drm_vblank_put(dev, pipe);
 
-	WARN_ON(val >= min && val <= max);
+	if (val >= min && val <= max)
+		dev_warn(dev->dev,
+			 "Page flipping close to vblank start (DSL=%u, VBL=%u)\n",
+			 val, crtc->hwmode.crtc_vdisplay);
 }
 
 void
