@@ -859,7 +859,7 @@ void mdfld__intel_plane_set_alpha(int enable)
 	REG_WRITE(dspcntr_reg, dspcntr);
 }
 
-static int check_fb(struct drm_framebuffer *fb)
+static int check_fb(const struct drm_framebuffer *fb)
 {
 	if (!fb)
 		return 0;
@@ -1549,6 +1549,10 @@ static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 
 	PSB_DEBUG_ENTRY("pipe = 0x%x\n", pipe);
 
+	ret = check_fb(crtc->fb);
+	if (ret)
+		return ret;
+
 	if (pipe == 1) {
 		if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true))
 			return 0;
@@ -1599,10 +1603,6 @@ static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 		DRM_ERROR("Illegal Pipe Number. \n");
 		return 0;
 	}
-
-	ret = check_fb(crtc->fb);
-	if (ret)
-		return ret;
 
 	PSB_DEBUG_ENTRY("adjusted_hdisplay = %d\n",
 		 adjusted_mode->hdisplay);
