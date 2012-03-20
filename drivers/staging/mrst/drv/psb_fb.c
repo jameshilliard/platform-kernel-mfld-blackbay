@@ -401,6 +401,11 @@ static int psbfb_create(struct psb_fbdev * fbdev, struct drm_fb_helper_surface_s
 	size = mode_cmd.pitches[0] * mode_cmd.height;
 	aligned_size = ALIGN(size, PAGE_SIZE);
 
+	if (aligned_size > pg->vram_stolen_size) {
+		DRM_ERROR("not enough stolen memory for fb.\n");
+		return -ENOMEM;
+	}
+
 	mutex_lock(&dev->struct_mutex);
         fb = psb_framebuffer_create(dev, &mode_cmd, NULL);
         if (!fb) {
