@@ -1982,8 +1982,7 @@ IMG_VOID SGXPanic(PVRSRV_DEVICE_NODE *dev_node)
 static int fw_version_supported(const int fw_ver[4])
 {
 	static const int sup_versions[][4] = {
-		{ 1, 6, 16, 4120 },
-		{ 1, 6, 16, 4043 },
+		{ 1, 7, 17, 296760 },
 	};
 	int i;
 
