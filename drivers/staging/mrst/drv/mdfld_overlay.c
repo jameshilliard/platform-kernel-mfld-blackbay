@@ -1665,8 +1665,10 @@ static bool ovl_flip_vblank(struct drm_flip *pending_flip)
 
 static void free_flip(struct mfld_overlay_flip *oflip)
 {
-	if (atomic_dec_and_test(&oflip->refcnt))
+	if (atomic_dec_and_test(&oflip->refcnt)) {
+		psb_fb_unref(oflip->old_mem_info, oflip->tgid);
 		kfree(oflip);
+	}
 }
 
 static void ovl_sync_callback(struct pvr_pending_sync *sync,
@@ -1714,10 +1716,6 @@ static void ovl_flip_complete(struct drm_flip *pending_flip)
 
 static void ovl_flip_finish(struct drm_flip *pending_flip)
 {
-	struct mfld_overlay_flip *oflip =
-		container_of(pending_flip, struct mfld_overlay_flip, base);
-
-	psb_fb_unref(oflip->old_mem_info, oflip->tgid);
 }
 
 static void ovl_flip_cleanup(struct drm_flip *pending_flip)

@@ -205,8 +205,10 @@ unlock:
 
 static void free_flip(struct pending_flip *crtc_flip)
 {
-	if (atomic_dec_and_test(&crtc_flip->refcnt))
+	if (atomic_dec_and_test(&crtc_flip->refcnt)) {
+		psb_fb_unref(crtc_flip->old_mem_info, crtc_flip->tgid);
 		kfree(crtc_flip);
+	}
 }
 
 static void crtc_flip_cleanup(struct drm_flip *flip)
@@ -224,10 +226,6 @@ static void crtc_flip_cleanup(struct drm_flip *flip)
 
 static void crtc_flip_finish(struct drm_flip *flip)
 {
-	struct pending_flip *crtc_flip =
-		container_of(flip, struct pending_flip, base);
-
-	psb_fb_unref(crtc_flip->old_mem_info, crtc_flip->tgid);
 }
 
 static void psb_flip_driver_flush(struct drm_flip_driver *driver)
