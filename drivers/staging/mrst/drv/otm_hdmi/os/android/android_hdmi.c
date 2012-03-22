@@ -1384,6 +1384,7 @@ void android_hdmi_enc_mode_set(struct drm_encoder *encoder,
 				struct drm_display_mode *adjusted_mode)
 {
 	struct drm_device *dev;
+	struct drm_crtc *crtc;
 	struct android_hdmi_priv *hdmi_priv;
 	struct drm_psb_private *dev_priv;
 #ifdef CONFIG_SND_INTELMID_HDMI_AUDIO
@@ -1399,6 +1400,7 @@ void android_hdmi_enc_mode_set(struct drm_encoder *encoder,
 
 	/* get handles for required data */
 	dev = encoder->dev;
+	crtc = encoder->crtc;
 	dev_priv = dev->dev_private;
 	hdmi_priv = dev_priv->hdmi_priv;
 #ifdef CONFIG_SND_INTELMID_HDMI_AUDIO
@@ -1409,16 +1411,14 @@ void android_hdmi_enc_mode_set(struct drm_encoder *encoder,
 	__android_hdmi_drm_mode_to_otm_timing(&otm_adjusted_mode,
 						adjusted_mode);
 
-	/* FIXME: After the mode sets, the adjusted_mode values will be
-	 * copied to crtc->hwmode. crtc->hwmode will be used while playing
-	 * video, to config overlay about the clip region. As the current
-	 * video mode is clone for HDMI, HDMI crtc also need to present
-	 * the local display dimensions for overlay clip, as the same FB
-	 * is used between local and HDMI. This should eventually
-	 * go away with HDMI extended video implementation.
+	/*
+	 * FIXME HDMI driver doesn't follow kms design correctly.
+	 * Fudge the user mode {hdisplay,vdisplay} to avoid failing
+	 * sanity checks, and fudge the crtc_{hdisplay,vdisplay} to
+	 * fix overlay clipping.
 	 */
-	adjusted_mode->crtc_hdisplay = OTM_HDMI_MDFLD_MIPI_NATIVE_HDISPLAY;
-	adjusted_mode->crtc_vdisplay = OTM_HDMI_MDFLD_MIPI_NATIVE_VDISPLAY;
+	crtc->mode.hdisplay = crtc->mode.crtc_hdisplay = crtc->fb->width;
+	crtc->mode.vdisplay = crtc->mode.crtc_vdisplay = crtc->fb->height;
 
 	if (otm_hdmi_enc_mode_set(hdmi_priv->context, &otm_mode,
 				&otm_adjusted_mode)) {
