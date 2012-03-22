@@ -911,8 +911,8 @@ mfld_overlay_update_plane(struct drm_plane *plane, struct drm_crtc *crtc, struct
 
 	r = ovl_config_init(&c, crtc_x, crtc_y, crtc_w, crtc_h,
 			    src_x, src_y, src_w, src_h,
-			    0, 0, crtc->hwmode.crtc_hdisplay,
-			    crtc->hwmode.crtc_vdisplay,
+			    0, 0, crtc->mode.crtc_hdisplay,
+			    crtc->mode.crtc_vdisplay,
 			    plane->opts.chroma_siting, fb);
 	if (r)
 		return r;
