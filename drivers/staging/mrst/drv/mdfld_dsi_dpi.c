@@ -924,14 +924,6 @@ void mdfld_dsi_dpi_mode_set(struct drm_encoder * encoder,
 		mdfld_mipi_config(dsi_config, pipe);
 		mdfld_set_pipe_timing(dsi_config, pipe);
 
-		REG_WRITE(PSB_DSPBASE(PSB_PIPE_A), 0x00);
-		REG_WRITE(PSB_DSPSTRIDE(PSB_PIPE_A), (mode->hdisplay * 4));
-		REG_WRITE(PSB_DSPSIZE(PSB_PIPE_A),
-			((mode->vdisplay - 1) << 16) | (mode->hdisplay - 1));
-
-		REG_WRITE(PSB_DSPCNTR(PSB_PIPE_A), 0x98000000);
-		REG_WRITE(PSB_DSPSURF(PSB_PIPE_A), 0x00);
-
 		REG_WRITE(VGACNTRL, 0x80000000);
 		REG_WRITE(DEVICE_READY_REG, 0x00000001);
 
