@@ -927,7 +927,7 @@ void mdfld_dsi_dpi_mode_set(struct drm_encoder * encoder,
 		REG_WRITE(VGACNTRL, 0x80000000);
 		REG_WRITE(DEVICE_READY_REG, 0x00000001);
 
-		REG_WRITE(MIPI_PORT_CONTROL(pipe), 0x80810000);
+		REG_WRITE(MIPI_PORT_CONTROL(pipe), BIT(31) | BIT(16));
 	} else {
 		/*set up mipi port FIXME: do at init time */
 		REG_WRITE(MIPI_PORT_CONTROL(pipe), mipi);
