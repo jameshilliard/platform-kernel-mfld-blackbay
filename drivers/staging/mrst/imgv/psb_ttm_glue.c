@@ -107,6 +107,9 @@ int psb_release(struct inode *inode, struct file *filp)
 
 	psb_cleanup_pending_events(dev, psb_fp);
 
+	/* Disable asynchronous notifications for the DRM file descriptor. */
+	drm_fasync(-1, filp, 0);
+
 	/*cleanup for msvdx*/
 	if (msvdx_priv->tfile == psb_fpriv(file_priv)->tfile) {
 		msvdx_priv->fw_status = 0;

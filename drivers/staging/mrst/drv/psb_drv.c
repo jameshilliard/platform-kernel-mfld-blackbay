@@ -1063,8 +1063,6 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 
 	dev_priv->num_pipe = 3;
 
-	/*init DPST umcomm to NULL*/
-	dev_priv->psb_dpst_state = NULL;
 	dev_priv->psb_hotplug_state = NULL;
 	dev_priv->hdmi_done_reading_edid = false;
 	dev_priv->xserver_start = false;
@@ -1600,36 +1598,10 @@ static int psb_hist_status_ioctl(struct drm_device *dev, void *data,
 static int psb_init_comm_ioctl(struct drm_device *dev, void *data,
 			       struct drm_file *file_priv)
 {
-	struct drm_psb_private *dev_priv = psb_priv(dev);
-	struct pci_dev *pdev = NULL;
-	struct device *ddev = NULL;
-	struct kobject *kobj = NULL;
-	uint32_t *arg = data;
-
-	if (*arg == 1) {
-		/*find handle to drm kboject*/
-		pdev = dev->pdev;
-		ddev = &pdev->dev;
-		kobj = &ddev->kobj;
-
-		if (dev_priv->psb_dpst_state == NULL) {
-			/*init dpst kmum comms*/
-			dev_priv->psb_dpst_state = psb_dpst_init(kobj);
-		} else {
-			printk(KERN_ALERT "DPST already initialized\n");
-		}
-
+	if (*(int *)data == 1)
 		psb_irq_enable_dpst(dev);
-		psb_dpst_notify_change_um(DPST_EVENT_INIT_COMPLETE,
-					  dev_priv->psb_dpst_state);
-	} else {
-		/*hotplug and dpst destroy examples*/
+	else
 		psb_irq_disable_dpst(dev);
-		psb_dpst_notify_change_um(DPST_EVENT_TERMINATE,
-					  dev_priv->psb_dpst_state);
-		psb_dpst_device_pool_destroy(dev_priv->psb_dpst_state);
-		dev_priv->psb_dpst_state = NULL;
-	}
 	return 0;
 }
 

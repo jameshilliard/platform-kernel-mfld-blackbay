@@ -265,6 +265,7 @@ static void mid_pipe_event_handler(struct drm_device *dev, uint32_t pipe)
 		(struct drm_psb_private *) dev->dev_private;
 
 	uint32_t pipe_stat_val = 0;
+	uint32_t pipe_stat_val_b = 0;
 	uint32_t pipe_stat_reg = psb_pipestat(pipe);
 	uint32_t pipe_enable = dev_priv->pipestat[pipe];
 	uint32_t pipe_status = dev_priv->pipestat[pipe] >> 16;
@@ -276,6 +277,8 @@ static void mid_pipe_event_handler(struct drm_device *dev, uint32_t pipe)
 	pipe_stat_val = PSB_RVDC32(pipe_stat_reg);
 	pipe_stat_val &= pipe_enable | pipe_status;
 	pipe_stat_val &= pipe_stat_val >> 16;
+
+	pipe_stat_val_b = PSB_RVDC32(PSB_PIPESTAT(PSB_PIPE_B));
 
 	spin_unlock_irqrestore(&dev_priv->irqmask_lock, irq_flags);
 
@@ -297,48 +300,28 @@ static void mid_pipe_event_handler(struct drm_device *dev, uint32_t pipe)
 		DRM_ERROR("%s, can't clear the status bits in pipe_stat_reg, its value = 0x%x. \n",
 			  __FUNCTION__, PSB_RVDC32(pipe_stat_reg));
 
-	if ((pipe_stat_val & PIPE_DPST_EVENT_STATUS) &&
-	    (dev_priv->psb_dpst_state != NULL)) {
+	if (pipe_stat_val_b & PIPE_DPST_EVENT_STATUS) {
 		uint32_t pwm_reg = 0;
 		uint32_t hist_reg = 0;
-		u32 irqCtrl = 0;
 		struct dpst_guardband guardband_reg;
-		struct dpst_ie_histogram_control ie_hist_cont_reg;
-
 		hist_reg = PSB_RVDC32(HISTOGRAM_INT_CONTROL);
 
 		/* Determine if this is histogram or pwm interrupt */
 		if (hist_reg & HISTOGRAM_INT_CTRL_CLEAR) {
-			/* Notify UM of histogram interrupt */
-			psb_dpst_notify_change_um(DPST_EVENT_HIST_INTERRUPT,
-						  dev_priv->psb_dpst_state);
+			/* Send a SIGIO with a band of POLL_IN on hist irq */
+			kill_fasync(&dev->buf_async, SIGIO, POLL_IN);
 
 			/* disable dpst interrupts */
 			guardband_reg.data = PSB_RVDC32(HISTOGRAM_INT_CONTROL);
 			guardband_reg.interrupt_enable = 0;
 			guardband_reg.interrupt_status = 1;
 			PSB_WVDC32(guardband_reg.data, HISTOGRAM_INT_CONTROL);
-
-			ie_hist_cont_reg.data = PSB_RVDC32(HISTOGRAM_LOGIC_CONTROL);
-			ie_hist_cont_reg.ie_histogram_enable = 0;
-			PSB_WVDC32(ie_hist_cont_reg.data, HISTOGRAM_LOGIC_CONTROL);
-
-			irqCtrl = PSB_RVDC32(PSB_PIPESTAT(PSB_PIPE_A));
-			irqCtrl &= ~PIPE_DPST_EVENT_ENABLE;
-			PSB_WVDC32(irqCtrl, PSB_PIPESTAT(PSB_PIPE_A));
 		}
+		/* Send a SIGIO with a band of POLL_OUT on phase irq */
 		pwm_reg = PSB_RVDC32(PWM_CONTROL_LOGIC);
 		if ((pwm_reg & PWM_PHASEIN_INT_ENABLE) &&
 		    !(pwm_reg & PWM_PHASEIN_ENABLE)) {
-			/* Notify UM of the phase complete */
-			psb_dpst_notify_change_um(DPST_EVENT_PHASE_COMPLETE,
-						  dev_priv->psb_dpst_state);
-
-			/* Temporarily get phase mngr ready to generate
-			 * another interrupt until this can be moved to
-			 * user mode */
-			/* PSB_WVDC32(pwm_reg | 0x80010100 | PWM_PHASEIN_ENABLE,
-				   PWM_CONTROL_LOGIC); */
+			kill_fasync(&dev->buf_async, SIGIO, POLL_OUT);
 		}
 	}
 
@@ -681,7 +664,7 @@ void psb_irq_turn_on_dpst(struct drm_device *dev)
 	u32 hist_reg;
 	u32 pwm_reg;
 
-	if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, false)) {
+	if (ospm_power_using_hw_begin_atomic(OSPM_DISPLAY_ISLAND)) {
 		PSB_WVDC32(BIT(31), HISTOGRAM_LOGIC_CONTROL);
 		hist_reg = PSB_RVDC32(HISTOGRAM_LOGIC_CONTROL);
 		PSB_WVDC32(BIT(31), HISTOGRAM_INT_CONTROL);

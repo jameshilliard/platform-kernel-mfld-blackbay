@@ -171,7 +171,6 @@ medfield_gfx-y += \
 	$(DRMDRVDIR)/mdfld_output.o \
 	$(DRMDRVDIR)/mdfld_overlay.o \
 	$(DRMDRVDIR)/psb_bl.o \
-	$(DRMDRVDIR)/psb_dpst.o \
 	$(DRMDRVDIR)/psb_drv.o \
 	$(DRMDRVDIR)/psb_fb.o \
 	$(DRMDRVDIR)/psb_gtt.o \

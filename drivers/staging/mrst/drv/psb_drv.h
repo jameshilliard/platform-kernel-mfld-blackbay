@@ -30,7 +30,6 @@
 #include "psb_schedule.h"
 #include "psb_intel_drv.h"
 #include "psb_hotplug.h"
-#include "psb_dpst.h"
 #include "psb_gtt.h"
 #include "psb_powermgmt.h"
 #include "ttm/ttm_object.h"
@@ -898,7 +897,6 @@ struct drm_psb_private {
 	 * DPST and Hotplug state
 	 */
 
-	struct dpst_state *psb_dpst_state;
 	struct hotplug_state *psb_hotplug_state;
 	pfn_vsync_handler psb_vsync_handler;
 
