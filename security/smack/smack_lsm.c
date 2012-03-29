@@ -76,7 +76,7 @@ struct inode_smack *new_inode_smack(char *smack)
 {
 	struct inode_smack *isp;
 
-	isp = kzalloc(sizeof(struct inode_smack), GFP_KERNEL);
+	isp = kzalloc(sizeof(struct inode_smack), GFP_NOFS);
 	if (isp == NULL)
 		return NULL;
 
@@ -560,7 +560,7 @@ static int smack_inode_init_security(struct inode *inode, struct inode *dir,
 	int may;
 
 	if (name) {
-		*name = kstrdup(XATTR_SMACK_SUFFIX, GFP_KERNEL);
+		*name = kstrdup(XATTR_SMACK_SUFFIX, GFP_NOFS);
 		if (*name == NULL)
 			return -ENOMEM;
 	}
@@ -583,7 +583,7 @@ static int smack_inode_init_security(struct inode *inode, struct inode *dir,
 			issp->smk_flags |= SMK_INODE_CHANGED;
 		}
 
-		*value = kstrdup(isp, GFP_KERNEL);
+		*value = kstrdup(isp, GFP_NOFS);
 		if (*value == NULL)
 			return -ENOMEM;
 	}
@@ -3408,7 +3408,7 @@ static int smack_audit_rule_match(u32 secid, u32 field, u32 op, void *vrule,
 	char *rule = vrule;
 
 	if (!rule) {
-		audit_log(actx, GFP_KERNEL, AUDIT_SELINUX_ERR,
+		audit_log(actx, GFP_ATOMIC, AUDIT_SELINUX_ERR,
 			  "Smack: missing rule\n");
 		return -ENOENT;
 	}
