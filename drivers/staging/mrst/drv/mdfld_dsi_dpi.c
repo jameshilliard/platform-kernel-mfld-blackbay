@@ -196,6 +196,8 @@ static void mdfld_dsi_configure_down(struct mdfld_dsi_encoder * dsi_encoder, int
 	mdfld_dsi_dpi_shut_down(dpi_output, pipe);  //Send shut down command
 
 	dsi_set_device_ready_state(dev, 0, pipe);  //Clear device ready state
+
+	mdfld_pipe_disabled(dev, pipe);
 }
 
 static void mdfld_dsi_configure_up(struct mdfld_dsi_encoder * dsi_encoder, int pipe)

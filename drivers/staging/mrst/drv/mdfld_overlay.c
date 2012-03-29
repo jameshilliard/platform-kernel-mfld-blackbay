@@ -1923,3 +1923,13 @@ struct drm_flip *mdfld_overlay_atomic_flip(struct drm_plane *plane, int pipe)
 
 	return &oflip->base;
 }
+
+void mdfld_overlay_pipe_disabled(struct drm_plane *plane, int pipe)
+{
+	struct mfld_overlay *ovl = to_mfld_overlay(plane);
+
+	if (ovl->pipe != pipe)
+		return;
+
+	drm_flip_helper_clear(&ovl->flip_helper);
+}

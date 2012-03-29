@@ -241,6 +241,7 @@ extern int intelfb_probe(struct drm_device *dev);
 extern int intelfb_remove(struct drm_device *dev,
 			  struct drm_framebuffer *fb);
 extern void mdfld_disable_crtc (struct drm_device *dev, int pipe);
+extern void mdfld_pipe_disabled(struct drm_device *dev, int pipe);
 
 extern void mdfld_dbi_update_fb (struct drm_device *dev, int pipe);
 extern void mdfld_dbi_enter_dsr (struct drm_device *dev);
@@ -257,5 +258,6 @@ extern void mdfld_overlay_suspend(struct drm_plane *plane);
 extern void mdfld_overlay_resume(struct drm_plane *plane);
 extern struct drm_flip *mdfld_overlay_atomic_flip(struct drm_plane *plane, int pipe);
 extern void mdfld_overlay_process_vblank(struct drm_plane *plane, int pipe);
+extern void mdfld_overlay_pipe_disabled(struct drm_plane *plane, int pipe);
 
 #endif				/* __INTEL_DRV_H__ */

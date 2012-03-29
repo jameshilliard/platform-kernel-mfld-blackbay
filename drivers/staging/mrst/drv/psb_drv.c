@@ -61,7 +61,6 @@
 #include "bufferclass_video_linux.h"
 
 #include "android_hdmi.h"
-#include "psb_page_flip.h"
 
 int drm_psb_debug;
 /*EXPORT_SYMBOL(drm_psb_debug); */
@@ -946,8 +945,6 @@ static int psb_driver_unload(struct drm_device *dev)
 	struct drm_psb_private *dev_priv =
 		(struct drm_psb_private *) dev->dev_private;
 
-	psb_page_flip_fini(dev);
-
 	/*Fristly, unload pvr driver*/
 	PVRSRVDrmUnload(dev);
 
@@ -1297,8 +1294,6 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 #ifdef CONFIG_MDFD_GL3
 	gl3_enable();
 #endif
-
-	psb_page_flip_init(dev);
 
 	/*Intel drm driver load is done, continue doing pvr load*/
 	DRM_DEBUG("Pvr driver load\n");

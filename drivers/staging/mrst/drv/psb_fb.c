@@ -39,6 +39,7 @@
 #include "psb_ttm_userobj_api.h"
 #include "psb_fb.h"
 #include "psb_pvr_glue.h"
+#include "psb_page_flip.h"
 
 #include "mdfld_dsi_dbi.h"
 #include "mdfld_dsi_output.h"
@@ -783,6 +784,8 @@ void psb_modeset_init(struct drm_device *dev)
 	mode_dev->bo_pin_for_scanout = psb_bo_pin_for_scanout;
 	mode_dev->bo_unpin_for_scanout = psb_bo_unpin_for_scanout;
 
+	psb_page_flip_init(dev);
+
 	drm_mode_config_init(dev);
 
 	dev->mode_config.min_width = 0;
@@ -817,6 +820,8 @@ void psb_modeset_cleanup(struct drm_device *dev)
 	psb_fbdev_fini(dev);
 	
 	drm_mode_config_cleanup(dev);
+
+	psb_page_flip_fini(dev);
 
 	mutex_unlock(&dev->struct_mutex);
 }

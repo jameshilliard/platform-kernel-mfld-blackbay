@@ -142,7 +142,7 @@ void drm_flip_helper_init(struct drm_flip_helper *helper,
 	helper->funcs = funcs;
 }
 
-void drm_flip_helper_fini(struct drm_flip_helper *helper)
+void drm_flip_helper_clear(struct drm_flip_helper *helper)
 {
 	unsigned long flags;
 	struct drm_flip_driver *driver = helper->driver;
@@ -173,6 +173,16 @@ void drm_flip_helper_fini(struct drm_flip_helper *helper)
 
 	if (need_cleanup)
 		queue_work(driver->wq, &driver->cleanup_work);
+}
+
+void drm_flip_helper_fini(struct drm_flip_helper *helper)
+{
+	struct drm_flip_driver *driver = helper->driver;
+
+	drm_flip_helper_clear(helper);
+
+	flush_work_sync(&driver->finish_work);
+	flush_work_sync(&driver->cleanup_work);
 }
 
 void drm_flip_helper_vblank(struct drm_flip_helper *helper)
@@ -230,9 +240,6 @@ void drm_flip_driver_init(struct drm_flip_driver *driver,
 
 void drm_flip_driver_fini(struct drm_flip_driver *driver)
 {
-	flush_work_sync(&driver->finish_work);
-	flush_work_sync(&driver->cleanup_work);
-
 	destroy_workqueue(driver->wq);
 
 	/* All the scheduled flips should be cleaned up by now. */

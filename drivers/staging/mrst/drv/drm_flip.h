@@ -182,8 +182,15 @@ void drm_flip_helper_init(struct drm_flip_helper *helper,
 			  const struct drm_flip_helper_funcs *funcs);
 
 /*
- * Finalize flip helper. This will forcefully complete the
+ * Clear flip helper state. This will forcefully complete the
  * helper's pending flip (if any).
+ */
+void drm_flip_helper_clear(struct drm_flip_helper *helper);
+
+/*
+ * Finalize the flip helper. This will forcefully complete the
+ * helper's pending flip (if any), and wait for the finish and
+ * cleanup works to finish.
  */
 void drm_flip_helper_fini(struct drm_flip_helper *helper);
 

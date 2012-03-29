@@ -1054,6 +1054,28 @@ void mdfld_disable_crtc (struct drm_device *dev, int pipe)
 
 }
 
+void mdfld_pipe_disabled(struct drm_device *dev, int pipe)
+{
+	struct drm_psb_private *dev_priv = dev->dev_private;
+	struct drm_crtc *crtc;
+	int i;
+
+	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
+		struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(crtc);
+
+		if (psb_intel_crtc->pipe == pipe) {
+			drm_flip_helper_clear(&psb_intel_crtc->flip_helper);
+			break;
+		}
+	}
+
+	for (i = 0; i < ARRAY_SIZE(dev_priv->overlays); i++) {
+		if (!dev_priv->overlays[i])
+			continue;
+		mdfld_overlay_pipe_disabled(dev_priv->overlays[i], pipe);
+	}
+}
+
 /**
  * Sets the power management mode of the pipe and plane.
  *
@@ -1276,6 +1298,8 @@ static void mdfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 #endif  /* MDFLD_PO_JLIU7 */	
 			}
 		}
+
+		mdfld_pipe_disabled(dev, pipe);
 		break;
 	}
 
