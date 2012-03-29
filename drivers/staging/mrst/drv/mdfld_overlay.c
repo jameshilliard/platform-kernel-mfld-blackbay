@@ -1647,8 +1647,18 @@ static bool ovl_flip(struct drm_flip *flip,
 
 	spin_unlock_irqrestore(&ovl->regs_lock, flags);
 
-	if (pending_flip)
-		return (dovsta & OVL_DOVSTA_OVR_UPDT) != 0;
+	if (pending_flip) {
+		struct mfld_overlay_flip *old_oflip =
+			container_of(pending_flip, struct mfld_overlay_flip, base);
+		bool flipped = (dovsta & OVL_DOVSTA_OVR_UPDT) != 0;
+
+		if (!flipped) {
+			swap(oflip->old_mem_info, old_oflip->old_mem_info);
+			swap(oflip->pending_values, old_oflip->pending_values);
+		}
+
+		return flipped;
+	}
 
 	return false;
 }

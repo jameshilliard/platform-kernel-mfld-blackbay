@@ -335,8 +335,18 @@ static bool crtc_flip(struct drm_flip *flip,
 	/* This flip will happen on the next vblank */
 	crtc_flip->vbl_count = (vbl_count + 1) & 0xffffff;
 
-	if (pending_flip)
-		return crtc_check(pending_flip, vbl_count);
+	if (pending_flip) {
+		struct pending_flip *old_crtc_flip =
+			container_of(pending_flip, struct pending_flip, base);
+		bool flipped = crtc_check(pending_flip, vbl_count);
+
+		if (!flipped) {
+			swap(crtc_flip->old_mem_info, old_crtc_flip->old_mem_info);
+			swap(crtc_flip->pending_values, old_crtc_flip->pending_values);
+		}
+
+		return flipped;
+	}
 
 	return false;
 }
