@@ -748,7 +748,7 @@ BC_Video_Bridge(struct drm_device *dev, IMG_VOID * arg,
 	return 0;
 }
 
-static int
+int
 BC_Camera_Bridge(BC_Video_ioctl_package * psBridge, unsigned long pAddr)
 {
 	int err = -EFAULT;
@@ -815,3 +815,4 @@ BC_Camera_Bridge(BC_Video_ioctl_package * psBridge, unsigned long pAddr)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(BC_Camera_Bridge);

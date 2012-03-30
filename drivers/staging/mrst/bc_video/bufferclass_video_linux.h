@@ -62,6 +62,7 @@ typedef struct bc_buf_ptr {
 #define BC_Video_ioctl_alloc_buffer             7
 #define BC_Video_ioctl_free_buffer              8
 
+int BC_Camera_Bridge(BC_Video_ioctl_package *spBridge, unsigned long pAddr);
 int BC_DestroyBuffers(int id);
 
 extern unsigned int bc_video_id_usage[BC_VIDEO_DEVICE_MAX_ID];
