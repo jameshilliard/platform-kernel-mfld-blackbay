@@ -36,7 +36,10 @@ INCLUDES := -I$(srctree)/$(src)/include \
 	    -I$(src)/css \
 	    -I$(srctree)/$(src)/css/hrt \
 	    -I$(srctree)/$(src)/css/hrt_2400 \
-	    -I$(srctree)/drivers/staging/mrst/bc_video
+	    -I$(srctree)/include/linux \
+	    -I$(srctree)/drivers/staging/mrst/bc_video \
+	    -I$(srctree)/drivers/staging/mrst/pvr/include4 \
+	    -I$(srctree)/drivers/staging/mrst/pvr/services4/include
 
 DEFINES := -DHRT_HW -DHRT_ISP_CSS_CUSTOM_HOST -DHRT_USE_VIR_ADDRS -DHRT_KERNEL
 DEFINES += -DUSE_DYNAMIC_BIN
@@ -45,5 +48,6 @@ DEFINES += -DUSE_INTERRUPTS
 #DEFINES += -DUSE_SSSE3
 DEFINES += -DPUNIT_CAMERA_BUSY
 DEFINES += -DUSE_KMEM_CACHE
+DEFINES += -DLINUX
 
 EXTRA_CFLAGS := $(INCLUDES) $(DEFINES) -fno-common -Werror
