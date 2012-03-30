@@ -1594,7 +1594,9 @@ enum drm_connector_status android_hdmi_detect(struct drm_connector *connector)
 		 * drm_crtc_helper_set_config() do mode setting each time,
 		 * especially when plug out and plug in HDMI.
 		 */
+#ifdef MFLD_HDMI_PR3
 		drm_helper_disable_unused_functions(dev);
+#endif
 
 #ifdef OTM_HDMI_HDCP_ENABLE
 		/* TODO: HPD status should be used by HDCP through attributes */
