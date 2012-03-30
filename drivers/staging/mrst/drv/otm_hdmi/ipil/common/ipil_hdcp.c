@@ -123,6 +123,20 @@ bool ipil_hdcp_enable_encryption(void)
 	return ips_hdcp_enable_encryption();
 }
 
+bool ipil_hdcp_compute_tx_v(uint8_t *rep_ksv_list,
+				    uint32_t rep_ksv_list_entries,
+				    uint16_t topology_data)
+{
+	return ips_hdcp_compute_tx_v(rep_ksv_list,
+				     rep_ksv_list_entries,
+				     topology_data);
+}
+
+bool ipil_hdcp_compare_v(uint32_t *rep_prime_v)
+{
+	return ips_hdcp_compare_v(rep_prime_v);
+}
+
 bool ipil_hdcp_disable(void)
 {
 	return ips_hdcp_disable();

@@ -78,6 +78,10 @@ extern bool ipil_hdcp_start_authentication(void);
 extern bool ipil_hdcp_is_r0_ready(void);
 extern bool ipil_hdcp_does_ri_match(uint16_t rx_ri);
 extern bool ipil_hdcp_enable_encryption(void);
+extern bool ipil_hdcp_compute_tx_v(uint8_t *rep_ksv_list,
+					   uint32_t rep_ksv_list_entries,
+					   uint16_t topology_data);
+extern bool ipil_hdcp_compare_v(uint32_t *rep_prime_v);
 extern bool ipil_hdcp_disable(void);
 extern bool ipil_hdcp_device_can_authenticate(void);
 

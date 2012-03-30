@@ -97,6 +97,10 @@
 #define MDFLD_HDCP_AKEY_MED_REG		0x61420
 #define MDFLD_HDCP_AKEY_HI_REG		0x61424
 
+#define HDCP_CONVERT_ENDIANNESS(x)	(((x&0x000000ff)<<24)|\
+					((x&0x0000ff00)<<8)|\
+					((x&0x00ff0000)>>8)|\
+					((x&0xff000000)>>24))
 
 struct double_word_t {
 	union {
@@ -111,6 +115,18 @@ struct double_word_t {
 	};
 };
 
+struct sqword_t {
+	union {
+		unsigned long long quad_part;
+		struct {
+			unsigned long low_part;
+			unsigned long high_part;
+		} u;
+		struct {
+			uint8_t byte[8];
+		};
+	};
+};
 
 enum ips_hdcp_config_enum {
 	HDCP_Off = 0,

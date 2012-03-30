@@ -106,13 +106,16 @@ struct hdcp_context_t {
 			/*!< indicates HDCP Authentication currently allowed
 			 */
 	bool	is_required;
-	bool	is_enabled;
+	bool	is_phase1_enabled;
+	bool	is_phase2_enabled;
 	bool	suspend;
 	bool	hpd;
 	bool	display_power_on;
 	bool	auto_retry;
 	bool	wdt_expired;
 
+	unsigned int	wdt_id;
+			/*!< phase 2 auth watchdog timer id */
 	unsigned int	current_srm_ver;
 			/*!< currently used SRM version (if vrl is not null)
 			 */
@@ -293,12 +296,44 @@ static bool hdcp_read_rx_r0(uint16_t *rx_r0)
 	return hdcp_read_rx_ri(rx_r0);
 }
 
+static bool hdcp_read_rx_ksv_list(uint8_t *ksv_list, uint32_t size)
+{
+	bool ret = false;
+	if (ksv_list != NULL && size) {
+		if (hdcp_ddc_read(HDCP_RX_KSV_FIFO_ADDR,
+		    ksv_list, size) == true) {
+			ret = true;
+		}
+	}
+	return ret;
+}
+
+static bool hdcp_read_rx_v(uint8_t *v)
+{
+	bool ret = false;
+	uint8_t *buf = v;
+	uint8_t offset = HDCP_RX_V_H0_ADDR;
+
+	if (v != NULL) {
+		for (; offset <= HDCP_RX_V_H4_ADDR; offset += 4) {
+			if (hdcp_ddc_read(offset, buf, 4) == false) {
+				pr_debug("hdcp: read rx v failure\n");
+				break;
+			}
+			buf += 4;
+		}
+		if (offset > HDCP_RX_V_H4_ADDR)
+			ret = true;
+	}
+	return ret;
+}
+
 static bool hdcp_stage3_ri_check(void)
 {
 	uint16_t rx_ri = 0;
 
 	if (hdcp_enable_condition_ready() == false ||
-	    hdcp_context->is_enabled == false)
+	    hdcp_context->is_phase1_enabled == false)
 		return false;
 
 #ifdef OTM_HDCP_DEBUG_MODULE
@@ -347,7 +382,9 @@ static void hdcp_reset(void)
 	/* Stop HDCP */
 	ipil_hdcp_disable();
 
-	hdcp_context->is_enabled = false;
+	hdcp_context->is_phase1_enabled = false;
+	hdcp_context->is_phase2_enabled = false;
+	hdcp_context->wdt_id++;
 }
 
 static bool hdcp_rep_check(void)
@@ -359,7 +396,13 @@ static bool hdcp_rep_check(void)
 static bool hdcp_rep_watch_dog(void)
 {
 	int msg = HDCP_REPEATER_WDT_EXPIRED;
-	return wq_send_message_delayed(msg, NULL, 5000);
+	unsigned int *wdt_id = kmalloc(sizeof(unsigned int), GFP_KERNEL);
+	if (wdt_id != NULL) {
+		*wdt_id = hdcp_context->wdt_id;
+		return wq_send_message_delayed(msg, (void *)wdt_id, 5000);
+	} else
+		pr_debug("hdcp: %s failed to alloc mem\n", __func__);
+	return false;
 }
 
 static bool hdcp_initiate_rep_auth(void)
@@ -485,25 +528,108 @@ static int hdcp_stage1_authentication(bool *is_repeater)
 		return false;
 	pr_debug("hdcp: encryption enabled\n");
 
-	hdcp_context->is_enabled = true;
+	hdcp_context->is_phase1_enabled = true;
 
 	return true;
 }
 
 static int hdcp_stage2_repeater_authentication(void)
 {
-	/* TODO: Repeater Authentication */
+	uint8_t *rep_ksv_list = NULL;
+	uint32_t rep_prime_v[HDCP_V_H_SIZE] = {0};
+	struct hdcp_rx_bstatus_t bstatus;
+	struct hdcp_rx_bcaps_t bcaps;
+	bool ret = false;
+
+	/* Repeater Authentication */
 	if (hdcp_enable_condition_ready() == false ||
-	    hdcp_context->is_enabled == false ||
-	    hdcp_context->wdt_expired == false)
+	    hdcp_context->is_phase1_enabled == false ||
+	    hdcp_context->wdt_expired == true) {
+		pr_debug("hdcp: stage2 auth condition not ready\n");
+		return false;
+	}
+
+	/* Read BCAPS */
+	if (hdcp_read_bcaps(&bcaps.value) == false)
 		return false;
 
-	/* check validity of repeater depth & device count */
-	/* check if fifo ready */
-	/* read ksv list */
-	/* verify SHA1 */
-	/* validate KSV's */
-	return true;
+	if (!bcaps.is_repeater)
+		return false;
+
+	/* Check if fifo ready */
+	if (!bcaps.ksv_fifo_ready) {
+		/* reschedule if not ready */
+		pr_debug("hdcp: rescheduling repeater auth\n");
+		msleep(100);
+		hdcp_rep_check();
+		return true;
+	}
+
+	/* Read BSTATUS */
+	if (hdcp_read_bstatus(&bstatus.value) == false)
+		return false;
+
+	/* Check validity of repeater depth & device count */
+	if (bstatus.max_devs_exceeded)
+		return false;
+
+	if (bstatus.max_cascade_exceeded)
+		return false;
+
+	if (0 == bstatus.device_count)
+		return true;
+
+	if (bstatus.device_count > HDCP_MAX_DEVICES)
+		return false;
+
+	/* Set repeater bit */
+	if (ipil_hdcp_set_repeater(bcaps.is_repeater) == false)
+		return false;
+
+	/* Read ksv list from repeater */
+	rep_ksv_list = kzalloc(bstatus.device_count * HDCP_KSV_SIZE,
+				GFP_KERNEL);
+	if (!rep_ksv_list) {
+		pr_debug("hdcp: rep ksv list alloc failure\n");
+		return false;
+	}
+
+	if (hdcp_read_rx_ksv_list(rep_ksv_list,
+				  bstatus.device_count * HDCP_KSV_SIZE)
+				  == false) {
+		pr_debug("hdcp: rep ksv list read failure\n");
+		goto exit;
+	}
+
+	/* TODO: SRM check */
+
+	/* Compute tx(v) */
+	if (ipil_hdcp_compute_tx_v(rep_ksv_list, bstatus.device_count,
+				   bstatus.value) == false) {
+		pr_debug("hdcp: rep compute tx v failure\n");
+		goto exit;
+	}
+
+	/* Read rx(v') */
+	if (hdcp_read_rx_v((uint8_t *)rep_prime_v) == false) {
+		pr_debug("hdcp: rep read rx v failure\n");
+		ipil_hdcp_set_repeater(0);
+		goto exit;
+	}
+
+	/* Verify SHA1 tx(v) = rx(v') */
+	if (ipil_hdcp_compare_v(rep_prime_v) == false) {
+		pr_debug("hdcp: rep compare v failure\n");
+		goto exit;
+	}
+
+	pr_debug("hdcp: repeater auth success\n");
+	hdcp_context->is_phase2_enabled = true;
+	ret = true;
+
+exit:
+	kfree(rep_ksv_list);
+	return ret;
 }
 
 static bool hdcp_start(void)
@@ -539,7 +665,7 @@ static void hdcp_retry_enable(void)
 {
 	int msg = HDCP_ENABLE;
 	if (hdcp_enable_condition_ready() == true &&
-		hdcp_context->is_enabled == false &&
+		hdcp_context->is_phase1_enabled == false &&
 		hdcp_context->auto_retry == true) {
 		wq_send_message_delayed(msg, NULL, 30);
 		pr_debug("hdcp: retry enable\n");
@@ -567,7 +693,7 @@ static void hdcp_task_event_handler(struct work_struct *work)
 	switch (msg) {
 	case HDCP_ENABLE:
 		if (hdcp_enable_condition_ready() == true &&
-		    hdcp_context->is_enabled == false &&
+		    hdcp_context->is_phase1_enabled == false &&
 		    hdcp_start() == false) {
 			reset_hdcp = true;
 			pr_debug("hdcp: failed to start hdcp\n");
@@ -588,9 +714,16 @@ static void hdcp_task_event_handler(struct work_struct *work)
 		break;
 
 	case HDCP_REPEATER_WDT_EXPIRED:
-		/* TODO */
-		hdcp_context->wdt_expired = true;
-		pr_debug("hdcp: repeater wdt expired\n");
+		if (msg_data != NULL) {
+			pr_debug("hdcp: reapter wdt expired, "
+				    "wdt_id = %d, msg_data = %d\n",
+				    hdcp_context->wdt_id,
+				    *(unsigned int *)msg_data);
+			hdcp_context->wdt_expired = true;
+			if (hdcp_context->wdt_id == *((unsigned int *)msg_data)
+			    && !hdcp_context->is_phase2_enabled)
+				reset_hdcp = true;
+		}
 		break;
 
 	case HDCP_RESET:
@@ -603,7 +736,8 @@ static void hdcp_task_event_handler(struct work_struct *work)
 			pr_debug("hdcp: suspend = %d\n",
 					hdcp_context->suspend);
 			if (hdcp_context->suspend == true) {
-				if (hdcp_context->is_enabled == true)
+				if (hdcp_context->is_phase1_enabled
+				    == true)
 					reset_hdcp = true;
 			}
 		}
@@ -837,13 +971,15 @@ bool otm_hdmi_hdcp_init(hdmi_context_t *hdmi_context,
 	}
 
 	hdcp_context->is_required	= false;
-	hdcp_context->is_enabled	= false;
+	hdcp_context->is_phase1_enabled	= false;
+	hdcp_context->is_phase2_enabled	= false;
 	hdcp_context->suspend		= false;
 	hdcp_context->hpd		= false;
 	hdcp_context->display_power_on	= false;
 	hdcp_context->auto_retry	= true;
 	hdcp_context->wdt_expired	= false;
 	hdcp_context->can_authenticate	= true;
+	hdcp_context->wdt_id		= 1u;
 	hdcp_context->current_srm_ver	= 0u;
 	hdcp_context->vrl		= NULL;
 	hdcp_context->vrl_count		= 0u;

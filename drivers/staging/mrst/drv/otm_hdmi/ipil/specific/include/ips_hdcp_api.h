@@ -80,6 +80,10 @@ extern bool ips_hdcp_set_repeater(bool present);
 extern bool ips_hdcp_start_authentication(void);
 extern bool ips_hdcp_enable_encryption(void);
 extern bool ips_hdcp_does_ri_match(uint16_t rx_ri);
+extern bool ips_hdcp_compute_tx_v(uint8_t *rep_ksv_list,
+					  uint32_t rep_ksv_list_entries,
+					  uint16_t topology_data);
+extern bool ips_hdcp_compare_v(uint32_t *rep_prime_v);
 extern bool ips_hdcp_disable(void);
 extern bool ips_hdcp_device_can_authenticate(void);
 

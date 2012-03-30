@@ -68,6 +68,9 @@
 
 #define HDCP_PRIMARY_I2C_ADDR	0x3A
 
+#define HDCP_MAX_RETRY_STATUS	(1500)
+#define HDCP_MAX_DEVICES        (127)
+
 #define HDCP_KSV_SIZE		0x05
 #define HDCP_KSV_HAMMING_WT	(20)
 #define HDCP_AN_SIZE		0x08
