@@ -337,6 +337,8 @@ static void mdfld_hdmi_dpms(struct drm_encoder *encoder, int mode)
 	}
 	REG_READ(hdmi_priv->hdmib_reg);
 
+	android_hdmi_dpms(encoder, mode);
+
 	ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 }
 

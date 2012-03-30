@@ -326,6 +326,8 @@ static bool hdcp_send_an_aksv(uint8_t *an, uint8_t an_size,
 	   aksv != NULL  && aksv_size == HDCP_KSV_SIZE) {
 		if (hdcp_ddc_write(HDCP_RX_AN_ADDR, an, HDCP_AN_SIZE) ==
 			true) {
+			/* wait 20ms for i2c write for An to complete */
+			msleep(20);
 			if (hdcp_ddc_write(HDCP_RX_AKSV_ADDR, aksv,
 					HDCP_KSV_SIZE) == true)
 				ret = true;
@@ -417,9 +419,15 @@ static int hdcp_stage1_authentication(bool *is_repeater)
 	pr_debug("hdcp: bksv: %02x%02x%02x%02x%02x\n",
 			bksv[0], bksv[1], bksv[2], bksv[3], bksv[4]);
 
+	/* wait 20ms for i2c read for bksv to complete */
+	msleep(20);
+
 	if (hdcp_read_bcaps(&bcaps.value) == false)
 		return false;
 	pr_debug("hdcp: bcaps: %x\n", bcaps.value);
+
+	/* wait 20ms for i2c read for bcaps to complete */
+	msleep(20);
 
 	/* Read BSTATUS */
 	if (hdcp_read_bstatus(&bstatus.value) == false)
@@ -445,15 +453,15 @@ static int hdcp_stage1_authentication(bool *is_repeater)
 
 	pr_debug("hdcp: auth started\n");
 
-	/* Wait for 100ms */
-	msleep_interruptible(100);
+	/* Wait for 120ms before reading R0' */
+	msleep(120);
 
 	/* Check if R0 Ready */
 	retry = 20;
 	do {
 		if (ipil_hdcp_is_r0_ready() == true)
 			break;
-		msleep_interruptible(5);
+		msleep(5);
 		retry--;
 	} while (retry);
 

@@ -127,6 +127,7 @@ static u32 debug_modes_count;
 
 /*OTM_HDMI_FIXME: this should be from get attribute interface*/
 #define OTM_HDMI_I2C_ADAPTER_NUM 8
+#define OTM_HDMI_MAX_DDC_WRITE_SIZE 20
 
 #define SWITCH_DEV_HDMI_NAME "hdmi"
 #define SWITCH_DEV_DVI_NAME "dvi"
@@ -298,21 +299,41 @@ static int hdmi_ddc_read_write(bool read,
 			int size)
 {
 	struct i2c_adapter *adapter = i2c_get_adapter(OTM_HDMI_I2C_ADAPTER_NUM);
-	struct i2c_msg msgs[] = {
-		{
-			.addr   = i2c_addr,
-			.flags  = 0,
-			.len    = 1,
-			.buf    = &offset,
-		}, {
-			.addr   = i2c_addr,
-			.flags  = ((read) ? I2C_M_RD : 0),
-			.len    = size,
-			.buf    = buffer,
-		}
-	};
+	struct i2c_msg msgs[2];
+	int num_of_msgs = 0;
+	uint8_t wr_buffer[OTM_HDMI_MAX_DDC_WRITE_SIZE];
 
-	if (adapter != NULL && i2c_transfer(adapter, msgs, 2) == 2)
+	/* Use one i2c message to write and two to read as some
+	 * monitors don't handle two write messages properly
+	*/
+	if (read) {
+		msgs[0].addr   = i2c_addr,
+		msgs[0].flags  = 0,
+		msgs[0].len    = 1,
+		msgs[0].buf    = &offset,
+
+		msgs[1].addr   = i2c_addr,
+		msgs[1].flags  = ((read) ? I2C_M_RD : 0),
+		msgs[1].len    = size,
+		msgs[1].buf    = buffer,
+
+		num_of_msgs = 2;
+	} else {
+		BUG_ON(size + 1 > OTM_HDMI_MAX_DDC_WRITE_SIZE);
+
+		wr_buffer[0] = offset;
+		memcpy(&wr_buffer[1], buffer, size);
+
+		msgs[0].addr   = i2c_addr,
+		msgs[0].flags  = 0,
+		msgs[0].len    = size + 1,
+		msgs[0].buf    = wr_buffer,
+
+		num_of_msgs = 1;
+	}
+
+	if (adapter != NULL && i2c_transfer(adapter, msgs, num_of_msgs) ==
+								num_of_msgs)
 		return 1;
 
 	return 0;

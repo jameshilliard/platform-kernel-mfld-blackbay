@@ -81,6 +81,9 @@ ccflags-y += \
 #only for internal testing
 ccflags-y += -DOTM_HDMI_UNIT_TEST
 
+#enable HDCP
+ccflags-y += -DOTM_HDMI_HDCP_ENABLE
+
 ifeq ($(CONFIG_MDFD_HDMI_GREENRIDGE),y)
 ccflags-y += \
 	-I$(srctree)/$(src)/drv/otm_hdmi/pil/specific/oktl \
