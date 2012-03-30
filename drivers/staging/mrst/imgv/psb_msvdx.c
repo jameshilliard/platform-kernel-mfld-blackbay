@@ -1392,8 +1392,11 @@ int lnc_video_getparam(struct drm_device *dev, void *data,
 			return -EFAULT;
 		}
 		break;
-
-
+#ifdef HDMI_MODE_SETTING
+	case OTM_HDMI_SET_HDMI_MODE_VIC:
+		otm_cmdline_set_vic_option((int)arg->value);
+		break;
+#endif
 	default:
 		ret = -EFAULT;
 		break;
