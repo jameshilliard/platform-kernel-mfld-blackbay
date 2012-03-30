@@ -466,9 +466,9 @@ static void tc35876x_brightness_init(struct drm_device *dev)
 
 	clkdiv = calc_clkdiv(SYSTEMCLK, PWM_FREQUENCY);
 
-	ret = intel_scu_ipc_iowrite8(PWM0CLKDIV1, (clkdiv >> 8) & 0xff);
+	ret = intel_scu_ipc_iowrite8(PWM0CLKDIV1, 0x00);
 	if (!ret)
-		ret = intel_scu_ipc_iowrite8(PWM0CLKDIV0, clkdiv & 0xff);
+		ret = intel_scu_ipc_iowrite8(PWM0CLKDIV0, 0x25);
 
 	if (ret)
 		dev_err(&dev->pdev->dev, "PWM0CLKDIV set failed\n");
@@ -490,11 +490,7 @@ void tc35876x_brightness_control(struct drm_device *dev, int level)
 	/* PWM duty cycle 0x00...0x63 corresponds to 0...99% */
 	duty_val = level * 0x63 / MDFLD_DSI_BRIGHTNESS_MAX_LEVEL;
 
-	/* I won't pretend to understand this formula. The panel spec is quite
-	 * bad engrish.
-	 */
-	panel_duty_val = (2 * level - 100) * 0xA9 /
-			 MDFLD_DSI_BRIGHTNESS_MAX_LEVEL + 0x56;
+	panel_duty_val = (230 * (level - 100) / 100) + 255;
 
 	ret = intel_scu_ipc_iowrite8(PWM0DUTYCYCLE, duty_val);
 	if (ret)
@@ -571,7 +567,7 @@ void tc35876x_toshiba_bridge_panel_on(struct drm_device *dev)
 		 * 255-allow_distort*2 value.
 		 */
 		ret = i2c_smbus_write_byte_data(cmi_lcd_i2c_client,
-						PANEL_ALLOW_DISTORT, 0x10);
+						PANEL_ALLOW_DISTORT, 0x32);
 		if (ret < 0)
 			dev_err(&cmi_lcd_i2c_client->dev,
 				"i2c write failed (%d)\n", ret);
@@ -583,6 +579,25 @@ void tc35876x_toshiba_bridge_panel_on(struct drm_device *dev)
 		/* Set minimum brightness value - this is tunable */
 		ret = i2c_smbus_write_byte_data(cmi_lcd_i2c_client,
 						PANEL_PWM_MIN, 0x35);
+		if (ret < 0)
+			dev_err(&cmi_lcd_i2c_client->dev,
+				"i2c write failed (%d)\n", ret);
+
+		/*changing CABC PWM frequency to 5 Khz */
+		ret = i2c_smbus_write_byte_data(cmi_lcd_i2c_client,
+						PANEL_FREQ_DIVIDER_HI, 0xE0);
+		if (ret < 0)
+			dev_err(&cmi_lcd_i2c_client->dev,
+				"i2c write failed (%d)\n", ret);
+		ret = i2c_smbus_write_byte_data(cmi_lcd_i2c_client,
+						PANEL_FREQ_DIVIDER_LO, 0x64);
+		if (ret < 0)
+			dev_err(&cmi_lcd_i2c_client->dev,
+				"i2c write failed (%d)\n", ret);
+
+		/*PANEL_MODIFY_RGB to 0x00 to get rid of flicker*/
+		ret = i2c_smbus_write_byte_data(cmi_lcd_i2c_client,
+						PANEL_MODIFY_RGB, 0x00);
 		if (ret < 0)
 			dev_err(&cmi_lcd_i2c_client->dev,
 				"i2c write failed (%d)\n", ret);
