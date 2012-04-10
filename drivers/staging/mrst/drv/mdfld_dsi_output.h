@@ -42,7 +42,7 @@
 #include "psb_powermgmt.h"
 #include "mdfld_output.h"
 
-#include <asm/mrst.h>
+#include <asm/intel-mid.h>
 
 #define MDFLD_DSI_BRIGHTNESS_MAX_LEVEL 100
 
