@@ -457,6 +457,7 @@ static int atomisp_release(struct file *file)
 		isp->vf_frame = NULL;
 	}
 
+	atomisp_setup_mipi_interrupt_enable(isp, false);
 
 	atomisp_free_3a_buffers(isp);
 	atomisp_free_dis_buffers(isp);

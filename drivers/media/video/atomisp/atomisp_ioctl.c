@@ -1643,6 +1643,19 @@ static int atomisp_s_parm_file(struct file *file, void *fh,
 	return 0;
 }
 
+static int atomisp_setup_mipi_interrput(struct atomisp_device *isp, void *arg)
+{
+	mutex_lock(&isp->input_lock);
+	mutex_lock(&isp->isp_lock);
+
+	atomisp_setup_mipi_interrupt_enable(isp, *((int *)arg));
+
+	mutex_unlock(&isp->isp_lock);
+	mutex_unlock(&isp->input_lock);
+
+	return 0;
+}
+
 /* set default atomisp ioctl value */
 static long atomisp_vidioc_default(struct file *file, void *fh,
 	bool valid_prio, int cmd, void *arg)
@@ -1835,6 +1848,9 @@ static long atomisp_vidioc_default(struct file *file, void *fh,
 
 	case ATOMISP_IOC_S_ISP_GAMMA_CORRECTION:
 		return atomisp_gamma_correction(isp, 1, arg);
+
+	case ATOMISP_IOC_S_MIPI_IRQ:
+		return atomisp_setup_mipi_interrput(isp, arg);
 
 	default:
 		return -EINVAL;

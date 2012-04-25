@@ -304,6 +304,15 @@ struct mt9e013_device {
 	void *fuseid;
 	/* Older VCMs could not maintain the focus position in standby mode. */
 	bool keeps_focus_pos;
+
+	struct workqueue_struct *wq;
+	struct work_struct work;
+	int queue_cnt;
+	u16 gain_delay;
+
+	bool frame_valid;
+	bool suspended_exposure_request;
+	struct atomisp_exposure suspended_exposure_value;
 };
 
 #define MT9E013_MAX_WRITE_BUF_SIZE	32

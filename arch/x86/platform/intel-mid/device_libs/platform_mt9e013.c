@@ -92,7 +92,9 @@ static int mt9e013_power_ctrl(struct v4l2_subdev *sd, int flag)
 static int mt9e013_csi_configure(struct v4l2_subdev *sd, int flag)
 {
 	return camera_sensor_csi(sd, ATOMISP_CAMERA_PORT_PRIMARY, 2,
-		ATOMISP_INPUT_FORMAT_RAW_10, atomisp_bayer_order_grbg, flag);
+		ATOMISP_INPUT_FORMAT_RAW_10, atomisp_bayer_order_grbg,
+		true, /*SOF */
+		flag);
 }
 
 static bool mt9e013_low_fps(void)

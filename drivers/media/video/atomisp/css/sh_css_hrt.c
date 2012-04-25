@@ -1893,6 +1893,8 @@ sh_css_hrt_irq_get_id(enum hrt_isp_css_irq *irq_id)
 		return hrt_isp_css_irq_status_error;
 
 	irq_status &= ~(1u << id1);
+	if ((enum hrt_isp_css_irq) id1 == hrt_isp_css_irq_sp)
+		sh_css_hrt_irq_clear_sp();
 
 	/* now check whether there are more bits set */
 	id2 = ffs(irq_status) - 1;

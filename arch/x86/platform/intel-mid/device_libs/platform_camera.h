@@ -25,7 +25,8 @@ extern const struct intel_v4l2_subdev_id v4l2_ids[] __attribute__((weak));
 
 extern int camera_sensor_gpio(int gpio, char *name, int dir, int value);
 extern int camera_sensor_csi(struct v4l2_subdev *sd, u32 port,
-			u32 lanes, u32 format, u32 bayer_order, int flag);
+			u32 lanes, u32 format, u32 bayer_order,
+			bool need_sof_signal, int flag);
 extern void intel_ignore_i2c_device_register(
 				struct sfi_device_table_entry *pentry,
 				struct devs_id *dev

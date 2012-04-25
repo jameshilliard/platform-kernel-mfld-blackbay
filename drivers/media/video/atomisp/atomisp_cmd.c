@@ -34,6 +34,9 @@
 #include <linux/kernel.h>
 #include <asm/intel-mid.h>
 
+#define	ATOMISP_SOF	(SH_CSS_IRQ_INFO_CSS_RECEIVER_SOF)
+#define	ATOMISP_EOF	(SH_CSS_IRQ_INFO_STATISTICS_READY)
+
 /* We should never need to run the flash for more than 2 frames.
  * At 15fps this means 133ms. We set the timeout a bit longer.
  * Each flash driver is supposed to set its own timeout, but
@@ -96,6 +99,21 @@ static int atomisp_wdt_pet_dog(struct atomisp_device *isp);
 static void atomisp_buf_done(struct atomisp_device *isp, int error);
 static int atomisp_start_binary(struct atomisp_device *isp);
 static int atomisp_buffer_dequeue(struct atomisp_device *isp, int wait);
+
+void
+atomisp_setup_mipi_interrupt_enable(struct atomisp_device *isp, int enable)
+{
+	struct camera_mipi_info *mipi_info;
+
+	mipi_info = atomisp_to_sensor_mipi_info(
+			isp->inputs[isp->input_curr].camera);
+	if (mipi_info == NULL)
+		return;
+
+	if (mipi_info->need_sof_signal)
+		sh_css_enable_interrupt(SH_CSS_IRQ_INFO_CSS_RECEIVER_SOF,
+					enable);
+}
 
 /*
  * get sensor:dis71430/ov2720 related info from v4l2_subdev->priv data field.
@@ -287,8 +305,29 @@ irqreturn_t atomisp_isr(int irq, void *dev)
 	if (err != sh_css_success) {
 		v4l2_warn(&atomisp_dev, "%s:failed to translate irq (err = %d,"
 			  " infos = %d)\n", __func__, err, irq_infos);
-		spin_unlock_irqrestore(&isp->irq_lock, irqflags);
-		return IRQ_NONE;
+		/* if returns IRQ_NONE, the kernel can block interrupts from
+		 * this device. By default, the driver IRQ routine should
+		 * return IRQ_HANDLED as it is a bug to return IRQ_NONE
+		 * when the driver has actually handled that interrupt.
+		 */
+		goto out;
+	}
+
+	/*
+		if (both SOF and EOF) send SOF
+		else {
+			if (SOF) send SOF
+			if (EOF) send EOF
+		}
+	*/
+	if (irq_infos & ATOMISP_SOF) {
+		int my_signal = ATOMISP_IOC_SIGNAL_SOF;
+		v4l2_subdev_call(isp->inputs[isp->input_curr].camera,
+			core, ioctl, ATOMISP_IOC_S_SIGNAL, &my_signal);
+	} else if (irq_infos & ATOMISP_EOF) {
+		int my_signal = ATOMISP_IOC_SIGNAL_EOF;
+		v4l2_subdev_call(isp->inputs[isp->input_curr].camera,
+			core, ioctl, ATOMISP_IOC_S_SIGNAL, &my_signal);
 	}
 
 	if (irq_infos & SH_CSS_IRQ_INFO_FRAME_DONE ||
@@ -417,6 +456,7 @@ no_frame_done:
 		/*make work queue run*/
 		complete(&isp->dis_state_complete);
 
+out:
 	/* Clear irq reg at PENWELL B0 */
 	if (IS_MRFLD) {
 		msg_ret = atomisp_msg_read32(isp, IUNIT_PORT_MRFLD, INTR_CTL);
@@ -428,7 +468,6 @@ no_frame_done:
 		atomisp_msg_write32(isp, IUNIT_PORT_MDFLD, INTR_CTL, msg_ret);
 	}
 
-out:
 	spin_unlock_irqrestore(&isp->irq_lock, irqflags);
 	return IRQ_HANDLED;
 }

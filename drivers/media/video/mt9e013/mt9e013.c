@@ -57,6 +57,8 @@
 #define PR3_2_FW 0x0400
 #define PR3_3_FW 0x0500
 
+#define MINIMUM_GLOBAL_GAIN	0x1060
+
 /* divides a by b using half up rounding and div/0 prevention
  * (result is 0 if b == 0) */
 #define divsave_rounded(a, b)	(((b) != 0) ? (((a)+((b)>>1))/(b)) : (-1))
@@ -450,21 +452,12 @@ static int mt9e013_q_focus_abs(struct v4l2_subdev *sd, s32 *value)
 	return 0;
 }
 
-static long mt9e013_set_exposure(struct v4l2_subdev *sd, u16 coarse_itg,
+static long mt9e013_set_exposure(struct mt9e013_device *dev, u16 coarse_itg,
 				 u16 fine_itg, u16 gain)
 
 {
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	int ret;
-	u16 frame_length;
-	struct mt9e013_device *dev = to_mt9e013_sensor(sd);
-
-	mutex_lock(&dev->input_lock);
-
-	ret = mt9e013_read_reg(client, MT9E013_16BIT,
-			       MT9E013_FRAME_LENGTH_LINES, &frame_length);
-	if (ret)
-		goto out;
 
 	/* enable group hold */
 	ret = mt9e013_write_reg_array(client, mt9e013_param_hold);
@@ -472,52 +465,175 @@ static long mt9e013_set_exposure(struct v4l2_subdev *sd, u16 coarse_itg,
 		goto out;
 
 	/* set coarse integration time */
-	ret = mt9e013_write_reg(client, MT9E013_16BIT,
-			MT9E013_COARSE_INTEGRATION_TIME, coarse_itg);
-	if (ret)
-		goto out_disable;
+	if (dev->coarse_itg != coarse_itg) {
+		ret = mt9e013_write_reg(client, MT9E013_16BIT,
+				MT9E013_COARSE_INTEGRATION_TIME, coarse_itg);
+		if (ret)
+			goto out_disable;
+		dev->coarse_itg = coarse_itg;
+	}
 
 	/* set fine integration time */
-	ret = mt9e013_write_reg(client, MT9E013_16BIT,
-			MT9E013_FINE_INTEGRATION_TIME, fine_itg);
-	if (ret)
-		goto out_disable;
+	if (dev->fine_itg != fine_itg) {
+		ret = mt9e013_write_reg(client, MT9E013_16BIT,
+				MT9E013_FINE_INTEGRATION_TIME, fine_itg);
+		if (ret)
+			goto out_disable;
+		dev->fine_itg = fine_itg;
+	}
 
 	/* set global gain */
-	ret = mt9e013_write_reg(client, MT9E013_16BIT,
-			MT9E013_GLOBAL_GAIN, gain);
+	if (dev->gain != gain) {
+		ret = mt9e013_write_reg(client, MT9E013_16BIT,
+				MT9E013_GLOBAL_GAIN, gain);
 
-	if (ret)
-		goto out_disable;
-	dev->gain       = gain;
-	dev->coarse_itg = coarse_itg;
-	dev->fine_itg   = fine_itg;
+		if (ret)
+			goto out_disable;
+		dev->gain = gain;
+	}
 
 out_disable:
 	/* disable group hold */
-	mt9e013_write_reg_array(client, mt9e013_param_update);
+	ret = mt9e013_write_reg_array(client, mt9e013_param_update);
 out:
-	mutex_unlock(&dev->input_lock);
-
 	return ret;
+}
+
+/*
+ * this function set the delayed gain automatically.
+ * "automatically" means "without ATOMISP_IOC_S_EXPOSURE
+ * subdev call from 3a for every frame".
+ * This mechanism uses the sof signal for trigger to set gain into register.
+ */
+static bool mt9e013_gain_filter(struct mt9e013_device *dev, u16 *p_gain,
+			       bool only_dequeue)
+{
+	bool need_set_gain = false;
+	u16 gain = *p_gain;
+
+	if (gain < MINIMUM_GLOBAL_GAIN)
+		gain = MINIMUM_GLOBAL_GAIN;
+
+	if (dev->streaming) {
+		if (only_dequeue) {
+			if (dev->queue_cnt > 0) {
+				gain = dev->gain_delay;
+				dev->queue_cnt = 0;
+				need_set_gain = true;
+			} else {
+				need_set_gain = false; /* empty */
+			}
+		} else {
+			u16 s_gain = gain;
+			if (dev->queue_cnt == 0) {
+				/* empty : already set via SOF trigger */
+				need_set_gain = false; /* empty */
+			} else {
+				gain = dev->gain_delay;
+				need_set_gain = true;
+			}
+			dev->gain_delay = s_gain;
+			dev->queue_cnt = 1;
+		}
+	} else {
+		/* gain value should be set without delay */
+		need_set_gain = true;
+		dev->queue_cnt = 0; /* flush queue */
+	}
+	if (need_set_gain)
+		*p_gain = gain;
+
+	return need_set_gain;
+}
+
+static long mt9e013_set_exposure_filter(struct mt9e013_device *dev,
+					u16 coarse_itg, u16 fine_itg,
+					u16 s_gain, bool only_dequeue)
+{
+	u16 gain = s_gain;
+
+	if (fine_itg == 0)
+		return -EINVAL;
+
+	if (!mt9e013_gain_filter(dev, &gain, only_dequeue))
+		gain = dev->gain;
+
+	if (coarse_itg == dev->coarse_itg && fine_itg == dev->fine_itg &&
+	    gain == dev->gain)
+		return 0;
+
+	return mt9e013_set_exposure(dev, coarse_itg, fine_itg, gain);
 }
 
 static long mt9e013_s_exposure(struct v4l2_subdev *sd,
 			       struct atomisp_exposure *exposure)
 {
-	u16 coarse_itg, fine_itg, gain;
+	struct mt9e013_device *dev = to_mt9e013_sensor(sd);
+	long ret;
 
-	coarse_itg = exposure->integration_time[0];
-	fine_itg = exposure->integration_time[1];
-	gain = exposure->gain[0];
+	mutex_lock(&dev->input_lock);
 
-	/* we should not accept the invalid value below */
-	if (fine_itg == 0 || gain == 0) {
-		struct i2c_client *client = v4l2_get_subdevdata(sd);
-		v4l2_err(client, "%s: invalid value\n", __func__);
-		return -EINVAL;
+	if (dev->frame_valid || !dev->streaming) {
+		ret = mt9e013_set_exposure_filter(dev,
+			exposure->integration_time[0],
+			exposure->integration_time[1],
+			exposure->gain[0], false);
+	} else {
+		ret = 0;
+		dev->suspended_exposure_request = true;
+		dev->suspended_exposure_value = *exposure;
 	}
-	return mt9e013_set_exposure(sd, coarse_itg, fine_itg, gain);
+
+	mutex_unlock(&dev->input_lock);
+	return ret;
+}
+
+static long mt9e013_s_signal(struct v4l2_subdev *sd, int *signal)
+{
+	struct mt9e013_device *dev = to_mt9e013_sensor(sd);
+	long ret;
+
+	switch (*signal) {
+	case ATOMISP_IOC_SIGNAL_SOF:
+		dev->frame_valid = true;
+		ret = queue_work(dev->wq, &dev->work);
+		break;
+	case ATOMISP_IOC_SIGNAL_EOF:
+		dev->frame_valid = false;
+		ret = 0;
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
+}
+
+static void work_queue_callback(struct work_struct *work)
+{
+	u16 gain, coarse_itg, fine_itg;
+	bool only_dequeue;
+	struct mt9e013_device *dev = container_of(work, struct mt9e013_device,
+						  work);
+
+	mutex_lock(&dev->input_lock);
+
+	if (dev->suspended_exposure_request) {
+		dev->suspended_exposure_request = false;
+		coarse_itg = dev->suspended_exposure_value.integration_time[0];
+		fine_itg = dev->suspended_exposure_value.integration_time[1];
+		gain = dev->suspended_exposure_value.gain[0];
+		only_dequeue = false;
+	} else {
+		coarse_itg = dev->coarse_itg;
+		fine_itg = dev->fine_itg;
+		gain = dev->gain;
+		only_dequeue = true;
+	}
+	mt9e013_set_exposure_filter(dev,
+		coarse_itg, fine_itg, gain, only_dequeue);
+
+	mutex_unlock(&dev->input_lock);
 }
 
 static int mt9e013_read_reg_array(struct i2c_client *client, u16 size, u16 addr,
@@ -756,6 +872,8 @@ static long mt9e013_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 		return mt9e013_s_exposure(sd, (struct atomisp_exposure *)arg);
 	case ATOMISP_IOC_G_SENSOR_PRIV_INT_DATA:
 		return mt9e013_g_priv_int_data(sd, arg);
+	case ATOMISP_IOC_S_SIGNAL:
+		return mt9e013_s_signal(sd, (int *)arg);
 	default:
 		return -EINVAL;
 	}
@@ -1586,6 +1704,27 @@ static int mt9e013_detect(struct i2c_client *client, u16 *id, u8 *revision)
 	return 0;
 }
 
+static int
+mt9e013_setup_sensor_mode(struct v4l2_subdev *sd)
+{
+	struct mt9e013_device *dev = to_mt9e013_sensor(sd);
+
+	switch (dev->run_mode) {
+	case CI_MODE_VIDEO:
+		mt9e013_res = mt9e013_res_video;
+		N_RES = N_RES_VIDEO;
+		break;
+	case CI_MODE_STILL_CAPTURE:
+		mt9e013_res = mt9e013_res_still;
+		N_RES = N_RES_STILL;
+		break;
+	default:
+		mt9e013_res = mt9e013_res_preview;
+		N_RES = N_RES_PREVIEW;
+	}
+	return 0;
+}
+
 /*
  * mt9e013 stream on/off
  */
@@ -1635,8 +1774,7 @@ static int mt9e013_s_stream(struct v4l2_subdev *sd, int enable)
 	}
 
 	/* restore settings */
-	mt9e013_res = mt9e013_res_preview;
-	N_RES = N_RES_PREVIEW;
+	mt9e013_setup_sensor_mode(sd);
 	mutex_unlock(&dev->input_lock);
 
 	return 0;
@@ -1856,25 +1994,14 @@ static int
 mt9e013_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *param)
 {
 	struct mt9e013_device *dev = to_mt9e013_sensor(sd);
+	int ret;
 
 	dev->run_mode = param->parm.capture.capturemode;
 
 	mutex_lock(&dev->input_lock);
-	switch (dev->run_mode) {
-	case CI_MODE_VIDEO:
-		mt9e013_res = mt9e013_res_video;
-		N_RES = N_RES_VIDEO;
-		break;
-	case CI_MODE_STILL_CAPTURE:
-		mt9e013_res = mt9e013_res_still;
-		N_RES = N_RES_STILL;
-		break;
-	default:
-		mt9e013_res = mt9e013_res_preview;
-		N_RES = N_RES_PREVIEW;
-	}
+	ret = mt9e013_setup_sensor_mode(sd);
 	mutex_unlock(&dev->input_lock);
-	return 0;
+	return ret;
 }
 
 static int
@@ -1985,6 +2112,7 @@ static int mt9e013_remove(struct i2c_client *client)
 	v4l2_device_unregister_subdev(sd);
 	kfree(dev->otp_data);
 	kfree(dev->fuseid);
+	destroy_workqueue(dev->wq);
 	kfree(dev);
 
 	return 0;
@@ -2003,6 +2131,15 @@ static int mt9e013_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
+	dev->wq = create_singlethread_workqueue("mt9e013_sof_handler");
+	if (dev->wq == NULL) {
+		dev_err(&client->dev, "%s: cannot create workqueue\n",
+			__func__);
+		kfree(dev);
+		return -ENOMEM;
+	}
+	INIT_WORK(&dev->work, work_queue_callback);
+
 	mutex_init(&dev->input_lock);
 
 	dev->fmt_idx = 0;
@@ -2012,8 +2149,7 @@ static int mt9e013_probe(struct i2c_client *client,
 		ret = mt9e013_s_config(&dev->sd, client->irq,
 				       client->dev.platform_data);
 		if (ret) {
-			v4l2_device_unregister_subdev(&dev->sd);
-			kfree(dev);
+			mt9e013_remove(client);
 			return ret;
 		}
 	}
@@ -2022,6 +2158,8 @@ static int mt9e013_probe(struct i2c_client *client,
 	dev->pad.flags = MEDIA_PAD_FL_SOURCE;
 	dev->sd.entity.ops = &mt9e013_entity_ops;
 	dev->format.code = V4L2_MBUS_FMT_SGRBG10_1X10;
+	dev->gain_delay = MINIMUM_GLOBAL_GAIN;
+	dev->queue_cnt = 0;
 
 	/* REVISIT: Do we need media controller? */
 	ret = media_entity_init(&dev->sd.entity, 1, &dev->pad, 0);

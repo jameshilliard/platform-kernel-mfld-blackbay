@@ -431,6 +431,11 @@ enum atomisp_acc_arg_type {
 	ATOMISP_ACC_ARG_FRAME	     /* Frame argument */
 };
 
+enum {
+	ATOMISP_IOC_SIGNAL_SOF,	/* Start Of Frame */
+	ATOMISP_IOC_SIGNAL_EOF,	/* End Of Frame */
+};
+
 struct atomisp_sp_arg {
 	enum atomisp_acc_arg_type type;	/* Type  of SP argument */
 	void                    *value;	/* Value of SP argument */
@@ -640,6 +645,13 @@ struct v4l2_private_int_data {
 /* motor internal memory read */
 #define ATOMISP_IOC_G_MOTOR_PRIV_INT_DATA \
 	_IOWR('v', BASE_VIDIOC_PRIVATE + 57, struct v4l2_private_int_data)
+
+/* signal */
+#define ATOMISP_IOC_S_SIGNAL \
+	_IOW('v', BASE_VIDIOC_PRIVATE + 58, int)
+
+#define ATOMISP_IOC_S_MIPI_IRQ \
+	_IOW('v', BASE_VIDIOC_PRIVATE + 59, int)
 
 /*  ISP Private control IDs */
 #define V4L2_CID_ATOMISP_BAD_PIXEL_DETECTION \

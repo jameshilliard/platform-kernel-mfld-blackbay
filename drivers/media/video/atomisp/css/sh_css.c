@@ -2067,7 +2067,6 @@ sh_css_translate_interrupt(unsigned int *irq_infos)
 
 		switch (irq) {
 		case hrt_isp_css_irq_sp:
-			sh_css_hrt_irq_clear_sp();
 			if (sh_css_frame_done()) {
 				infos |= SH_CSS_IRQ_INFO_FRAME_DONE;
 				if (my_css.mode == sh_css_mode_video &&

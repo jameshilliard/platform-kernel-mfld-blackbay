@@ -133,7 +133,9 @@ static int mt9m114_csi_configure(struct v4l2_subdev *sd, int flag)
 {
 	/* soc sensor, there is no raw bayer order (set to -1) */
 	return camera_sensor_csi(sd, ATOMISP_CAMERA_PORT_SECONDARY, 1,
-		ATOMISP_INPUT_FORMAT_YUV422_8, -1, flag);
+		ATOMISP_INPUT_FORMAT_YUV422_8, -1,
+		false, /*SOF */
+		flag);
 }
 
 static struct camera_sensor_platform_data mt9m114_sensor_platform_data = {

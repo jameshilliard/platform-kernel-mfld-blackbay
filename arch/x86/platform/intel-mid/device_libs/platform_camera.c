@@ -71,7 +71,8 @@ int camera_sensor_gpio(int gpio, char *name, int dir, int value)
  * @bayer_order: MIPI CSI bayer order, see include/linux/atomisp_platform.h
  */
 int camera_sensor_csi(struct v4l2_subdev *sd, u32 port,
-			u32 lanes, u32 format, u32 bayer_order, int flag)
+			u32 lanes, u32 format, u32 bayer_order,
+			bool need_sof_signal, int flag)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct camera_mipi_info *csi = NULL;
@@ -86,6 +87,7 @@ int camera_sensor_csi(struct v4l2_subdev *sd, u32 port,
 		csi->num_lanes = lanes;
 		csi->input_format = format;
 		csi->raw_bayer_order = bayer_order;
+		csi->need_sof_signal = need_sof_signal;
 		v4l2_set_subdev_hostdata(sd, (void *)csi);
 	} else {
 		csi = v4l2_get_subdev_hostdata(sd);

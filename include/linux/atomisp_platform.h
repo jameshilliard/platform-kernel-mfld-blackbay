@@ -109,6 +109,7 @@ struct camera_mipi_info {
 	unsigned int                    num_lanes;
 	enum atomisp_input_format       input_format;
 	enum atomisp_bayer_order        raw_bayer_order;
+	bool                            need_sof_signal;
 	struct atomisp_sensor_mode_data data;
 };
 

@@ -64,6 +64,9 @@ irqreturn_t atomisp_isr(int irq, void *dev);
 void atomisp_work(struct work_struct *work);
 int atomisp_get_frame_pgnr(const struct sh_css_frame *frame, u32 * p_pgnr);
 
+void
+atomisp_setup_mipi_interrupt_enable(struct atomisp_device *isp, int enable);
+
 /*
  * Get internal fmt according to V4L2 fmt
  */
