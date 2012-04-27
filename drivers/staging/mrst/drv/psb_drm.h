@@ -298,6 +298,20 @@ struct drm_lnc_video_getparam_arg {
 	uint64_t value;	/* feed back pointer */
 };
 
+struct drm_video_displaying_frameinfo {
+	uint32_t buf_handle;
+	uint32_t width;
+	uint32_t height;
+	uint32_t size; /* buffer size */
+	uint32_t format; /* fourcc */
+	uint32_t luma_stride; /* luma stride */
+	uint32_t chroma_u_stride; /* chroma stride */
+	uint32_t chroma_v_stride;
+	uint32_t luma_offset; /* luma offset from the beginning of the memory */
+	uint32_t chroma_u_offset; /* UV offset from the beginning */
+	uint32_t chroma_v_offset;
+	uint32_t reserved;
+};
 
 /*
  * Feedback components:
