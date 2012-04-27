@@ -650,6 +650,12 @@ int psb_setup_fw(struct drm_device *dev)
 	(void)psb_verify_fw;
 #endif
 
+		/*	-- Set starting PC address	*/
+		psb_write_mtx_core_reg(dev_priv, MTX_PC, PC_START_ADDRESS);
+
+		/*	-- Turn on the thread	*/
+		PSB_WMSVDX32(MSVDX_MTX_ENABLE_MTX_ENABLE_MASK, MSVDX_MTX_ENABLE);
+
 	/* Wait for the signature value to be written back */
 	ret = psb_wait_for_register(dev_priv, MSVDX_COMMS_SIGNATURE,
 				    MSVDX_COMMS_SIGNATURE_VALUE, /*Required value*/
@@ -662,12 +668,14 @@ int psb_setup_fw(struct drm_device *dev)
 	PSB_DEBUG_GENERAL("MSVDX: MTX Initial indications OK\n");
 	PSB_DEBUG_GENERAL("MSVDX: MSVDX_COMMS_AREA_ADDR = %08x\n",
 			  MSVDX_COMMS_AREA_ADDR);
-	/* send INIT cmd for RENDEC init */
-	PSB_WMSVDX32(DSIABLE_IDLE_GPIO_SIG, MSVDX_COMMS_OFFSET_FLAGS);
 	/*
 	 * at this stage, FW is uplaoded successfully, can send rendec
 	 * init message
 	 */
+	/* send INIT cmd for RENDEC init */
+	PSB_WMSVDX32(DSIABLE_IDLE_GPIO_SIG | DSIABLE_Auto_CLOCK_GATING
+		     | RETURN_VDEB_DATA_IN_COMPLETION,
+		     MSVDX_COMMS_OFFSET_FLAGS);
 
 	MEMIO_WRITE_FIELD(init_msg, FWRK_GENMSG_SIZE,
 			FW_DEVA_INIT_SIZE);
@@ -727,7 +735,7 @@ int psb_msvdx_reset(struct drm_psb_private *dev_priv)
 	int ret = 0;
 
 	if (IS_PENWELL(dev_priv->dev)) {
-		int loop;
+		uint32_t core_rev;
 		/* Enable Clocks */
 		PSB_DEBUG_GENERAL("Enabling clocks\n");
 		PSB_WMSVDX32(clk_enable_all, MSVDX_MAN_CLK_ENABLE);
@@ -736,11 +744,82 @@ int psb_msvdx_reset(struct drm_psb_private *dev_priv)
 		   activity at the same time as a reset - Very Very bad */
 		PSB_WMSVDX32(2, MSVDX_MMU_CONTROL0);
 
-		for (loop = 0; loop < 50; loop++)
-			ret = psb_wait_for_register(dev_priv, MSVDX_MMU_MEM_REQ, 0,
-						    0xff);
-		if (ret)
-			return ret;
+			core_rev = PSB_RMSVDX32(MSVDX_CORE_REV);
+			if (core_rev < 0x00050502) {
+				/* if there's any page fault */
+				int int_status = PSB_RMSVDX32(MSVDX_INTERRUPT_STATUS);
+
+				if (int_status & MSVDX_INTERRUPT_STATUS_CR_MMU_FAULT_IRQ_MASK) {
+					/* was it a page table rather than a protection fault */
+					int mmu_status = PSB_RMSVDX32(MSVDX_MMU_STATUS);
+
+					if (mmu_status & 1) {
+						struct page *p;
+						unsigned int *pptd;
+						unsigned int loop;
+						uint32_t ptd_addr;
+
+						/* do work around */
+						p = alloc_page(GFP_DMA32);
+						if (!p) {
+							ret = -1;
+							goto out;
+						}
+						ptd_addr = page_to_pfn(p) << PAGE_SHIFT;
+						pptd = kmap(p);
+						for (loop = 0; loop < 1024; loop++)
+							pptd[loop] = ptd_addr | 0x00000003;
+						PSB_WMSVDX32(ptd_addr, MSVDX_CORE_CR_MMU_DIR_LIST_BASE_OFFSET +  0);
+						PSB_WMSVDX32(ptd_addr, MSVDX_CORE_CR_MMU_DIR_LIST_BASE_OFFSET +  4);
+						PSB_WMSVDX32(ptd_addr, MSVDX_CORE_CR_MMU_DIR_LIST_BASE_OFFSET +  8);
+						PSB_WMSVDX32(ptd_addr, MSVDX_CORE_CR_MMU_DIR_LIST_BASE_OFFSET + 12);
+
+						PSB_WMSVDX32(6, MSVDX_MMU_CONTROL0);
+						PSB_WMSVDX32(MSVDX_INTERRUPT_STATUS_CR_MMU_FAULT_IRQ_MASK, MSVDX_INTERRUPT_STATUS);
+						__free_page(p);
+					}
+				}
+			}
+
+			/* make sure *ALL* outstanding reads have gone away */
+			{
+				int loop;
+				uint32_t cmd;
+				for (loop = 0; loop < 10; loop++)
+					ret = psb_wait_for_register(dev_priv, MSVDX_MMU_MEM_REQ, 0, 0xff);
+				if (ret) {
+					ret = -1;
+					goto out;
+				}
+				/* disconnect RENDEC decoders from memory */
+				cmd = PSB_RMSVDX32(MSVDX_RENDEC_CONTROL1);
+				REGIO_WRITE_FIELD(cmd, MSVDX_RENDEC_CONTROL1, RENDEC_DEC_DISABLE, 1);
+				PSB_WMSVDX32(cmd, MSVDX_RENDEC_CONTROL1);
+
+				/* Issue software reset for all but core */
+				PSB_WMSVDX32((unsigned int)~MSVDX_CONTROL_CR_MSVDX_SOFT_RESET_MASK, MSVDX_CONTROL);
+				PSB_RMSVDX32(MSVDX_CONTROL);
+				PSB_WMSVDX32(0, MSVDX_CONTROL);
+				/* make sure read requests are zero */
+				ret = psb_wait_for_register(dev_priv, MSVDX_MMU_MEM_REQ, 0, 0xff);
+				if (!ret) {
+					/* Issue software reset */
+					PSB_WMSVDX32(MSVDX_CONTROL_CR_MSVDX_SOFT_RESET_MASK, MSVDX_CONTROL);
+
+					ret = psb_wait_for_register(dev_priv, MSVDX_CONTROL, 0,
+							MSVDX_CONTROL_CR_MSVDX_SOFT_RESET_MASK);
+
+					if (!ret) {
+						/* Clear interrupt enabled flag */
+						PSB_WMSVDX32(0, MSVDX_HOST_INTERRUPT_ENABLE);
+
+						/* Clear any pending interrupt flags */
+						PSB_WMSVDX32(0xFFFFFFFF, MSVDX_INTERRUPT_CLEAR);
+					}
+				}
+			}
+			goto out;
+
 	}
 	/* Issue software reset */
 	/* PSB_WMSVDX32(msvdx_sw_reset_all, MSVDX_CONTROL); */
@@ -758,7 +837,7 @@ int psb_msvdx_reset(struct drm_psb_private *dev_priv)
 	}
 
 	/* mutex_destroy(&msvdx_priv->msvdx_mutex); */
-
+out:
 	return ret;
 }
 
