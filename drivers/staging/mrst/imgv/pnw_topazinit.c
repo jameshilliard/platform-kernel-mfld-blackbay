@@ -173,7 +173,7 @@ int pnw_topaz_wait_for_register(struct drm_psb_private *dev_priv,
 				uint32_t addr, uint32_t value, uint32_t mask)
 {
 	uint32_t tmp;
-	uint32_t count = 1000000;
+	uint32_t count = 10000;
 
 	/* # poll topaz register for certain times */
 	while (count) {
@@ -184,7 +184,7 @@ int pnw_topaz_wait_for_register(struct drm_psb_private *dev_priv,
 			return 0;
 
 		/* #.# delay and loop */
-		PSB_UDELAY(1);
+		PSB_UDELAY(100);/* derive from reference driver */
 		--count;
 	}
 
