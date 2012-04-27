@@ -159,6 +159,9 @@ extern "C"
 	BC_VIDEO_DEVINFO *GetAnchorPtr(int id);
 	int GetBufferCount(unsigned int *puiBufferCount, int id);
 
+	extern unsigned int bc_video_id_usage[BC_VIDEO_DEVICE_MAX_ID];
+	int BC_DestroyBuffers(int id);
+
 #if defined(__cplusplus)
 }
 #endif

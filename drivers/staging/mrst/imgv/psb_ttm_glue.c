@@ -27,13 +27,11 @@
 #include <linux/io.h>
 #include "psb_msvdx.h"
 #include "bufferclass_video.h"
-#include "bufferclass_video_linux.h"
 
 /*IMG Headers*/
 #include "private_data.h"
 
 extern int PVRMMap(struct file *pFile, struct vm_area_struct *ps_vma);
-int BC_DestroyBuffers(int id);
 
 static struct vm_operations_struct psb_ttm_vm_ops;
 
