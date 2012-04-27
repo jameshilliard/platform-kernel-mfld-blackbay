@@ -2087,6 +2087,6 @@ void pnw_reset_fw_status(struct drm_device *dev)
 	struct pnw_topaz_private *topaz_priv = dev_priv->topaz_private;
 
 	/*Before end the session, mark firmware MTX data as invalid.*/
-	topaz_priv->topaz_mtx_saved = 0;
-
+	if (topaz_priv)
+		topaz_priv->topaz_mtx_saved = 0;
 }
