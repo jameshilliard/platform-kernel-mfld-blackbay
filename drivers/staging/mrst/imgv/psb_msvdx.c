@@ -529,8 +529,6 @@ static int psb_msvdx_send(struct drm_device *dev, void *cmd,
 			cmd += sizeof(struct HOST_BE_OPP_PARAMS);
 			cmd_size -= sizeof(struct HOST_BE_OPP_PARAMS);
 		}
-		if (cmd_size)
-			PSB_UDELAY(200);
 	}
 
 out:
