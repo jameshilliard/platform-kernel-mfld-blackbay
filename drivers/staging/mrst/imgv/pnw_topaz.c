@@ -759,6 +759,8 @@ void pnw_topaz_handle_timeout(struct ttm_fence_device *fdev)
 		container_of(fdev, struct drm_psb_private, fdev);
 	struct pnw_topaz_private *topaz_priv = dev_priv->topaz_private;
 
+	DRM_ERROR("TOPAZ: current codec is %s\n",
+			codec_to_string(topaz_priv->topaz_cur_codec));
 	pnw_topaz_flush_cmd_queue(topaz_priv);
 
 	/*Power down TopazSC to reset HW*/
