@@ -350,9 +350,6 @@ static int pl_create_buf(struct create_params *p, struct ttm_lock *lock,
 		goto err2;
 	}
 
-	if (p->pages)
-		drm_psb_set_fixed_pages(bo->ttm, p->pages, pg_cnt);
-
 	ttm_read_unlock(lock);
 
 	/* ttm_bo_unref->destroy will unset the fixed pages on failure */
