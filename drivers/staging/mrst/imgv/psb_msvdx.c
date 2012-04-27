@@ -1283,6 +1283,31 @@ int psb_remove_videoctx(struct drm_psb_private *dev_priv, struct file *filp)
 	return 0;
 }
 
+static int psb_entrypoint_number(struct drm_psb_private *dev_priv,
+		uint32_t entry_type)
+{
+	struct psb_video_ctx *pos, *n;
+	int count = 0;
+
+	entry_type &= 0xff;
+
+	if (entry_type < VAEntrypointVLD ||
+			entry_type > VAEntrypointEncPicture) {
+		DRM_ERROR("Invalide entrypoint value %d.\n", entry_type);
+		return -EINVAL;
+	}
+
+	list_for_each_entry_safe(pos, n, &dev_priv->video_ctx, head) {
+		if (entry_type == (pos->ctx_type & 0xff))
+			count++;
+
+	}
+
+	PSB_DEBUG_GENERAL("There are %d active entrypoint %d.\n",
+			count, entry_type);
+	return count;
+}
+
 
 int lnc_video_getparam(struct drm_device *dev, void *data,
 		       struct drm_file *file_priv)
@@ -1399,6 +1424,19 @@ int lnc_video_getparam(struct drm_device *dev, void *data,
 			DRM_ERROR("lnc_video_getparam copy_to_user error.\n");
 			return -EFAULT;
 		}
+		break;
+	case PNW_VIDEO_QUERY_ENTRY:
+		ret = copy_from_user(&handle,
+				(void __user *)((unsigned long)arg->arg),
+				sizeof(handle));
+		if (ret)
+			break;
+		/*Return the number of active entries*/
+		i = psb_entrypoint_number(dev_priv, handle);
+		if (i >= 0)
+			ret = copy_to_user((void __user *)
+					((unsigned long)arg->value),
+					&i, sizeof(i));
 		break;
 	default:
 		ret = -EFAULT;
