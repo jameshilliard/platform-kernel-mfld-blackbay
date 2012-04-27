@@ -669,6 +669,7 @@ int pnw_check_topaz_idle(struct drm_device *dev)
 	struct drm_psb_private *dev_priv =
 		(struct drm_psb_private *)dev->dev_private;
 	struct pnw_topaz_private *topaz_priv = dev_priv->topaz_private;
+	uint32_t reg_val;
 
 	if (dev_priv->topaz_ctx == NULL)
 		return 0;
@@ -678,6 +679,15 @@ int pnw_check_topaz_idle(struct drm_device *dev)
 
 	if (topaz_priv->topaz_hw_busy) {
 		PSB_DEBUG_PM("TOPAZ: %s, HW is busy\n", __func__);
+		return -EBUSY;
+	}
+	TOPAZ_MULTICORE_READ32(TOPAZSC_CR_MULTICORE_CMD_FIFO_1,
+			&reg_val);
+	reg_val &= MASK_TOPAZSC_CR_CMD_FIFO_SPACE;
+	if (reg_val != 32) {
+		PSB_DEBUG_GENERAL("TOPAZ: HW is busy. Free words in command"
+				"FIFO is %d.\n",
+				reg_val);
 		return -EBUSY;
 	}
 
