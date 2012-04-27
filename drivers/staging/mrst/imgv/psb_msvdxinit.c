@@ -509,18 +509,18 @@ int psb_setup_fw(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv = dev->dev_private;
 	uint32_t ram_bank_size;
-	struct msvdx_fw *fw;
-	uint32_t *fw_ptr = NULL;
-	uint32_t *text_ptr = NULL;
-	uint32_t *data_ptr = NULL;
-	const struct firmware *raw = NULL;
 	struct msvdx_private *msvdx_priv = dev_priv->msvdx_private;
-	int ec_firmware = 0, ret = 0;
-	uint32_t init_msg[FW_DEVA_INIT_SIZE];
+	int ret = 0;
 
 	/* todo : Assert the clock is on - if not turn it on to upload code */
 	PSB_DEBUG_GENERAL("MSVDX: psb_setup_fw\n");
 	PSB_WMSVDX32(clk_enable_all, MSVDX_MAN_CLK_ENABLE);
+
+	if (!IS_D0(dev)) {
+		/* Reset MTX */
+		PSB_WMSVDX32(MSVDX_MTX_SOFT_RESET_MTX_RESET_MASK,
+				MSVDX_MTX_SOFT_RESET);
+	}
 
 	/* Initialses Communication controll area to 0 */
 	/*
@@ -539,8 +539,27 @@ int psb_setup_fw(struct drm_device *dev)
 
 	PSB_WMSVDX32(FIRMWAREID, MSVDX_COMMS_FIRMWARE_ID);
 
-	PSB_WMSVDX32(0, MSVDX_EXT_FW_ERROR_STATE); /* EXT_FW_ERROR_STATE */
-
+	if (!IS_D0(dev)) {
+		PSB_WMSVDX32(0, MSVDX_COMMS_ERROR_TRIG);
+		PSB_WMSVDX32(199, MSVDX_MTX_SYSC_TIMERDIV); /* MTX_SYSC_TIMERDIV */
+		PSB_WMSVDX32(0, MSVDX_EXT_FW_ERROR_STATE); /* EXT_FW_ERROR_STATE */
+		PSB_WMSVDX32(0, MSVDX_COMMS_MSG_COUNTER);
+		PSB_WMSVDX32(0, MSVDX_COMMS_SIGNATURE);
+		PSB_WMSVDX32(0, MSVDX_COMMS_TO_HOST_RD_INDEX);
+		PSB_WMSVDX32(0, MSVDX_COMMS_TO_HOST_WRT_INDEX);
+		PSB_WMSVDX32(0, MSVDX_COMMS_TO_MTX_RD_INDEX);
+		PSB_WMSVDX32(0, MSVDX_COMMS_TO_MTX_WRT_INDEX);
+		PSB_WMSVDX32(0, MSVDX_COMMS_FW_STATUS);
+		PSB_WMSVDX32(DSIABLE_IDLE_GPIO_SIG
+			| DSIABLE_Auto_CLOCK_GATING
+			| RETURN_VDEB_DATA_IN_COMPLETION,
+				MSVDX_COMMS_OFFSET_FLAGS);
+		PSB_WMSVDX32(0, MSVDX_COMMS_SIGNATURE);
+	} else {
+		/* we should restore the state, if we power down/up
+		 * during EC */
+		PSB_WMSVDX32(0, MSVDX_EXT_FW_ERROR_STATE); /* EXT_FW_ERROR_STATE */
+	}
 	/* read register bank size */
 	{
 		uint32_t bank_size, reg;
@@ -553,6 +572,14 @@ int psb_setup_fw(struct drm_device *dev)
 
 	PSB_DEBUG_GENERAL("MSVDX: RAM bank size = %d bytes\n",
 			  ram_bank_size);
+
+    if (!IS_D0(dev)) {
+        struct msvdx_fw *fw;
+        uint32_t *fw_ptr = NULL;
+        uint32_t *text_ptr = NULL;
+        uint32_t *data_ptr = NULL;
+        const struct firmware *raw = NULL;
+        int ec_firmware = 0;
 
 	/* if FW already loaded from storage */
 	if (msvdx_priv->msvdx_fw)
@@ -655,6 +682,7 @@ int psb_setup_fw(struct drm_device *dev)
 
 		/*	-- Turn on the thread	*/
 		PSB_WMSVDX32(MSVDX_MTX_ENABLE_MTX_ENABLE_MASK, MSVDX_MTX_ENABLE);
+	}
 
 	/* Wait for the signature value to be written back */
 	ret = psb_wait_for_register(dev_priv, MSVDX_COMMS_SIGNATURE,
@@ -668,29 +696,29 @@ int psb_setup_fw(struct drm_device *dev)
 	PSB_DEBUG_GENERAL("MSVDX: MTX Initial indications OK\n");
 	PSB_DEBUG_GENERAL("MSVDX: MSVDX_COMMS_AREA_ADDR = %08x\n",
 			  MSVDX_COMMS_AREA_ADDR);
-	/*
-	 * at this stage, FW is uplaoded successfully, can send rendec
-	 * init message
-	 */
-	/* send INIT cmd for RENDEC init */
-	PSB_WMSVDX32(DSIABLE_IDLE_GPIO_SIG | DSIABLE_Auto_CLOCK_GATING
-		     | RETURN_VDEB_DATA_IN_COMPLETION,
-		     MSVDX_COMMS_OFFSET_FLAGS);
+	if (IS_D0(dev)) {
+		/*
+		 * at this stage, FW is uplaoded successfully, can send rendec
+		 * init message
+		 */
+		uint32_t init_msg[FW_DEVA_INIT_SIZE];
 
-	MEMIO_WRITE_FIELD(init_msg, FWRK_GENMSG_SIZE,
-			FW_DEVA_INIT_SIZE);
-	MEMIO_WRITE_FIELD(init_msg, FWRK_GENMSG_ID,
-			FW_DEVA_INIT_ID);
+		/* send INIT cmd for RENDEC init */
+		PSB_WMSVDX32(DSIABLE_IDLE_GPIO_SIG | DSIABLE_Auto_CLOCK_GATING
+			     | RETURN_VDEB_DATA_IN_COMPLETION,
+			     MSVDX_COMMS_OFFSET_FLAGS);
 
-	MEMIO_WRITE_FIELD(init_msg, FW_DEVA_INIT_RENDEC_ADDR0,
-			msvdx_priv->base_addr0);
-	MEMIO_WRITE_FIELD(init_msg, FW_DEVA_INIT_RENDEC_ADDR1,
-			msvdx_priv->base_addr1);
-	MEMIO_WRITE_FIELD(init_msg, FW_DEVA_INIT_RENDEC_SIZE0,
-			RENDEC_A_SIZE / (4*1024));
-	MEMIO_WRITE_FIELD(init_msg, FW_DEVA_INIT_RENDEC_SIZE1,
-			RENDEC_B_SIZE / (4*1024));
-	psb_mtx_send(dev_priv, init_msg);
+		MEMIO_WRITE_FIELD(init_msg, FWRK_GENMSG_SIZE,
+				  FW_DEVA_INIT_SIZE);
+		MEMIO_WRITE_FIELD(init_msg, FWRK_GENMSG_ID,
+				  FW_DEVA_INIT_ID);
+
+		MEMIO_WRITE_FIELD(init_msg, FW_DEVA_INIT_RENDEC_ADDR0, msvdx_priv->base_addr0);
+		MEMIO_WRITE_FIELD(init_msg, FW_DEVA_INIT_RENDEC_ADDR1, msvdx_priv->base_addr1);
+		MEMIO_WRITE_FIELD(init_msg, FW_DEVA_INIT_RENDEC_SIZE0, RENDEC_A_SIZE / (4*1024));
+		MEMIO_WRITE_FIELD(init_msg, FW_DEVA_INIT_RENDEC_SIZE1, RENDEC_B_SIZE / (4*1024));
+		psb_mtx_send(dev_priv, init_msg);
+	}
 
 #if 0
 
@@ -735,14 +763,17 @@ int psb_msvdx_reset(struct drm_psb_private *dev_priv)
 	int ret = 0;
 
 	if (IS_PENWELL(dev_priv->dev)) {
-		uint32_t core_rev;
-		/* Enable Clocks */
-		PSB_DEBUG_GENERAL("Enabling clocks\n");
-		PSB_WMSVDX32(clk_enable_all, MSVDX_MAN_CLK_ENABLE);
+		if (IS_D0(dev_priv->dev)) {
+			uint32_t core_rev;
+			/* Enable Clocks */
+			PSB_DEBUG_GENERAL("Enabling clocks\n");
+			PSB_WMSVDX32(clk_enable_all, MSVDX_MAN_CLK_ENABLE);
 
-		/* Always pause the MMU as the core may be still active when resetting.  It is very bad to have memory
-		   activity at the same time as a reset - Very Very bad */
-		PSB_WMSVDX32(2, MSVDX_MMU_CONTROL0);
+			/* Always pause the MMU as the core may be still active
+			 * when resetting.  It is very bad to have memory
+			 * activity at the same time as a reset - Very Very bad
+			 */
+			PSB_WMSVDX32(2, MSVDX_MMU_CONTROL0);
 
 			core_rev = PSB_RMSVDX32(MSVDX_CORE_REV);
 			if (core_rev < 0x00050502) {
@@ -819,6 +850,20 @@ int psb_msvdx_reset(struct drm_psb_private *dev_priv)
 				}
 			}
 			goto out;
+		} else {
+			int loop;
+			/* Enable Clocks */
+			PSB_DEBUG_GENERAL("Enabling clocks\n");
+			PSB_WMSVDX32(clk_enable_all, MSVDX_MAN_CLK_ENABLE);
+			/* Always pause the MMU as the core may be still active when resetting.  It is very bad to have memory
+			   activity at the same time as a reset - Very Very bad */
+			PSB_WMSVDX32(2, MSVDX_MMU_CONTROL0);
+			for (loop = 0; loop < 50; loop++)
+				ret = psb_wait_for_register(dev_priv, MSVDX_MMU_MEM_REQ, 0,
+						0xff);
+			if (ret)
+				return ret;
+		}
 
 	}
 	/* Issue software reset */
@@ -983,6 +1028,10 @@ int psb_msvdx_init(struct drm_device *dev)
 		PSB_WMSVDX32(8200, REGISTER(MSVDX_CORE, CR_BE_MSVDX_WDT_COMPAREMATCH));
 		PSB_WMSVDX32(reg_val, REGISTER(MSVDX_CORE, CR_BE_MSVDX_WDT_CONTROL));
 	*/
+	if (!IS_D0(dev)) {
+		/* Enable MMU by removing all bypass bits */
+		PSB_WMSVDX32(0, MSVDX_MMU_CONTROL0);
+	}
 
 	/* move firmware loading to the place receiving first command buffer */
 
@@ -1036,6 +1085,17 @@ int psb_msvdx_init(struct drm_device *dev)
 	PSB_DEBUG_GENERAL("MSVDX: RENDEC A: %08x RENDEC B: %08x\n",
 			  msvdx_priv->base_addr0, msvdx_priv->base_addr1);
 
+	if (!IS_D0(dev)) {
+		PSB_WMSVDX32(msvdx_priv->base_addr0, MSVDX_RENDEC_BASE_ADDR0);
+		PSB_WMSVDX32(msvdx_priv->base_addr1, MSVDX_RENDEC_BASE_ADDR1);
+
+		cmd = 0;
+		REGIO_WRITE_FIELD(cmd, MSVDX_RENDEC_BUFFER_SIZE,
+				RENDEC_BUFFER_SIZE0, RENDEC_A_SIZE / 4096);
+		REGIO_WRITE_FIELD(cmd, MSVDX_RENDEC_BUFFER_SIZE,
+				RENDEC_BUFFER_SIZE1, RENDEC_B_SIZE / 4096);
+		PSB_WMSVDX32(cmd, MSVDX_RENDEC_BUFFER_SIZE);
+	}
 	if (!msvdx_priv->fw) {
 		uint32_t core_rev;
 
@@ -1059,6 +1119,31 @@ int psb_msvdx_init(struct drm_device *dev)
 			goto err_exit;
 		}
 	}
+	if (!IS_D0(dev)) {
+		cmd = 0;
+		REGIO_WRITE_FIELD(cmd, MSVDX_RENDEC_CONTROL1,
+				RENDEC_DECODE_START_SIZE, 0);
+		REGIO_WRITE_FIELD(cmd, MSVDX_RENDEC_CONTROL1,
+				RENDEC_BURST_SIZE_W, 1);
+		REGIO_WRITE_FIELD(cmd, MSVDX_RENDEC_CONTROL1,
+				RENDEC_BURST_SIZE_R, 1);
+		REGIO_WRITE_FIELD(cmd, MSVDX_RENDEC_CONTROL1,
+				RENDEC_EXTERNAL_MEMORY, 1);
+		PSB_WMSVDX32(cmd, MSVDX_RENDEC_CONTROL1);
+
+		cmd = 0x00101010;
+		PSB_WMSVDX32(cmd, MSVDX_RENDEC_CONTEXT0);
+		PSB_WMSVDX32(cmd, MSVDX_RENDEC_CONTEXT1);
+		PSB_WMSVDX32(cmd, MSVDX_RENDEC_CONTEXT2);
+		PSB_WMSVDX32(cmd, MSVDX_RENDEC_CONTEXT3);
+		PSB_WMSVDX32(cmd, MSVDX_RENDEC_CONTEXT4);
+		PSB_WMSVDX32(cmd, MSVDX_RENDEC_CONTEXT5);
+
+		cmd = 0;
+		REGIO_WRITE_FIELD(cmd, MSVDX_RENDEC_CONTROL0, RENDEC_INITIALISE,
+				1);
+		PSB_WMSVDX32(cmd, MSVDX_RENDEC_CONTROL0);
+	}
 
 	/* PSB_WMSVDX32(clk_enable_minimal, MSVDX_MAN_CLK_ENABLE); */
 	PSB_DEBUG_INIT("MSVDX:defer firmware loading to the"
@@ -1066,14 +1151,34 @@ int psb_msvdx_init(struct drm_device *dev)
 
 	msvdx_priv->msvdx_fw_loaded = 0; /* need to load firware */
 
-	PSB_WMSVDX32(0x334, MSVDX_CORE_CR_FE_MSVDX_WDT_COMPAREMATCH);
-	PSB_WMSVDX32(0x2008, MSVDX_CORE_CR_BE_MSVDX_WDT_COMPAREMATCH);
+	if (!IS_D0(dev)) {
+		/* it should be set at punit post boot init phase */
+		PSB_WMSVDX32(820, MSVDX_CORE_CR_FE_MSVDX_WDT_COMPAREMATCH);
+		PSB_WMSVDX32(8200, MSVDX_CORE_CR_BE_MSVDX_WDT_COMPAREMATCH);
+
+		PSB_WMSVDX32(820, MSVDX_CORE_CR_FE_MSVDX_WDT_COMPAREMATCH);
+		PSB_WMSVDX32(8200, MSVDX_CORE_CR_BE_MSVDX_WDT_COMPAREMATCH);
+	} else {
+		/* for the other two, use the default value punit set */
+		PSB_WMSVDX32(0x334, MSVDX_CORE_CR_FE_MSVDX_WDT_COMPAREMATCH);
+		PSB_WMSVDX32(0x2008, MSVDX_CORE_CR_BE_MSVDX_WDT_COMPAREMATCH);
+	}
 
 	psb_msvdx_clearirq(dev);
 	psb_msvdx_enableirq(dev);
 
 	PSB_DEBUG_INIT("MSDVX:old clock gating disable = 0x%08x\n",
 		PSB_RVDC32(PSB_MSVDX_CLOCKGATING));
+
+	if (!IS_D0(dev)) {
+		cmd = 0;
+		cmd = PSB_RMSVDX32(MSVDX_VEC_SHIFTREG_CONTROL); /* VEC_SHIFTREG_CONTROL */
+		REGIO_WRITE_FIELD(cmd,
+				  VEC_SHIFTREG_CONTROL,
+				  SR_MASTER_SELECT,
+				  1);  /* Host */
+		PSB_WMSVDX32(cmd, MSVDX_VEC_SHIFTREG_CONTROL);
+	}
 
 #if 0
 	ret = psb_setup_fw(dev);

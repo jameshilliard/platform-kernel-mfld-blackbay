@@ -381,6 +381,14 @@ static int psb_submit_video_cmdbuf(struct drm_device *dev,
 	if (msvdx_priv->msvdx_needs_reset) {
 		spin_unlock_irqrestore(&msvdx_priv->msvdx_lock, irq_flags);
 
+		PSB_DEBUG_GENERAL("MSVDX: will reset msvdx\n");
+		if (!IS_D0(dev)) {
+			if (psb_msvdx_reset(dev_priv)) {
+				ret = -EBUSY;
+				DRM_ERROR("MSVDX: Reset failed\n");
+				return ret;
+			}
+		}
 		msvdx_priv->msvdx_needs_reset = 0;
 		msvdx_priv->msvdx_busy = 0;
 
@@ -840,8 +848,11 @@ loop: /* just for coding style check */
 					  " - resetting and ignoring error\n",
 					  fence);
 
-		msvdx_priv->msvdx_needs_reset |= MSVDX_RESET_NEEDS_REUPLOAD_FW |
+		if (IS_D0(dev))
+			msvdx_priv->msvdx_needs_reset |= MSVDX_RESET_NEEDS_REUPLOAD_FW |
 				MSVDX_RESET_NEEDS_INIT_FW;
+		else
+			msvdx_priv->msvdx_needs_reset = 1;
 
 		if (msg_id == VA_MSGID_CMD_HW_PANIC) {
 			diff = msvdx_priv->msvdx_current_sequence
@@ -1083,8 +1094,13 @@ done:
 		goto loop;
 	}
 	/* we get a frame/slice done, try to save some power*/
-	if (drm_msvdx_pmpolicy == PSB_PMPOLICY_POWERDOWN)
-		schedule_delayed_work(&dev_priv->scheduler.msvdx_suspend_wq, 0);
+	if (IS_D0(dev)) {
+		if (drm_msvdx_pmpolicy == PSB_PMPOLICY_POWERDOWN)
+			schedule_delayed_work(&dev_priv->scheduler.msvdx_suspend_wq, 0);
+	} else {
+		if (drm_msvdx_pmpolicy != PSB_PMPOLICY_NOPM)
+			schedule_delayed_work(&dev_priv->scheduler.msvdx_suspend_wq, 0);
+	}
 
 	DRM_MEMORYBARRIER();	/* TBD check this... */
 }
@@ -1119,14 +1135,34 @@ IMG_BOOL psb_msvdx_interrupt(IMG_VOID *pvData)
 	 * if HW/FW is totally hang, the lockup function will handle
 	 * the reseting when firmware is loaded w/o the driver
 	 */
+	if (!IS_D0(dev) &&
+	    (msvdx_stat & MSVDX_INTERRUPT_STATUS_CR_MMU_FAULT_IRQ_MASK)) {
+		/*Ideally we should we should never get to this */
+		PSB_DEBUG_IRQ("MSVDX:MMU Fault:0x%x\n", msvdx_stat);
 
-	if (msvdx_stat & MSVDX_INTERRUPT_STATUS_CR_MTX_IRQ_MASK) {
+		/* Pause MMU */
+		PSB_WMSVDX32(MSVDX_MMU_CONTROL0_CR_MMU_PAUSE_MASK,
+			     MSVDX_MMU_CONTROL0);
+		DRM_WRITEMEMORYBARRIER();
+
+		/* Clear this interupt bit only */
+		PSB_WMSVDX32(MSVDX_INTERRUPT_STATUS_CR_MMU_FAULT_IRQ_MASK,
+			     MSVDX_INTERRUPT_CLEAR);
+		PSB_RMSVDX32(MSVDX_INTERRUPT_CLEAR);
+		DRM_READMEMORYBARRIER();
+
+		msvdx_priv->msvdx_needs_reset = 1;
+	} else if (msvdx_stat & MSVDX_INTERRUPT_STATUS_CR_MTX_IRQ_MASK) {
 		PSB_DEBUG_IRQ
-		("MSVDX: msvdx_stat: 0x%x(MTX)\n", msvdx_stat);
+			("MSVDX: msvdx_stat: 0x%x(MTX)\n", msvdx_stat);
 
-		/* Clear this interupt bit */
-		PSB_WMSVDX32(MSVDX_INTERRUPT_STATUS_CR_MTX_IRQ_MASK,
-				MSVDX_INTERRUPT_CLEAR);
+		/* Clear all interupt bits */
+		if (IS_D0(dev))
+			PSB_WMSVDX32(MSVDX_INTERRUPT_STATUS_CR_MTX_IRQ_MASK,
+				     MSVDX_INTERRUPT_CLEAR);
+		else
+			PSB_WMSVDX32(0xffff, MSVDX_INTERRUPT_CLEAR);
+
 		PSB_RMSVDX32(MSVDX_INTERRUPT_CLEAR);
 		DRM_READMEMORYBARRIER();
 
@@ -1188,12 +1224,12 @@ int psb_check_msvdx_idle(struct drm_device *dev)
 		return -EBUSY;
 	}
 
-	PSB_DEBUG_MSVDX("SIGNATURE is %x\n",
-			PSB_RMSVDX32(MSVDX_COMMS_SIGNATURE));
+	if (IS_D0(dev)) {
+		PSB_DEBUG_MSVDX("   SIGNITURE is %x\n", PSB_RMSVDX32(MSVDX_COMMS_SIGNATURE));
 
-	if (!(PSB_RMSVDX32(MSVDX_COMMS_FW_STATUS) &
-				MSVDX_FW_STATUS_HW_IDLE))
-		return -EBUSY;
+		if (!(PSB_RMSVDX32(MSVDX_COMMS_FW_STATUS) & MSVDX_FW_STATUS_HW_IDLE))
+			return -EBUSY;
+	}
 	/*
 		if (msvdx_priv->msvdx_hw_busy) {
 			PSB_DEBUG_PM("MSVDX: %s, HW is busy\n", __func__);
@@ -1388,7 +1424,10 @@ int psb_msvdx_save_context(struct drm_device *dev)
 	struct msvdx_private *msvdx_priv = dev_priv->msvdx_private;
 	int offset = 0;
 
-	msvdx_priv->msvdx_needs_reset = MSVDX_RESET_NEEDS_INIT_FW;
+	if (IS_D0(dev))
+		msvdx_priv->msvdx_needs_reset = MSVDX_RESET_NEEDS_INIT_FW;
+	else
+		msvdx_priv->msvdx_needs_reset = 1;
 
 	for (offset = 0; offset < VEC_LOCAL_MEM_BYTE_SIZE / 4; ++offset)
 		msvdx_priv->vec_local_mem_data[offset] =
@@ -1396,9 +1435,12 @@ int psb_msvdx_save_context(struct drm_device *dev)
 
 	msvdx_priv->vec_local_mem_saved = 1;
 
-	PSB_WMSVDX32(0, MSVDX_MTX_ENABLE);
-	psb_msvdx_reset(dev_priv);
-	PSB_WMSVDX32(0, MSVDX_MAN_CLK_ENABLE);
+	if (IS_D0(dev)) {
+		PSB_WMSVDX32(0, MSVDX_MTX_ENABLE);
+		psb_msvdx_reset(dev_priv);
+		PSB_WMSVDX32(0, MSVDX_MAN_CLK_ENABLE);
+	}
+
 	return 0;
 }
 
