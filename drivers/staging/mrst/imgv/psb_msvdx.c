@@ -1251,12 +1251,6 @@ int lnc_video_getparam(struct drm_device *dev, void *data,
 	drm_psb_msvdx_frame_info_t *current_frame = NULL;
 	uint32_t handle, i;
 
-#if defined(CONFIG_MRST_RAR_HANDLER)
-	struct RAR_buffer rar_buf;
-	size_t rar_status;
-#endif
-	void *rar_handler;
-	uint32_t offset = 0;
 	uint32_t device_info = 0;
 	uint32_t ctx_type = 0;
 	struct psb_video_ctx *video_ctx = NULL;
@@ -1277,39 +1271,6 @@ int lnc_video_getparam(struct drm_device *dev, void *data,
 		ret = copy_to_user((void __user *)((unsigned long)arg->value),
 				   &rar_ci_info[0],
 				   sizeof(rar_ci_info));
-		break;
-	case LNC_VIDEO_GETPARAM_RAR_HANDLER_OFFSET:
-		ret = copy_from_user(&rar_handler,
-				     (void __user *)((unsigned long)arg->arg),
-				     sizeof(rar_handler));
-		if (ret)
-			break;
-
-#if defined(CONFIG_MRST_RAR_HANDLER)
-		rar_buf.info.handle = (__u32)rar_handler;
-		rar_buf.bus_address = (dma_addr_t)dev_priv->rar_region_start;
-		rar_status = 1;
-
-		rar_status = rar_handle_to_bus(&rar_buf, 1);
-		if (rar_status != 1) {
-			DRM_ERROR("MSVDX:rar_handle_to_bus failed\n");
-			ret = -1;
-			break;
-		}
-		rar_status = rar_release(&rar_buf, 1);
-		if (rar_status != 1)
-			DRM_ERROR("MSVDX:rar_release failed\n");
-
-		offset = (uint32_t) rar_buf.bus_address - dev_priv->rar_region_start;
-		PSB_DEBUG_GENERAL("MSVDX:RAR handler %p, bus address=0x%08x,"
-				  "RAR region=0x%08x\n",
-				  rar_handler,
-				  (uint32_t)rar_buf.bus_address,
-				  dev_priv->rar_region_start);
-#endif
-		ret = copy_to_user((void __user *)((unsigned long)arg->value),
-				   &offset,
-				   sizeof(offset));
 		break;
 	case LNC_VIDEO_FRAME_SKIP:
 		ret = -EFAULT;

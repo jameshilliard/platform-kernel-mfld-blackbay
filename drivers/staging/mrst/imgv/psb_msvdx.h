@@ -24,10 +24,6 @@
 #include "psb_drv.h"
 #include "img_types.h"
 
-#if defined(CONFIG_MRST_RAR_HANDLER)
-#include "../../memrar/memrar.h"
-#endif
-
 extern int drm_msvdx_pmpolicy;
 extern int drm_msvdx_delay;
 
