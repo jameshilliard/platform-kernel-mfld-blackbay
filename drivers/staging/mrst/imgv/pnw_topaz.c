@@ -614,6 +614,7 @@ pnw_topaz_send(struct drm_device *dev, void *cmd,
 	topaz_priv->topaz_busy = 0;
 #else
 	PSB_DEBUG_GENERAL("Kick command with sequence %x\n", sync_seq);
+	topaz_priv->topaz_busy = 1; /* This may be reset in topaz_setup_fw*/
 	pnw_topaz_kick_null_cmd(dev_priv, 0,
 				topaz_priv->topaz_sync_offset,
 				sync_seq, 1);
@@ -672,6 +673,10 @@ int pnw_check_topaz_idle(struct drm_device *dev)
 	uint32_t reg_val;
 
 	if (dev_priv->topaz_ctx == NULL)
+		return 0;
+
+	/*HW is stuck. Need to power off TopazSC to reset HW*/
+	if (topaz_priv->topaz_needs_reset)
 		return 0;
 
 	if (topaz_priv->topaz_busy)
@@ -735,11 +740,10 @@ static void pnw_topaz_flush_cmd_queue(struct pnw_topaz_private *topaz_priv)
 
 	/* remind to reset topaz */
 	topaz_priv->topaz_needs_reset = 1;
+	topaz_priv->topaz_busy = 0;
 
-	if (list_empty(&topaz_priv->topaz_queue)) {
-		topaz_priv->topaz_busy = 0;
+	if (list_empty(&topaz_priv->topaz_queue))
 		return;
-	}
 
 	/* flush all command in queue */
 	list_for_each_entry_safe(entry, next,
