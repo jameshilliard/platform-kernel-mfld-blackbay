@@ -207,9 +207,6 @@ medfield_gfx-y += \
 	$(IMGVDIR)/topaz_power.o
 
 medfield_gfx-y += \
-	$(IMGVDIR)/psb_video_bind.o
-
-medfield_gfx-y += \
 	$(BUFFER_CLASS_DIR)/bufferclass_video.o \
 	$(BUFFER_CLASS_DIR)/bufferclass_video_linux.o
 

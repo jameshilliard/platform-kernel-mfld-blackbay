@@ -80,12 +80,4 @@ extern int ttm_buffer_object_create(struct ttm_bo_device *bdev,
 				    struct file *persistant_swap_storage,
 				    struct ttm_buffer_object **p_bo);
 
-/* Helpers for handling the psb ttm backend. psb_buffer.c */
-struct ttm_backend;
-
-int drm_psb_set_fixed_pages(struct ttm_tt *ttm, struct page **pages,
-			     int pg_cnt);
-void drm_psb_unset_fixed_pages(struct ttm_backend *backend);
-int drm_psb_has_fixed_pages(struct ttm_backend *backend);
-
 #endif

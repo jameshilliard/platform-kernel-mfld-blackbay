@@ -238,15 +238,10 @@ static int set_clear_placement_flags(struct ttm_buffer_object *bo, uint32_t set,
 	uint32_t cur = bo->mem.placement;
 	uint32_t new;
 	bool is_root;
-	bool has_fixed_pages;
 	char *flag_name = "no swap";
 
 	new = (cur | set) & ~clear;
 	new = normalize_placement_flags(new);
-
-	has_fixed_pages = drm_psb_has_fixed_pages(bo->ttm->be);
-	if (has_fixed_pages && !fixed_placement_valid(new))
-		goto err;
 
 	flag_name = "no evict";
 	is_root = capable(CAP_SYS_ADMIN);

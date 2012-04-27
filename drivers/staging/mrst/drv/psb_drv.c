@@ -461,8 +461,6 @@ static struct drm_ioctl_desc psb_ioctls[] = {
 	DRM_AUTH),
 	PSB_IOCTL_DEF(DRM_IOCRL_PSB_DPU_DSR_OFF, psb_dpu_dsr_off_ioctl,
 	DRM_AUTH),
-	PSB_IOCTL_DEF(DRM_IOCTL_ST_GFX_BUFFER_CLASS_VIDEO,
-	psb_st_gfx_video_bridge, DRM_AUTH)
 };
 
 static void psb_lastclose(struct drm_device *dev)
