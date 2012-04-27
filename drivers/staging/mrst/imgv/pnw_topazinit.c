@@ -54,7 +54,6 @@
 #define CACHE_ONLY 2
 
 #define FIRMWARE_NAME "topazsc_fw.bin"
-#define TOPAZ_KICK_RETRY_MAX 5
 
 /* static function define */
 static int topaz_upload_fw(struct drm_device *dev,
@@ -1421,42 +1420,6 @@ void pnw_topaz_mmu_flushcache(struct drm_psb_private *dev_priv)
 	psb_gl3_global_invalidation(dev_priv->dev);
 }
 
-
-static void pnw_topaz_retry_kick(struct drm_device *dev, int core_id)
-{
-	struct drm_psb_private *dev_priv =
-		(struct drm_psb_private *)dev->dev_private;
-	struct pnw_topaz_private *topaz_priv = dev_priv->topaz_private;
-	int i, j;
-
-	for (j = 0; j < TOPAZ_KICK_RETRY_MAX; j++) {
-		PSB_DEBUG_GENERAL("TOPAZ: Kick was missing. Try again.\n");
-		topaz_set_mtx_target(dev_priv, 0, 0);
-		MTX_WRITE32(MTX_CR_MTX_KICK, 1, 0);
-		i = 3000;
-		PSB_DEBUG_GENERAL("TOPAZ: Wait for the NULL command...\n");
-		while (i && \
-				((topaz_priv->topaz_cmd_count - 1) != \
-				 *(topaz_priv->topaz_mtx_wb + \
-					 core_id * MTX_WRITEBACK_DATASIZE_ROUND\
-					 + MTX_WRITEBACK_VALUE))) {
-			cpu_relax();
-			i--;
-		}
-
-		if (0 != i) {
-			PSB_DEBUG_GENERAL("TOPAZ: Finished.\n");
-			break;
-		}
-	}
-
-	if (j == TOPAZ_KICK_RETRY_MAX)
-		DRM_ERROR("TOPAZ:Have toggled MTX kick %d times but all "\
-				"failed!\n",
-				TOPAZ_KICK_RETRY_MAX);
-	return;
-}
-
 int pnw_topaz_restore_mtx_state(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv =
@@ -1466,13 +1429,13 @@ int pnw_topaz_restore_mtx_state(struct drm_device *dev)
 	int i, need_restore;
 	struct pnw_topaz_private *topaz_priv = dev_priv->topaz_private;
 	struct psb_video_ctx *pos, *n;
-	uint32_t wb_offset;
 
 	if (!topaz_priv->topaz_mtx_saved)
 		return -1;
 
 	list_for_each_entry_safe(pos, n, &dev_priv->video_ctx, head) {
-		if ((pos->ctx_type & 0xff) == 6)
+		if ((pos->ctx_type & 0xff) == VAEntrypointEncSlice ||
+			(pos->ctx_type & 0xff) == VAEntrypointEncPicture)
 			need_restore = 1;
 	}
 
@@ -1496,12 +1459,23 @@ int pnw_topaz_restore_mtx_state(struct drm_device *dev)
 		return -1;
 	}
 
+	/*TopazSC will be reset, no need to restore context.*/
+	if (topaz_priv->topaz_needs_reset)
+		return 0;
+
+	/*There is no need to restore context for JPEG encoding*/
+	if (PNW_IS_JPEG_ENC(topaz_priv->topaz_cur_codec)) {
+		if (pnw_topaz_setup_fw(dev, topaz_priv->topaz_cur_codec))
+			DRM_ERROR("TOPAZ: Setup JPEG firmware fails!\n");
+		topaz_priv->topaz_mtx_saved = 0;
+		return 0;
+	}
 	pnw_topaz_mmu_flushcache(dev_priv);
 
-	/*TopazSC will be reset, no need to save context.*/
 	for (core_id = 0; core_id < topaz_priv->topaz_num_cores; core_id++)
 		pnw_topaz_mmu_hwsetup(dev_priv, core_id);
 	for (core_id = 0; core_id < topaz_priv->topaz_num_cores; core_id++) {
+		pnw_topazsc_reset_ESB(dev_priv, core_id);
 		MVEA_WRITE32(MVEA_CR_IMG_MVEA_SRST,
 				F_ENCODE(1, MVEA_CR_IMG_MVEA_SPE_SOFT_RESET) |
 				F_ENCODE(1, MVEA_CR_IMG_MVEA_IPE_SOFT_RESET) |
@@ -1520,31 +1494,6 @@ int pnw_topaz_restore_mtx_state(struct drm_device *dev)
 				F_ENCODE(0, MVEA_CR_IMG_MVEA_CMC_SOFT_RESET) |
 				F_ENCODE(0, MVEA_CR_IMG_MVEA_DCF_SOFT_RESET),
 				core_id);
-	}
-
-	for (core_id = 0; core_id < topaz_priv->topaz_num_cores; core_id++)
-		pnw_topaz_mmu_hwsetup(dev_priv, core_id);
-
-	for (core_id = 0; core_id < topaz_priv->topaz_num_cores; core_id++) {
-		pnw_topazsc_reset_ESB(dev_priv, core_id);
-		MVEA_WRITE32(MVEA_CR_IMG_MVEA_SRST,
-			     F_ENCODE(1, MVEA_CR_IMG_MVEA_SPE_SOFT_RESET) |
-			     F_ENCODE(1, MVEA_CR_IMG_MVEA_IPE_SOFT_RESET) |
-			     F_ENCODE(1, MVEA_CR_IMG_MVEA_CMPRS_SOFT_RESET) |
-			     F_ENCODE(1, MVEA_CR_IMG_MVEA_JMCOMP_SOFT_RESET)
-			     |
-			     F_ENCODE(1, MVEA_CR_IMG_MVEA_CMC_SOFT_RESET) |
-			     F_ENCODE(1, MVEA_CR_IMG_MVEA_DCF_SOFT_RESET),
-			     core_id);
-		MVEA_WRITE32(MVEA_CR_IMG_MVEA_SRST,
-			     F_ENCODE(0, MVEA_CR_IMG_MVEA_SPE_SOFT_RESET) |
-			     F_ENCODE(0, MVEA_CR_IMG_MVEA_IPE_SOFT_RESET) |
-			     F_ENCODE(0, MVEA_CR_IMG_MVEA_CMPRS_SOFT_RESET) |
-			     F_ENCODE(0, MVEA_CR_IMG_MVEA_JMCOMP_SOFT_RESET)
-			     |
-			     F_ENCODE(0, MVEA_CR_IMG_MVEA_CMC_SOFT_RESET) |
-			     F_ENCODE(0, MVEA_CR_IMG_MVEA_DCF_SOFT_RESET),
-			     core_id);
 	}
 
 	for (core_id = topaz_priv->topaz_num_cores - 1;
@@ -1582,14 +1531,6 @@ int pnw_topaz_restore_mtx_state(struct drm_device *dev)
 	for (core_id = topaz_priv->topaz_num_cores - 1;
 			core_id >= 0; core_id--) {
 		topaz_set_mtx_target(dev_priv, core_id, 0);
-
-		/*Reset IO again. WA for BZ1478*/
-		TOPAZ_WRITE32(TOPAZ_CR_IMG_TOPAZ_SRST,
-				F_ENCODE(1, TOPAZ_CR_IMG_TOPAZ_IO_SOFT_RESET),
-				core_id);
-		TOPAZ_WRITE32(TOPAZ_CR_IMG_TOPAZ_SRST,
-				0,
-				core_id);
 
 		mtx_reg_state = topaz_priv->topaz_mtx_reg_state[core_id];
 		/* restore register */
@@ -1630,18 +1571,10 @@ int pnw_topaz_restore_mtx_state(struct drm_device *dev)
 		/* Saves 8 Control Registers */
 		/* TXSTAT, TXMASK, TXSTATI, TXMASKI, TXPOLL, TXGPIOI, TXPOLLI,
 		 * TXGPIOO */
-		for (i = 1; i < 8; i += 2) {
-			/*Force the busy bit of core 0 to be 1. Since idle
-			 * signal may cause the clock to the MTX is not running
-			 * when the kick is written to it. WA for BZ1478.*/
-			if (i == 7 && core_id == 0)
-				topaz_write_core_reg(dev_priv, core_id,
-						0x7 | (i << 4),
-						0x2 | (*mtx_reg_state));
-			else
-				topaz_write_core_reg(dev_priv, core_id,
-						0x7 | (i << 4),
-						*mtx_reg_state);
+		for (i = 0; i < 8; i++) {
+			topaz_write_core_reg(dev_priv, core_id,
+					0x7 | (i << 4),
+					*mtx_reg_state);
 			mtx_reg_state++;
 		}
 		COMMS_WRITE32(TOPAZ_COMMS_CR_STAT_1(0), \
@@ -1700,45 +1633,8 @@ int pnw_topaz_restore_mtx_state(struct drm_device *dev)
 			    core_id);
 
 	}
+
 	PSB_DEBUG_GENERAL("TOPAZ: send NULL command to test firmware\n");
-
-	/*WA for BZ1478. Enable IRQ here, since it's disabled by IO reset*/
-	pnw_topaz_enableirq(dev);
-	TOPAZ_WRITE32(TOPAZ_CR_TOPAZ_CMD_FIFO_1,
-				F_ENCODE(1, TOPAZ_CR_CMD_FIFO_FLUSH),
-				0);
-
-	for (core_id = topaz_priv->topaz_num_cores - 1;
-			core_id >= 0; core_id--) {
-		wb_offset = TOPAZ_MTX_WB_OFFSET(
-				topaz_priv->topaz_wb_offset,
-				core_id);
-
-		pnw_topaz_kick_null_cmd(dev_priv, core_id,
-					  wb_offset,
-					  topaz_priv->topaz_cmd_count++, 0);
-
-		i = 3000;
-		PSB_DEBUG_GENERAL("TOPAZ: Wait for the NULL command...\n");
-		while (i && \
-				((topaz_priv->topaz_cmd_count - 1) != \
-				 *(topaz_priv->topaz_mtx_wb + \
-					 core_id * MTX_WRITEBACK_DATASIZE_ROUND\
-					 + MTX_WRITEBACK_VALUE))) {
-			cpu_relax();
-			i--;
-		}
-
-		if (i == 0)
-			pnw_topaz_retry_kick(dev, core_id);
-		else
-			PSB_DEBUG_GENERAL("TOPAZ:Finished.\n");
-
-		TOPAZ_WRITE32(TOPAZ_CR_IMG_TOPAZ_INTCLEAR,
-				F_ENCODE(1, TOPAZ_CR_IMG_TOPAZ_INTCLR_MTX),
-				core_id);
-	}
-
 	topaz_priv->topaz_mtx_saved = 0;
 	return 0;
 }
@@ -1754,13 +1650,12 @@ int pnw_topaz_save_mtx_state(struct drm_device *dev)
 	struct pnw_topaz_codec_fw *cur_codec_fw;
 	struct pnw_topaz_private *topaz_priv = dev_priv->topaz_private;
 	struct psb_video_ctx *pos, *n;
-	uint32_t reg_val;
-	int j;
 
 	topaz_priv->topaz_mtx_saved = 0;
 
 	list_for_each_entry_safe(pos, n, &dev_priv->video_ctx, head) {
-		if ((pos->ctx_type & 0xff) == 6)
+		if ((pos->ctx_type & 0xff) == VAEntrypointEncSlice ||
+			(pos->ctx_type & 0xff) == VAEntrypointEncPicture)
 			need_save = 1;
 	}
 
@@ -1786,6 +1681,12 @@ int pnw_topaz_save_mtx_state(struct drm_device *dev)
 		PSB_DEBUG_GENERAL("TOPAZ: No need to restore context since"
 				  " firmware has not been uploaded.\n");
 		return -1;
+	}
+
+	/*JPEG encoding needn't to save context*/
+	if (PNW_IS_JPEG_ENC(topaz_priv->topaz_cur_codec)) {
+		topaz_priv->topaz_mtx_saved = 1;
+		return 0;
 	}
 
 	for (core = topaz_priv->topaz_num_cores - 1; core >= 0; core--) {
@@ -1852,7 +1753,7 @@ int pnw_topaz_save_mtx_state(struct drm_device *dev)
 		/* Saves 8 Control Registers */
 		/* TXSTAT, TXMASK, TXSTATI, TXMASKI, TXPOLL, TXGPIOI, TXPOLLI,
 		 * TXGPIOO */
-		for (i = 1; i < 8; i += 2) {
+		for (i = 0; i < 8; i++) {
 			topaz_read_core_reg(dev_priv, core, 0x7 | (i << 4),
 					    mtx_reg_state);
 			mtx_reg_state++;
@@ -1896,22 +1797,7 @@ int pnw_topaz_save_mtx_state(struct drm_device *dev)
 		pnw_topaz_mmu_flushcache(dev_priv);
 	}
 
-	TOPAZ_WRITE32(TOPAZ_CR_MMU_CONTROL0,
-			0x2, 0);
-	/*Make sure there is no pending memory request.*/
-	j = 0;
-	for (i = 0; i < 10000; i++) {
-		TOPAZ_READ32(TOPAZ_CR_MMU_MEM_REQ, &reg_val, 0);
-		if (reg_val == 0)
-			j++;
-		if (j >= 100)
-			break;
-	}
-	if (i >= 10000)
-		DRM_ERROR("Polling TOPAZ_CR_MMU_MEM_REQ timeout\n");
-
 	topaz_priv->topaz_mtx_saved = 1;
-
 	return 0;
 }
 

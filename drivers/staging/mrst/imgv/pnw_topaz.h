@@ -32,6 +32,9 @@
 #define PNW_TOPAZ_CODEC_NUM_MAX (11)
 //#define TOPAZ_PDUMP
 
+#define PNW_IS_JPEG_ENC(codec) \
+	(codec == IMG_CODEC_JPEG)
+
 extern int drm_topaz_pmpolicy;
 
 /* XXX: it's a copy of msvdx cmd queue. should have some change? */
