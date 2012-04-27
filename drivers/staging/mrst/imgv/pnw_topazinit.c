@@ -1039,9 +1039,17 @@ static int topaz_upload_fw(struct drm_device *dev, enum drm_pnw_topaz_codec code
 	/* FIXME: since non-root sighting fixed by pre allocated,
 	 * only need to correct the buffer size
 	 */
-	cur_mtx_data_size = cur_codec_fw->data_size / 4;
-	if (topaz_priv->cur_mtx_data_size[core_id] != cur_mtx_data_size)
-		topaz_priv->cur_mtx_data_size[core_id] = cur_mtx_data_size;
+	if (core_id == 0)
+		cur_mtx_data_size =
+			22 * 1024 - (cur_codec_fw->data_location - \
+					MTX_DMA_MEMORY_BASE);
+	else
+		cur_mtx_data_size =
+			18 * 1024 - (cur_codec_fw->data_location - \
+					MTX_DMA_MEMORY_BASE);
+	topaz_priv->cur_mtx_data_size[core_id] = cur_mtx_data_size / 4;
+	PSB_DEBUG_GENERAL("TOPAZ: Need to save %d words data for core %d\n",
+			cur_mtx_data_size / 4, core_id);
 
 	return 0;
 }
@@ -1876,10 +1884,7 @@ int pnw_topaz_save_mtx_state(struct drm_device *dev)
 					       + 1];
 		}
 
-		data_size = cur_codec_fw->data_size / 4;
-		data_size = ((data_size * 4 + (MTX_DMA_BURSTSIZE_BYTES - 1))
-			     & ~(MTX_DMA_BURSTSIZE_BYTES - 1)) / 4;
-
+		data_size = topaz_priv->cur_mtx_data_size[core];
 		data_location = cur_codec_fw->data_location
 				& ~(MTX_DMA_BURSTSIZE_BYTES - 1);
 		if (0 != mtx_dma_read(dev, core,
@@ -2029,10 +2034,7 @@ static int mtx_dma_write(struct drm_device *dev, uint32_t core_id)
 	/*TOPAZ_WRITE32(TOPAZ_CR_IMG_TOPAZ_DMAC_MODE, 0, core_id);*/
 
 	/* # upload data */
-	data_size = cur_codec_fw->data_size / 4;
-	data_size = ((data_size * 4 + (MTX_DMA_BURSTSIZE_BYTES - 1))
-		     & ~(MTX_DMA_BURSTSIZE_BYTES - 1)) / 4;
-
+	data_size = topaz_priv->cur_mtx_data_size[core_id];
 	data_location = cur_codec_fw->data_location;
 	data_location = data_location & (~(MTX_DMA_BURSTSIZE_BYTES - 1));
 
