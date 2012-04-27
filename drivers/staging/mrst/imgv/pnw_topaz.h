@@ -105,7 +105,6 @@ struct pnw_topaz_private {
 	uint32_t topaz_hw_busy;
 
 	uint32_t topaz_num_cores;
-	uint32_t aui32LastSync[2][MAX_TOPAZ_CORES + 1];  //!< Last sync value sent to each core
 
 	/*Before load firmware, need to set up jitter according to resolution*/
 	/*The data of MTX_CMDID_SW_NEW_CODEC command contains width and length.*/

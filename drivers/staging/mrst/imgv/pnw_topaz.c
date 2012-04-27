@@ -558,8 +558,6 @@ pnw_topaz_send(struct drm_device *dev, void *cmd,
 						cur_cmd_header->seq);
 
 			cur_free_space -= 4;
-			topaz_priv->aui32LastSync[0][cur_cmd_header->core]
-			= cur_cmd_header->seq;
 			topaz_priv->topaz_cmd_count %= MAX_TOPAZ_CMD_COUNT;
 			pnw_topaz_mtx_kick(dev_priv, 0, 1);
 #ifdef SYNC_FOR_EACH_COMMAND

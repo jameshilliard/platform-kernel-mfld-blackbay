@@ -407,11 +407,6 @@ int pnw_topaz_init(struct drm_device *dev)
 
 	PSB_DEBUG_GENERAL("TOPAZ: Reset MVEA successfully.\n");
 
-	for (n = 0; n < MAX_TOPAZ_CORES + 1; n++) {
-		topaz_priv->aui32LastSync[0][n] = ~0;
-		topaz_priv->aui32LastSync[1][n] = ~0;
-	}
-
 	/* create firmware storage */
 	for (n = 0; n < IMG_CODEC_NUM * 2; ++n) {
 		/* #.# malloc DRM object for fw storage */

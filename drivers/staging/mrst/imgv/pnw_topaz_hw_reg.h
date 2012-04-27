@@ -1303,14 +1303,12 @@ static inline uint32_t pnw_topaz_queryirq(struct drm_device *dev)
 
 	if (val & (1 << 31))
 		PSB_DEBUG_IRQ("TOPAZ:IRQ pin activated,cmd seq=0x%04x,"
-			      "sync seq: 0x%08x vs 0x%08x (MTX)\n",
-			      topaz_priv->aui32LastSync[0][0] ,
+			      "sync seq: 0x%08x\n",
 			      dev_priv->sequence[LNC_ENGINE_ENCODE],
 			      *((uint32_t *)topaz_priv->topaz_mtx_wb + MTX_WRITEBACK_VALUE));
 	else
 		PSB_DEBUG_IRQ("TOPAZ:IRQ pin not activated,cmd seq=0x%04x,"
-			      "sync seq: 0x%08x vs 0x%08x (MTX)\n",
-			      topaz_priv->aui32LastSync[0][0],
+			      "sync seq: 0x%08x\n",
 			      dev_priv->sequence[LNC_ENGINE_ENCODE],
 			      *((uint32_t *)topaz_priv->topaz_mtx_wb + MTX_WRITEBACK_VALUE));
 
