@@ -1216,15 +1216,24 @@ int psb_remove_videoctx(struct drm_psb_private *dev_priv, struct file *filp)
 					  " entrypoint %d",
 					  (pos->ctx_type >> 8),
 					  (pos->ctx_type & 0xff));
-			/*Reset fw load status here.*/
-			if ((VAEntrypointEncSlice == (pos->ctx_type & 0xff)
-			     || VAEntrypointEncPicture ==
-			     (pos->ctx_type & 0xff)))
-				pnw_reset_fw_status(dev_priv->dev);
 
 			/* if current ctx points to it, set to NULL */
-			if (dev_priv->topaz_ctx == pos)
+			if (dev_priv->topaz_ctx == pos) {
+				/*Reset fw load status here.*/
+				if (VAEntrypointEncSlice ==
+					(pos->ctx_type & 0xff)
+					|| VAEntrypointEncPicture ==
+						(pos->ctx_type & 0xff))
+					pnw_reset_fw_status(dev_priv->dev);
+
 				dev_priv->topaz_ctx = NULL;
+			} else if (VAEntrypointEncSlice ==
+						(pos->ctx_type & 0xff)
+					|| VAEntrypointEncPicture ==
+						(pos->ctx_type & 0xff))
+				PSB_DEBUG_GENERAL("Remove a inactive "\
+						"encoding context.\n");
+
 			if (dev_priv->last_topaz_ctx == pos)
 				dev_priv->last_topaz_ctx = NULL;
 
@@ -1295,6 +1304,10 @@ int lnc_video_getparam(struct drm_device *dev, void *data,
 		video_ctx->ctx_type = ctx_type;
 		video_ctx->filp = file_priv->filp;
 		list_add(&video_ctx->head, &dev_priv->video_ctx);
+
+		if (VAEntrypointEncSlice == (ctx_type & 0xff))
+			pnw_reset_fw_status(dev_priv->dev);
+
 		PSB_DEBUG_GENERAL("Video:add context profile %d, entrypoint %d",
 				  (ctx_type >> 8), (ctx_type & 0xff));
 		break;
