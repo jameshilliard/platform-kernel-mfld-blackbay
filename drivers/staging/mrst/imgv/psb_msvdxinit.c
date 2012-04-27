@@ -622,7 +622,10 @@ int psb_setup_fw(struct drm_device *dev)
 	PSB_DEBUG_GENERAL("MSVDX: First 4 bytes of data: 0x%x\n",
 			  *data_ptr);
 
-	PSB_DEBUG_GENERAL("MSVDX: Firmware uploaded\n");
+	PSB_DEBUG_GENERAL("MSVDX: Uploading firmware\n");
+
+	psb_upload_fw(dev_priv, 0, msvdx_priv->mtx_mem_size / 4, ec_firmware);
+
 #if 0
 	/* todo :  Verify code upload possibly only in debug */
 	ret = psb_verify_fw(dev_priv, ram_bank_size,
