@@ -1425,6 +1425,54 @@ int lnc_video_getparam(struct drm_device *dev, void *data,
 			return -EFAULT;
 		}
 		break;
+	case IMG_VIDEO_SET_DISPLAYING_FRAME:
+		ret = copy_from_user(&msvdx_priv->displaying_frame,
+				(void __user *)((unsigned long)arg->value),
+				sizeof(msvdx_priv->displaying_frame));
+		if (ret) {
+			DRM_ERROR("IMG_VIDEO_SET_DISPLAYING_FRAME error.\n");
+			return -EFAULT;
+		}
+		break;
+	case IMG_VIDEO_GET_DISPLAYING_FRAME:
+		ret = copy_to_user((void __user *)((unsigned long)arg->value),
+				&msvdx_priv->displaying_frame,
+				sizeof(msvdx_priv->displaying_frame));
+		if (ret) {
+			DRM_ERROR("IMG_VIDEO_GET_DISPLAYING_FRAME error.\n");
+			return -EFAULT;
+		}
+		break;
+	case IMG_VIDEO_GET_HDMI_STATE:
+#ifdef IMG_VIDEO_SUPPORT_HDMI_STATE_SETTING
+		ret = copy_to_user((void __user *)((unsigned long)arg->value),
+				&hdmi_state,
+				sizeof(hdmi_state));
+		if (ret) {
+			DRM_ERROR("IMG_VIDEO_GET_HDMI_STATE error.\n");
+			return -EFAULT;
+		}
+#endif /* IMG_VIDEO_SUPPORT_HDMI_STATE_SETTING */
+		break;
+	case IMG_VIDEO_SET_HDMI_STATE:
+#ifdef IMG_VIDEO_SUPPORT_HDMI_STATE_SETTING
+		if (!hdmi_state) {
+			PSB_DEBUG_ENTRY(
+				"wait 100ms for kernel hdmi pipe ready.\n");
+			msleep(100);
+		}
+		if (dev_priv->bhdmiconnected)
+			hdmi_state = (int)arg->value;
+		else
+#endif /* IMG_VIDEO_SUPPORT_HDMI_STATE_SETTING */
+			PSB_DEBUG_ENTRY(
+				"skip hdmi_state setting, for unplugged.\n");
+
+#ifdef IMG_VIDEO_SUPPORT_HDMI_STATE_SETTING
+		PSB_DEBUG_ENTRY("%s, set hdmi_state = %d\n",
+				 __func__, hdmi_state);
+#endif /* IMG_VIDEO_SUPPORT_HDMI_STATE_SETTING */
+		break;
 	case PNW_VIDEO_QUERY_ENTRY:
 		ret = copy_from_user(&handle,
 				(void __user *)((unsigned long)arg->arg),

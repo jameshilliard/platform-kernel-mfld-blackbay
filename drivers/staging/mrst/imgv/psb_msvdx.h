@@ -825,6 +825,7 @@ struct msvdx_private {
 	/*work for error concealment*/
 	struct work_struct ec_work;
 	struct ttm_object_file *tfile;
+	struct drm_video_displaying_frameinfo displaying_frame;
 };
 
 #define REGISTER(__group__, __reg__ )  (__group__##_##__reg__##_OFFSET)
