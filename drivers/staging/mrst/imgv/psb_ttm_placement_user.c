@@ -432,52 +432,6 @@ int ttm_pl_ub_create_ioctl(struct ttm_object_file *tfile,
 	return pl_create_buf(&cp, lock, rep);
 }
 
-int ttm_pl_wrap_pvr_buf_ioctl(struct ttm_object_file *tfile,
-			struct ttm_bo_device *bdev,
-			struct ttm_lock *lock, void *data)
-{
-	union ttm_pl_wrap_pvr_buf_arg *arg = data;
-	struct ttm_pl_wrap_pvr_buf_req *req = &arg->req;
-	struct ttm_pl_rep *rep = &arg->rep;
-	struct ttm_placement pl = pvr_default_placement;
-	struct pvr_buf_info buf_info;
-	uint32_t pl_flags = normalize_placement_flags(req->placement);
-	int ret;
-	struct create_params cp = {
-		.bdev		= bdev,
-		.bo_type	= ttm_bo_type_device,
-		.align		= req->page_alignment,
-		.placement	= &pl,
-		.tfile		= tfile,
-		.shareable	= req->placement & TTM_PL_FLAG_SHARED,
-	};
-
-	if (!fixed_placement_valid(pl_flags))
-		return -EINVAL;
-
-	pl.num_placement = 1;
-	pl.placement = &pl_flags;
-
-	ret = pvr_lookup_dev_buf(req->handle, &buf_info);
-	if (ret < 0)
-		return ret;
-	/*
-	 * We set here the ttm pages to point to the fixed pages from the
-	 * pvr buffer. Due to TTM_PL_FLAG_NO_SWAP set above and the
-	 * busy_placement settings, these will never be swapped or moved to
-	 * an IO region and thus never be freed before the buffer itself is
-	 * destroyed.
-	 */
-	cp.pages = buf_info.pages;
-	cp.size = buf_info.page_cnt;
-
-	ret = pl_create_buf(&cp, lock, rep);
-
-	pvr_put_dev_buf(&buf_info);
-
-	return ret;
-}
-
 int ttm_pl_reference_ioctl(struct ttm_object_file *tfile, void *data)
 {
 	union ttm_pl_reference_arg *arg = data;

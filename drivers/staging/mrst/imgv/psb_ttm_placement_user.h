@@ -78,21 +78,6 @@ struct ttm_pl_create_ub_req {
 };
 
 /**
- * struct ttm_pl_wrap_pvr_buf_req
- *
- * @handle: PVR buffer id
- * @placement: Flags that indicate initial acceptable
- *  placement.
- *
- * Input to the TTM_WRAP_PVR_BUF ioctl.
- */
-struct ttm_pl_wrap_pvr_buf_req {
-	uint32_t handle;
-	uint32_t placement;
-	uint32_t page_alignment;
-};
-
-/**
  * struct ttm_pl_rep
  *
  * @gpu_offset: The current offset into the memory region used.
@@ -252,11 +237,6 @@ union ttm_pl_create_ub_arg {
 	struct ttm_pl_rep rep;
 };
 
-union ttm_pl_wrap_pvr_buf_arg {
-	struct ttm_pl_wrap_pvr_buf_req req;
-	struct ttm_pl_rep rep;
-};
-
 /*
  * Ioctl offsets.
  */
@@ -268,6 +248,5 @@ union ttm_pl_wrap_pvr_buf_arg {
 #define TTM_PL_WAITIDLE    0x04
 #define TTM_PL_SETSTATUS   0x05
 #define TTM_PL_CREATE_UB   0x06
-#define TTM_PL_WRAP_PVR_BUF     0x07
 
 #endif

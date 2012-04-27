@@ -443,8 +443,6 @@ static struct drm_ioctl_desc psb_ioctls[] = {
 	DRM_AUTH),
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_TTM_PL_CREATE_UB, psb_pl_ub_create_ioctl,
 	DRM_AUTH),
-	PSB_IOCTL_DEF(DRM_IOCTL_PSB_TTM_PL_WRAP_PVR_BUF,
-		      psb_pl_wrap_pvr_buf_ioctl, DRM_AUTH),
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_TTM_FENCE_SIGNALED,
 	psb_fence_signaled_ioctl, DRM_AUTH),
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_TTM_FENCE_FINISH, psb_fence_finish_ioctl,
