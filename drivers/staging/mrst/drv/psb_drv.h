@@ -1346,6 +1346,10 @@ static inline void REGISTER_WRITE8(struct drm_device *dev,
 
 #define IS_MDFLD(dev) (IS_CTP(dev) || IS_MDFLD_OLD(dev))
 
+#define IS_D0(dev) (((dev)->pdev->revision >= 0xc) || \
+		(((dev)->pci_device & 0xffff) == 0x08c7) || \
+		(((dev)->pci_device & 0xffff) == 0x08c8))
+
 extern int drm_psb_cpurelax;
 extern int drm_psb_udelaydivider;
 extern int drm_psb_udelaymultiplier;
