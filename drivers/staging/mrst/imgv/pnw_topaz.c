@@ -760,6 +760,9 @@ void pnw_topaz_handle_timeout(struct ttm_fence_device *fdev)
 	struct pnw_topaz_private *topaz_priv = dev_priv->topaz_private;
 
 	pnw_topaz_flush_cmd_queue(topaz_priv);
+
+	/*Power down TopazSC to reset HW*/
+	schedule_delayed_work(&dev_priv->scheduler.topaz_suspend_wq, 0);
 }
 
 
