@@ -805,25 +805,14 @@ static ssize_t psb_msvdx_pmstate_show(struct device *dev,
 				      struct device_attribute *attr, char *buf)
 {
 	struct drm_device *drm_dev = dev_get_drvdata(dev);
-	struct drm_psb_private *dev_priv;
-	struct msvdx_private *msvdx_priv;
-	unsigned int pmstate;
-	unsigned long flags;
 	int ret = -EINVAL;
 
 	if (drm_dev == NULL)
 		return 0;
 
-	dev_priv = drm_dev->dev_private;
-	msvdx_priv = dev_priv->msvdx_private;
-	pmstate = msvdx_priv->pmstate;
-
-	spin_lock_irqsave(&msvdx_priv->msvdx_lock, flags);
-	ret = snprintf(buf, 64, "%s\n",
-		       (pmstate == PSB_PMSTATE_POWERUP) ? "powerup"
-		       : ((pmstate == PSB_PMSTATE_POWERDOWN) ? "powerdown"
-			  : "clockgated"));
-	spin_unlock_irqrestore(&msvdx_priv->msvdx_lock, flags);
+	ret = snprintf(buf, 64, "MSVDX Power state 0x%s\n",
+		       ospm_power_is_hw_on(OSPM_VIDEO_DEC_ISLAND)
+				? "ON" : "OFF");
 
 	return ret;
 }
