@@ -42,18 +42,23 @@ struct msvdx_fw {
 	uint32_t data_location;
 };
 
+/*
+ * the original 1000 of udelay is derive from reference driver
+ * From Liu, Haiyang, changed the originial udelay value from 1000 to 5
+ * can save 3% C0 residence
+ */
 int psb_wait_for_register(struct drm_psb_private *dev_priv,
 			  uint32_t offset, uint32_t value, uint32_t enable)
 {
 	uint32_t reg_value;
-	uint32_t poll_cnt = 1000000;
+	uint32_t poll_cnt = 2000000;
 	while (poll_cnt) {
 		reg_value = PSB_RMSVDX32(offset);
 		if (value == (reg_value & enable))	/* All the bits are reset   */
 			return 0;	/* So exit			*/
 
 		/* Wait a bit */
-		PSB_UDELAY(1);
+		PSB_UDELAY(5);
 		poll_cnt--;
 	}
 	DRM_ERROR("MSVDX: Timeout while waiting for register %08x:"
