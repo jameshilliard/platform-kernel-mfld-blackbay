@@ -486,6 +486,8 @@ int pnw_topaz_uninit(struct drm_device *dev)
 		/* release mtx data memory save space */
 		if (topaz_priv->topaz_mtx_data_mem[n])
 			ttm_bo_unref(&topaz_priv->topaz_mtx_data_mem[n]);
+
+		kfree(topaz_priv->topaz_bias_table[n]);
 	}
 	/* # release firmware storage */
 	for (n = 0; n < IMG_CODEC_NUM * 2; ++n) {
@@ -1420,6 +1422,50 @@ void pnw_topaz_mmu_flushcache(struct drm_psb_private *dev_priv)
 	psb_gl3_global_invalidation(dev_priv->dev);
 }
 
+
+static void pnw_topaz_restore_bias_table(struct drm_psb_private *dev_priv,
+		int core)
+{
+	struct pnw_topaz_private *topaz_priv = dev_priv->topaz_private;
+	u32 *p_command;
+	unsigned int reg_cnt, reg_off, reg_val;
+	int cur_cmd_size;
+
+	if (core >= MAX_TOPAZ_CORES ||
+			topaz_priv->topaz_bias_table[core] == NULL) {
+		/*
+		 * If VEC D0i3 isn't enabled, the bias table won't be saved
+		 * in initialization. No need to restore.
+		 */
+		return;
+	}
+
+	p_command = (u32 *)(topaz_priv->topaz_bias_table[core]);
+	p_command++;
+	cur_cmd_size = *p_command;
+	p_command++;
+
+	PSB_DEBUG_GENERAL("TOPAZ: Restore BIAS table(size %d) for core %c\n",
+			cur_cmd_size,
+			core);
+	for (reg_cnt = 0; reg_cnt < cur_cmd_size; reg_cnt++) {
+		reg_off = *p_command;
+		p_command++;
+		reg_val = *p_command;
+		p_command++;
+
+		if (reg_off > TOPAZSC_REG_OFF_MAX)
+			DRM_ERROR("TOPAZ: Ignore write (0x%08x)"
+					" to register 0x%08x\n",
+					reg_val, reg_off);
+		else
+			MM_WRITE32(0, reg_off, reg_val);
+	}
+
+	return;
+}
+
+
 int pnw_topaz_restore_mtx_state(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv =
@@ -1632,6 +1678,17 @@ int pnw_topaz_restore_mtx_state(struct drm_device *dev)
 			    MTX_CORE_CR_MTX_ENABLE_MTX_ENABLE_MASK,
 			    core_id);
 
+	}
+
+	if (!PNW_IS_JPEG_ENC(topaz_priv->topaz_cur_codec)) {
+		for (core_id = topaz_priv->topaz_num_cores - 1;
+				core_id >= 0; core_id--) {
+		    /*MPEG4/H263 only use core 0*/
+		    if (!PNW_IS_H264_ENC(topaz_priv->topaz_cur_codec)
+			    && core_id > 0)
+			continue;
+		    pnw_topaz_restore_bias_table(dev_priv, core_id);
+		}
 	}
 
 	PSB_DEBUG_GENERAL("TOPAZ: send NULL command to test firmware\n");

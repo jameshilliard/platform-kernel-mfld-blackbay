@@ -30,7 +30,14 @@
 
 /*Must be equal to IMG_CODEC_NUM*/
 #define PNW_TOPAZ_CODEC_NUM_MAX (11)
+#define PNW_TOPAZ_BIAS_TABLE_MAX_SIZE (2 * 1024)
 //#define TOPAZ_PDUMP
+
+#define PNW_IS_H264_ENC(codec) \
+	(codec == IMG_CODEC_H264_VBR || \
+	 codec == IMG_CODEC_H264_VCM || \
+	 codec == IMG_CODEC_H264_CBR || \
+	 codec == IMG_CODEC_H264_NO_RC)
 
 #define PNW_IS_JPEG_ENC(codec) \
 	(codec == IMG_CODEC_JPEG)
@@ -79,6 +86,7 @@ struct pnw_topaz_private {
 	uint32_t topaz_cur_codec;
 	uint32_t cur_mtx_data_size[MAX_TOPAZ_CORES];
 	int topaz_needs_reset;
+	void *topaz_bias_table[MAX_TOPAZ_CORES];
 
 	/*
 	 *topaz command queue

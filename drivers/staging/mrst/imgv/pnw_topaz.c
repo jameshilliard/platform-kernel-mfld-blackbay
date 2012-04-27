@@ -421,6 +421,37 @@ int pnw_topaz_kick_null_cmd(struct drm_psb_private *dev_priv,
 	return 0;
 }
 
+static void pnw_topaz_save_bias_table(struct pnw_topaz_private *topaz_priv,
+	const void *cmd, int byte_size, int core)
+{
+	PSB_DEBUG_GENERAL("TOPAZ: Save BIAS table(size %d) for core %d\n",
+			byte_size, core);
+
+	if (byte_size > PNW_TOPAZ_BIAS_TABLE_MAX_SIZE) {
+		DRM_ERROR("Invalid BIAS table size %d!\n", byte_size);
+		return;
+	}
+
+	if (core > (topaz_priv->topaz_num_cores - 1)) {
+		DRM_ERROR("Invalid core id %d\n", core);
+		return;
+	}
+
+	if (topaz_priv->topaz_bias_table[core] == NULL) {
+		topaz_priv->topaz_bias_table[core] =
+			kmalloc(PNW_TOPAZ_BIAS_TABLE_MAX_SIZE,
+					GFP_KERNEL);
+		if (NULL == topaz_priv->topaz_bias_table[core]) {
+			DRM_ERROR("Run out of memory!\n");
+			return;
+		}
+	}
+
+	memcpy(topaz_priv->topaz_bias_table[core],
+			cmd, byte_size);
+	return;
+}
+
 static int
 pnw_topaz_send(struct drm_device *dev, void *cmd,
 	       unsigned long cmd_size, uint32_t sync_seq)
@@ -480,6 +511,14 @@ pnw_topaz_send(struct drm_device *dev, void *cmd,
 			p_command = (uint32_t *)(command);
 			p_command++;
 			cur_cmd_size = *p_command;
+
+			if ((drm_topaz_pmpolicy != PSB_PMPOLICY_NOPM) &&
+				(!PNW_IS_JPEG_ENC(topaz_priv->topaz_cur_codec)))
+				pnw_topaz_save_bias_table(topaz_priv,
+						(const void *)command,
+						(cur_cmd_size * 2 + 2) * 4,
+						cur_cmd_header->core);
+
 			p_command++;
 			PSB_DEBUG_GENERAL("TOPAZ: Start to write"
 					  " %d Registers\n", cur_cmd_size);
