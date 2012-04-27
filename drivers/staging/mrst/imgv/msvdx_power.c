@@ -21,7 +21,6 @@
 #include "msvdx_power.h"
 #include "psb_msvdx.h"
 #include "psb_drv.h"
-#include "psb_powermgmt.h"
 
 #include "services_headers.h"
 #include "sysconfig.h"
