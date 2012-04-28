@@ -69,10 +69,19 @@ enum panel_type {
 	TPO_VID,
 	TMD_CMD,
 	TMD_VID,
+	TMD_6X10_VID,
+	H8C7_VID,
+	H8C7_CMD,
+	AUO_SC1_VID,
+	AUO_SC1_CMD,
+	GI_SONY_VID,
+	GI_SONY_CMD,
+	PYR_CMD,
+	PYR_VID,
 	TPO,
 	TMD,
+	PYR,
 	HDMI,
-	TC35876X,
 	GCT_DETECT
 };
 
@@ -1143,6 +1152,7 @@ int psb_st_gfx_video_bridge(struct drm_device *dev,
 #endif
 
 extern int drm_psb_debug;
+extern int drm_psb_enable_pr2_cabc ;
 extern int drm_tc35876x_debug;
 extern int drm_psb_no_fb;
 extern int drm_topaz_sbuswa;
@@ -1332,6 +1342,10 @@ static inline void REGISTER_WRITE8(struct drm_device *dev,
 #endif
 
 #define IS_PENWELL(dev) 0 /* FIXME */
+
+#define IS_CTP(dev) (((dev->pci_device & 0xffff) == 0x08c0) ||	\
+		     ((dev->pci_device & 0xffff) == 0x08c7) ||  \
+		     ((dev->pci_device & 0xffff) == 0x08c8))
 
 extern int drm_psb_cpurelax;
 extern int drm_psb_udelaydivider;

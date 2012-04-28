@@ -63,6 +63,7 @@
 #include "android_hdmi.h"
 
 int drm_psb_debug;
+int drm_psb_enable_pr2_cabc = 1;
 /*EXPORT_SYMBOL(drm_psb_debug); */
 static int drm_psb_trap_pagefaults;
 
@@ -76,7 +77,7 @@ int drm_psb_udelaymultiplier = 1;
 int drm_topaz_pmpolicy = PSB_PMPOLICY_NOPM;
 int drm_topaz_sbuswa;
 int drm_psb_topaz_clockgating = 0;
-static int PanelID = TC35876X;
+static int PanelID = TMD_6X10_VID;
 char HDMI_EDID[HDMI_MONITOR_NAME_LENGTH];
 
 static int psb_probe(struct pci_dev *pdev, const struct pci_device_id *ent);
@@ -1862,7 +1863,7 @@ static int psb_dpu_dsr_on_ioctl(struct drm_device *dev, void *arg,
 #if defined(CONFIG_MDFLD_DSI_DPU)
 		mdfld_dbi_dpu_report_fullscreen_damage(dev);
 #elif defined(CONFIG_MDFLD_DSI_DSR)
-		mdfld_dsi_dbi_exit_dsr(dev, MDFLD_DSR_2D_3D);
+		mdfld_dsi_dbi_exit_dsr(dev, MDFLD_DSR_2D_3D, 0, 0);
 #endif
 		return 0;
 	} else if (*param == DRM_PSB_DSR_ENABLE) {
@@ -1892,7 +1893,7 @@ static int psb_dpu_dsr_off_ioctl(struct drm_device *dev, void *arg,
 	pipe++;
 
 	if ((dev_priv->dsr_fb_update & MDFLD_DSR_2D_3D) != MDFLD_DSR_2D_3D) {
-		mdfld_dsi_dbi_exit_dsr(dev, MDFLD_DSR_2D_3D);
+		mdfld_dsi_dbi_exit_dsr(dev, MDFLD_DSR_2D_3D, 0, 0);
 	}
 
 	if (pipe > 0) {
@@ -2056,7 +2057,7 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 
 				if ((((arg->overlay.OVADD & OV_PIPE_SELECT) >> OV_PIPE_SELECT_POS) == OV_PIPE_A)) {
 #ifndef CONFIG_MDFLD_DSI_DPU
-					mdfld_dsi_dbi_exit_dsr(dev, MDFLD_DSR_OVERLAY_0);
+					mdfld_dsi_dbi_exit_dsr(dev, MDFLD_DSR_OVERLAY_0, 0, 0);
 #else
 					/*TODO: report overlay damage*/
 #endif
@@ -2064,7 +2065,7 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 
 				if ((((arg->overlay.OVADD & OV_PIPE_SELECT) >> OV_PIPE_SELECT_POS) == OV_PIPE_C)) {
 #ifndef CONFIG_MDFLD_DSI_DPU
-					mdfld_dsi_dbi_exit_dsr(dev, MDFLD_DSR_OVERLAY_2);
+					mdfld_dsi_dbi_exit_dsr(dev, MDFLD_DSR_OVERLAY_2, 0, 0);
 #else
 					/*TODO: report overlay damage*/
 #endif
@@ -2444,12 +2445,18 @@ static __init int parse_panelid(char *arg)
 		PanelID = TMD_CMD;
 	else if (!strcasecmp(arg, "TPO_CMD"))
 		PanelID = TPO_CMD;
+	else if (!strcasecmp(arg, "PYR_CMD"))
+		PanelID = PYR_CMD;
 	else if (!strcasecmp(arg, "TMD_VID"))
 		PanelID = TMD_VID;
 	else if (!strcasecmp(arg, "TPO_VID"))
 		PanelID = TPO_VID;
-	else if (!strcasecmp(arg, "TC35876X"))
-		PanelID = TC35876X;
+	else if (!strcasecmp(arg, "PYR_VID"))
+		PanelID = PYR_VID;
+	else if (!strcasecmp(arg, "H8C7_VID"))
+		PanelID = H8C7_VID;
+	else if (!strcasecmp(arg, "H8C7_CMD"))
+		PanelID = H8C7_CMD;
 	else
 		PanelID = GCT_DETECT;
 

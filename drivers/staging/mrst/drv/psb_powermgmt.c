@@ -430,6 +430,7 @@ static inline unsigned long palette_reg(int pipe, int idx)
  */
 static int mdfld_save_pipe_registers(struct drm_device *dev, int pipe)
 {
+#if 0
 	struct drm_psb_private *dev_priv = dev->dev_private;
 	struct psb_pipe_regs *pr = &dev_priv->pipe_regs[pipe];
 	int i;
@@ -480,7 +481,7 @@ static int mdfld_save_pipe_registers(struct drm_device *dev, int pipe)
 	/*save palette (gamma) */
 	for (i = 0; i < ARRAY_SIZE(pr->palette); i++)
 		pr->palette[i] = PSB_RVDC32(palette_reg(pipe, i));
-
+#endif
 	return 0;
 }
 /*
@@ -522,6 +523,7 @@ static int mdfld_save_cursor_overlay_registers(struct drm_device *dev)
  */
 static int mdfld_restore_pipe_registers(struct drm_device *dev, int pipe)
 {
+#if 0
 	//to get  panel out of ULPS mode.
 	u32 temp = 0;
 	struct drm_psb_private *dev_priv = dev->dev_private;
@@ -681,7 +683,7 @@ static int mdfld_restore_pipe_registers(struct drm_device *dev, int pipe)
 	/*DRM_UDELAY(50000); */
 	for (i = 0; i < ARRAY_SIZE(pr->palette); i++)
 		PSB_WVDC32(pr->palette[i], palette_reg(pipe, i));
-
+#endif
 	return 0;
 }
 

@@ -51,6 +51,7 @@
 #define KSEL_CRYSTAL_19 1
 #define KSEL_BYPASS_19 5
 #define KSEL_BYPASS_25 6
+#define KSEL_CRYSTAL_38 3
 #define KSEL_BYPASS_83_100 7
 /*
  * MOORESTOWN defines

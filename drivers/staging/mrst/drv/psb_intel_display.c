@@ -771,7 +771,7 @@ static int mdfld_intel_crtc_cursor_move(struct drm_crtc *crtc, int x, int y)
 	case 0:
 #ifndef CONFIG_MDFLD_DSI_DPU
 		if (!(dev_priv->dsr_fb_update & MDFLD_DSR_CURSOR_0))
-			mdfld_dsi_dbi_exit_dsr (dev, MDFLD_DSR_CURSOR_0);
+			mdfld_dsi_dbi_exit_dsr (dev, MDFLD_DSR_CURSOR_0, 0, 0);
 #else /*CONFIG_MDFLD_DSI_DPU*/
 		rect.x = x;
 		rect.y = y;
@@ -787,7 +787,7 @@ static int mdfld_intel_crtc_cursor_move(struct drm_crtc *crtc, int x, int y)
 	case 2:
 #ifndef CONFIG_MDFLD_DSI_DPU
 		if (!(dev_priv->dsr_fb_update & MDFLD_DSR_CURSOR_2))
-			mdfld_dsi_dbi_exit_dsr (dev, MDFLD_DSR_CURSOR_2);
+			mdfld_dsi_dbi_exit_dsr (dev, MDFLD_DSR_CURSOR_2, 0, 0);
 #else /*CONFIG_MDFLD_DSI_DPU*/
 		mdfld_dbi_dpu_report_damage(dev, MDFLD_CURSORC, &rect);
 		mdfld_dpu_exit_dsr(dev);
@@ -976,10 +976,17 @@ void mdfld_disable_crtc (struct drm_device *dev, int pipe)
 	int dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_A);
 	int dspbase_reg = PSB_DSPBASE(PSB_PIPE_A);
 	int pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
+	u32 gen_fifo_stat_reg = GEN_FIFO_STAT_REG;
 	u32 temp;
 
 	PSB_DEBUG_ENTRY("pipe = %d \n", pipe);
 
+	/**
+	 * NOTE: this path only works for TMD panel now. update it to
+	 * support all MIPI panels later.
+	 */
+	if (pipe != 1 && (get_panel_type(dev, pipe) == TMD_6X10_VID))
+		return;
 
 	switch (pipe) {
 	case 0:
@@ -995,6 +1002,7 @@ void mdfld_disable_crtc (struct drm_device *dev, int pipe)
 		dspcntr_reg = PSB_DSPCNTR(PSB_PIPE_C);
 		dspbase_reg = PSB_DSPBASE(PSB_PIPE_C);
 		pipeconf_reg = PSB_PIPECONF(PSB_PIPE_C);
+		gen_fifo_stat_reg = GEN_FIFO_STAT_REG + MIPIC_REG_OFFSET;
 		break;
 	default:
 		DRM_ERROR("Illegal Pipe Number. \n");
@@ -1002,7 +1010,7 @@ void mdfld_disable_crtc (struct drm_device *dev, int pipe)
 	}
 
 	if (pipe != 1)
-		mdfld_dsi_gen_fifo_ready(dev, MIPI_GEN_FIFO_STAT_REG(pipe), HS_CTRL_FIFO_EMPTY | HS_DATA_FIFO_EMPTY);
+		mdfld_dsi_gen_fifo_ready (dev, gen_fifo_stat_reg, HS_CTRL_FIFO_EMPTY | HS_DATA_FIFO_EMPTY);
 
 	/* Disable display plane */
 	temp = REG_READ(dspcntr_reg);
@@ -1093,13 +1101,23 @@ static void mdfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 	int dspbase_reg = PSB_DSPBASE(PSB_PIPE_A);
 	int pipeconf_reg = PSB_PIPECONF(PSB_PIPE_A);
 	u32 pipestat_reg = PSB_PIPESTAT(PSB_PIPE_A);
+	u32 gen_fifo_stat_reg = GEN_FIFO_STAT_REG;
 	u32 pipeconf = dev_priv->pipeconf;
 	u32 dspcntr = dev_priv->dspcntr;
+	u32 mipi_enable_reg = MIPIA_DEVICE_READY_REG;
 	u32 temp;
 	bool enabled;
 	int timeout = 0;
 
 	PSB_DEBUG_ENTRY("mode = %d, pipe = %d \n", mode, pipe);
+
+	/**
+	 * MIPI dpms
+	 * NOTE: this path only works for TMD panel now. update it to
+	 * support all MIPI panels later.
+	 */
+	if (pipe != 1 && (get_panel_type(dev, pipe) == TMD_6X10_VID))
+		return;
 
 /* FIXME_JLIU7 MDFLD_PO replaced w/ the following function */
 /* mdfld_dbi_dpms (struct drm_device *dev, int pipe, bool enabled) */
@@ -1124,6 +1142,8 @@ static void mdfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 		pipestat_reg = PSB_PIPESTAT(PSB_PIPE_C);
 		pipeconf = dev_priv->pipeconf2;
 		dspcntr = dev_priv->dspcntr2;
+		gen_fifo_stat_reg = GEN_FIFO_STAT_REG + MIPIC_REG_OFFSET;
+		mipi_enable_reg = MIPIA_DEVICE_READY_REG + MIPIC_REG_OFFSET;
 		break;
 	default:
 		DRM_ERROR("Illegal Pipe Number. \n");
@@ -1212,13 +1232,13 @@ static void mdfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 				msleep(100); /*wait for pipe disable*/
 			/*printk(KERN_ALERT "70008 is %x\n", REG_READ(0x70008));
 			printk(KERN_ALERT "b074 is %x\n", REG_READ(0xb074));*/
-				REG_WRITE(MIPI_DEVICE_READY_REG(pipe), 0);
+				REG_WRITE(mipi_enable_reg, 0);
 				msleep(100);
 			printk(KERN_ALERT "70008 is %x\n", REG_READ(0x70008));
 			printk(KERN_ALERT "b074 is %x\n", REG_READ(0xb074));
 				REG_WRITE(0xb004, REG_READ(0xb004));
 				/* try to bring the controller back up again*/
-				REG_WRITE(MIPI_DEVICE_READY_REG(pipe), 1);
+				REG_WRITE(mipi_enable_reg, 1);
 				temp = REG_READ(dspcntr_reg);
 				REG_WRITE(dspcntr_reg, temp | DISPLAY_PLANE_ENABLE);
 				REG_WRITE(dspbase_reg, REG_READ(dspbase_reg));
@@ -1243,7 +1263,7 @@ static void mdfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 		 * if it's on this pipe */
 		/* psb_intel_crtc_dpms_video(crtc, FALSE); TODO */
 		if (pipe != 1)
-			mdfld_dsi_gen_fifo_ready(dev, MIPI_GEN_FIFO_STAT_REG(pipe), HS_CTRL_FIFO_EMPTY | HS_DATA_FIFO_EMPTY);
+			mdfld_dsi_gen_fifo_ready (dev, gen_fifo_stat_reg, HS_CTRL_FIFO_EMPTY | HS_DATA_FIFO_EMPTY);
 
 		/* Disable the VGA plane that we never use */
 		REG_WRITE(VGACNTRL, VGA_DISP_DISABLE);
@@ -1531,6 +1551,214 @@ mdfldFindBestPLL(struct drm_crtc *crtc, int target, int refclk,
 	return err != target;
 }
 
+static int mdfld_crtc_dsi_pll_calc(struct drm_crtc *crtc,
+				struct mdfld_dsi_config *dsi_config,
+				struct drm_device *dev,
+				u32 *out_dpll,
+				u32 *out_fp,
+				struct drm_display_mode *adjusted_mode)
+{
+	DRM_DRIVER_PRIVATE_T *dev_priv = dev->dev_private;
+	struct mrst_clock_t clock;
+	u32 dpll = 0, fp = 0;
+	int refclk = 0;
+	int clk_n = 0, clk_p2 = 0, clk_byte = 1, clk = 0, m_conv = 0, clk_tmp = 0;
+	bool ok;
+
+	if ((dev_priv->ksel == KSEL_CRYSTAL_19) || (dev_priv->ksel == KSEL_BYPASS_19))
+	{
+		refclk = 19200;
+		clk_n = 1, clk_p2 = 8;
+	} else if (dev_priv->ksel == KSEL_BYPASS_25) {
+		refclk = 25000;
+		clk_n = 1, clk_p2 = 8;
+	} else if (dev_priv->ksel == KSEL_CRYSTAL_38) {
+		refclk = 38400;
+		clk_n = 1, clk_p2 = 8;
+	} else if ((dev_priv->ksel == KSEL_BYPASS_83_100) && (dev_priv->core_freq == 166)) {
+		refclk = 83000;
+		clk_n = 4, clk_p2 = 8;
+	} else if ((dev_priv->ksel == KSEL_BYPASS_83_100) &&
+		   (dev_priv->core_freq == 100 || dev_priv->core_freq == 200)) {
+		refclk = 100000;
+		clk_n = 4, clk_p2 = 8;
+	}else{
+		refclk = 19200;
+		clk_n = 1, clk_p2 = 8;
+	}
+
+	dev_priv->bpp = 24;
+	clk_byte = dev_priv->bpp / 8;
+
+	if (dsi_config->lane_count)
+		clk = adjusted_mode->clock / dsi_config->lane_count;
+	else
+		clk = adjusted_mode->clock;
+
+	clk_tmp = clk * clk_n * clk_p2 * clk_byte;
+
+	PSB_DEBUG_ENTRY("ref_clk: %d, clk = %d, clk_n = %d, clk_p2 = %d. \n", refclk, clk, clk_n, clk_p2);
+	PSB_DEBUG_ENTRY("adjusted_mode->clock = %d, clk_tmp = %d. \n", adjusted_mode->clock, clk_tmp);
+
+	ok = mdfldFindBestPLL(crtc, clk_tmp, refclk, &clock);
+	dev_priv->tmds_clock_khz = clock.dot / (clk_n * clk_p2 * clk_byte);
+
+	if (!ok) {
+		DRM_ERROR
+		    ("mdfldFindBestPLL fail in mdfld_crtc_mode_set. \n");
+	} else {
+		m_conv = mdfld_m_converts[(clock.m - MDFLD_M_MIN)];
+		PSB_DEBUG_ENTRY("dot clock = %d,"
+			 "m = %d, p1 = %d, m_conv = %d. \n", clock.dot, clock.m,
+			 clock.p1, m_conv);
+	}
+
+	dpll = 0x00000000;
+	fp = (clk_n / 2) << 16;
+	fp |= m_conv;
+
+	/* compute bitmask from p1 value */
+	dpll |= (1 << (clock.p1 - 2)) << 17;
+
+	*(out_dpll) = dpll;
+	*(out_fp) = fp;
+
+	PSB_DEBUG_ENTRY("dsi dpll = 0x%x  fp = 0x%x\n", dpll, fp);
+	return 0;
+}
+
+static int mdfld_crtc_dsi_mode_set(struct drm_crtc *crtc,
+				struct mdfld_dsi_config *dsi_config,
+				struct drm_display_mode *mode,
+				struct drm_display_mode *adjusted_mode,
+				int x, int y,
+				struct drm_framebuffer *old_fb)
+{
+	struct drm_device *dev;
+	struct psb_intel_crtc *mdfld_dsi_crtc;
+	struct psb_framebuffer *mdfld_fb;
+	struct psb_intel_mode_device *mode_dev;
+	struct mdfld_dsi_hw_context *ctx;
+	struct drm_psb_private *dev_priv;
+	int fb_bpp;
+	int fb_pitch;
+	int fb_depth;
+	int hdelay;
+	static int init_flag = 1;   /*bootstrap flag*/
+
+	if (!crtc || !crtc->fb) {
+		DRM_ERROR("Invalid CRTC\n");
+		return -EINVAL;
+	}
+
+	if (!dsi_config) {
+		DRM_ERROR("Invalid DSI config\n");
+		return -EINVAL;
+	}
+
+	mdfld_dsi_crtc = to_psb_intel_crtc(crtc);
+	mdfld_fb = to_psb_fb(crtc->fb);
+	mode_dev = mdfld_dsi_crtc->mode_dev;
+	mode = adjusted_mode;
+	ctx = &dsi_config->dsi_hw_context;
+	fb_bpp = crtc->fb->bits_per_pixel;
+	fb_pitch = crtc->fb->pitches[0];
+	fb_depth = crtc->fb->depth;
+	dev = crtc->dev;
+	dev_priv = (struct drm_psb_private *)dev->dev_private;
+
+	mutex_lock(&dsi_config->context_lock);
+
+	ctx->vgacntr = 0x80000000;
+
+	/*setup pll*/
+	mdfld_crtc_dsi_pll_calc(crtc, dsi_config, dev,
+				 &ctx->dpll,
+				 &ctx->fp,
+				 adjusted_mode);
+
+	/*set up pipe timings*/
+	ctx->htotal = (mode->crtc_hdisplay - 1) |
+		((mode->crtc_htotal - 1) << 16);
+	ctx->hblank = (mode->crtc_hblank_start - 1) |
+		((mode->crtc_hblank_end - 1) << 16);
+	ctx->hsync = (mode->crtc_hsync_start - 1) |
+		((mode->crtc_hsync_end - 1) << 16);
+	ctx->vtotal = (mode->crtc_vdisplay - 1) |
+		((mode->crtc_vtotal - 1) << 16);
+	ctx->vblank = (mode->crtc_vblank_start - 1) |
+		((mode->crtc_vblank_end - 1) << 16);
+	ctx->vsync = (mode->crtc_vsync_start - 1) |
+		((mode->crtc_vsync_end - 1) << 16);
+
+	/*pipe source*/
+	ctx->pipesrc = ((mode->crtc_hdisplay - 1) << 16) |
+		(mode->crtc_vdisplay - 1);
+
+	/*setup dsp plane*/
+	ctx->dsppos = 0;
+	ctx->dspsize = ((mode->crtc_vdisplay - 1) << 16) | (mode->crtc_hdisplay - 1);
+
+	ctx->dspstride = fb_pitch;
+	ctx->dspsurf = mdfld_fb->offset;
+	ctx->dsplinoff = y * fb_pitch + x * (fb_bpp / 8);
+
+	if (init_flag == 1) {
+		printk(KERN_DEBUG"%s: ctx->dspsurf = 0x%x, ctx->dsplinoff = 0x%x\n",
+				__func__, ctx->dsplinoff, ctx->dspsurf);
+		init_flag = 0;
+	}
+
+	switch (fb_bpp) {
+	case 8:
+		ctx->dspcntr = DISPPLANE_8BPP;
+		break;
+	case 16:
+		if (fb_depth == 15)
+			ctx->dspcntr = DISPPLANE_15_16BPP;
+		else
+			ctx->dspcntr = DISPPLANE_16BPP;
+		break;
+	case 24:
+	case 32:
+		ctx->dspcntr = DISPPLANE_32BPP_NO_ALPHA;
+		break;
+	default:
+		DRM_ERROR("Unknown color depth\n");
+		mutex_unlock(&dsi_config->context_lock);
+		return -EINVAL;
+	}
+
+	if (dsi_config->pipe == 2)
+		ctx->dspcntr |= (0x2 << 24);
+
+	/*
+	 * Setup pipe configuration for different panels
+	 * The formula recommended from hw team is as below:
+	 * (htotal * 5ns * hdelay) >= 8000ns
+	 * hdelay is the count of delayed HBLANK scan lines
+	 * And the max hdelay is 4
+	 * by programming of PIPE(A/C) CONF bit 28:27:
+	 * 00 = 1 scan line, 01 = 2 scan line,
+	 * 02 = 3 scan line, 03 = 4 scan line
+	 */
+	ctx->pipeconf &= ~(BIT27 | BIT28);
+
+	hdelay = 8000/mode->crtc_htotal/5;
+	if (8000%(mode->crtc_htotal*5) > 0)
+		hdelay += 1;
+
+	if (hdelay > 4) {
+		DRM_ERROR("Do not support such panel setting yet\n");
+		hdelay = 4; /* Use the max hdelay instead*/
+	}
+
+	ctx->pipeconf |= ((hdelay-1) << 27);
+
+	mutex_unlock(&dsi_config->context_lock);
+	return 0;
+}
+
 static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 			      struct drm_display_mode *mode,
 			      struct drm_display_mode *adjusted_mode,
@@ -1569,6 +1797,7 @@ static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 	struct drm_encoder *encoder;
 	struct drm_connector * connector;
 	int timeout = 0;
+	struct mdfld_dsi_config *dsi_config;
 	int ret;
 
 	PSB_DEBUG_ENTRY("pipe = 0x%x\n", pipe);
@@ -1576,6 +1805,27 @@ static int mdfld_crtc_mode_set(struct drm_crtc *crtc,
 	ret = check_fb(crtc->fb);
 	if (ret)
 		return ret;
+
+	/**
+	 * MIPI panel mode setting
+	 * NOTE: this path only works for TMD panel now. update it to
+	 * support all MIPI panels later.
+	 */
+	if (pipe != 1 && ((get_panel_type(dev, pipe) == TMD_VID) ||
+		(get_panel_type(dev, pipe) == TMD_6X10_VID) ||
+		(get_panel_type(dev, pipe) == H8C7_VID) ||
+		(get_panel_type(dev, pipe) == GI_SONY_VID) ||
+		/* SC1 setting */
+		(get_panel_type(dev, pipe) == AUO_SC1_VID))) {
+		if (pipe == 0)
+			dsi_config = dev_priv->dsi_configs[0];
+		else if (pipe == 2)
+			dsi_config = dev_priv->dsi_configs[1];
+		else
+			return -EINVAL;
+		return mdfld_crtc_dsi_mode_set(crtc, dsi_config, mode,
+				adjusted_mode, x, y, old_fb);
+	}
 
 	if (pipe == 1) {
 		if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, true))

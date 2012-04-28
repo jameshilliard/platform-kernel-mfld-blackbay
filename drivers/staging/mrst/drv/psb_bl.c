@@ -78,16 +78,12 @@ int psb_set_brightness(struct backlight_device *bd)
 #ifndef CONFIG_MDFLD_DSI_DPU
 		if((!(dev_priv->dsr_fb_update & MDFLD_DSR_MIPI_CONTROL)) &&
 			(dev_priv->dbi_panel_on || dev_priv->dbi_panel_on2)){
-			mdfld_dsi_dbi_exit_dsr(dev,MDFLD_DSR_MIPI_CONTROL);
+			mdfld_dsi_dbi_exit_dsr(dev,MDFLD_DSR_MIPI_CONTROL, 0, 0);
 			PSB_DEBUG_ENTRY("Out of DSR before set brightness to %d.\n",
 					dev_priv->brightness_adjusted);
 		}
 #endif
-		if (get_panel_type(dev, 0) == TC35876X) {
-			if (dev_priv->dpi_panel_on || dev_priv->dpi_panel_on2)
-				tc35876x_brightness_control(dev,
-							    dev_priv->brightness_adjusted);
-		} else {
+		{
 			if (dev_priv->dbi_panel_on || dev_priv->dpi_panel_on)
 				mdfld_dsi_brightness_control(dev, 0,
 							     dev_priv->brightness_adjusted);

@@ -189,10 +189,7 @@ medfield_gfx-y += \
 	$(DRMDRVDIR)/psb_sgx.o \
 	$(DRMDRVDIR)/psb_socket.o \
 	$(DRMDRVDIR)/psb_umevents.o \
-	$(DRMDRVDIR)/tc35876x-dsi-lvds.o \
-	$(DRMDRVDIR)/tmd_vid.o \
-	$(DRMDRVDIR)/tpo_cmd.o \
-	$(DRMDRVDIR)/tpo_vid.o
+	$(DRMDRVDIR)/tmd_6x10_vid.o
 
 medfield_gfx-y += \
 	$(IMGVDIR)/msvdx_power.o \

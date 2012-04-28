@@ -79,12 +79,33 @@ enum psb_pipe {
 };
 
 #define PSB_HTOTAL(pipe)	(0x60000 + PSB_PREG_OFFSET(pipe))
+#define HTOTAL_A		PSB_HTOTAL(PSB_PIPE_A)
+#define HTOTAL_C		PSB_HTOTAL(PSB_PIPE_C)
+
 #define PSB_HBLANK(pipe)	(0x60004 + PSB_PREG_OFFSET(pipe))
+#define HBLANK_A		PSB_HBLANK(PSB_PIPE_A)
+#define HBLANK_C		PSB_HBLANK(PSB_PIPE_C)
+
 #define PSB_HSYNC(pipe)		(0x60008 + PSB_PREG_OFFSET(pipe))
+#define HSYNC_A			PSB_HSYNC(PSB_PIPE_A)
+#define HSYNC_C			PSB_HSYNC(PSB_PIPE_C)
+
 #define PSB_VTOTAL(pipe)	(0x6000C + PSB_PREG_OFFSET(pipe))
+#define VTOTAL_A		PSB_VTOTAL(PSB_PIPE_A)
+#define VTOTAL_C		PSB_VTOTAL(PSB_PIPE_C)
+
 #define PSB_VBLANK(pipe)	(0x60010 + PSB_PREG_OFFSET(pipe))
+#define VBLANK_A		PSB_VBLANK(PSB_PIPE_A)
+#define VBLANK_C		PSB_VBLANK(PSB_PIPE_C)
+
 #define PSB_VSYNC(pipe)		(0x60014 + PSB_PREG_OFFSET(pipe))
+#define VSYNC_A			PSB_VSYNC(PSB_PIPE_A)
+#define VSYNC_C			PSB_VSYNC(PSB_PIPE_C)
+
 #define PSB_PIPESRC(pipe)	(0x6001C + PSB_PREG_OFFSET(pipe))
+#define PIPEASRC		PSB_PIPESRC(PSB_PIPE_A)
+#define PIPECSRC		PSB_PIPESRC(PSB_PIPE_C)
+
 #define PSB_BCLRPAT(pipe)	(0x60020 + PSB_PREG_OFFSET(pipe))
 #define PSB_VSYNCSHIFT(pipe)	(0x60028 + PSB_PREG_OFFSET(pipe))
 
@@ -374,6 +395,9 @@ enum psb_pipe {
 #define PSB_PIPE_DSL(pipe)	(0x70000 + PSB_PREG_OFFSET(pipe))
 
 #define PSB_PIPECONF(pipe)	(0x70008 + PSB_PREG_OFFSET(pipe))
+#define PIPEACONF		PSB_PIPECONF(PSB_PIPE_A)
+#define PIPEBCONF		PSB_PIPECONF(PSB_PIPE_B)
+#define PIPECCONF		PSB_PIPECONF(PSB_PIPE_C)
 
 #define PIPEACONF_ENABLE	(1<<31)
 #define PIPEACONF_DISABLE	0
@@ -391,6 +415,7 @@ enum psb_pipe {
 #define PIPECONF_PROGRESSIVE	(0 << 21)
 #define PIPECONF_INTERLACE_W_FIELD_INDICATION	(6 << 21)
 #define PIPECONF_INTERLACE_FIELD_0_ONLY		(7 << 21)
+#define PIPEACONF_COLOR_MATRIX_ENABLE (1 << 20)
 #define PIPECONF_PLANE_OFF 	(1<<19)
 #define PIPECONF_CURSOR_OFF 	(1<<18)
 
@@ -407,6 +432,9 @@ enum psb_pipe {
 #define PIPEBGCMAXBLUE		0x71018
 
 #define PSB_PIPESTAT(pipe)	(0x70024 + PSB_PREG_OFFSET(pipe))
+#define PIPEASTAT		PSB_PIPESTAT(PSB_PIPE_A)
+#define PIPEBSTAT		PSB_PIPESTAT(PSB_PIPE_B)
+#define PIPECSTAT		PSB_PIPESTAT(PSB_PIPE_C)
 
 #define PIPE_VBLANK_INTERRUPT_STATUS         (1UL<<1)
 #define PIPE_START_VBLANK_INTERRUPT_STATUS   (1UL<<2)
@@ -494,6 +522,10 @@ struct dpst_guardband {
 #define DSPCHICKENBIT		0x70400
 
 #define PSB_DSPCNTR(pipe)	(0x70180 + PSB_PREG_OFFSET(pipe))
+#define DSPACNTR		PSB_DSPCNTR(PSB_PIPE_A)
+#define DSPBCNTR		PSB_DSPCNTR(PSB_PIPE_B)
+#define DSPCCNTR		PSB_DSPCNTR(PSB_PIPE_C)
+
 #define DISPLAY_PLANE_ENABLE 			(1<<31)
 #define DISPLAY_PLANE_DISABLE			0
 #define DISPPLANE_GAMMA_ENABLE			(1<<30)
@@ -524,15 +556,30 @@ struct dpst_guardband {
 #define DISPPLANE_BOTTOM			(4)
 
 #define PSB_DSPLINOFF(pipe)	(0x70184 + PSB_PREG_OFFSET(pipe))
+#define DSPALINOFF		PSB_DSPLINOFF(PSB_PIPE_A)
+#define DSPCLINOFF		PSB_DSPLINOFF(PSB_PIPE_C)
+
 #define PSB_DSPBASE(pipe)	PSB_DSPLINOFF(pipe)
 #define PSB_DSPSTRIDE(pipe)	(0x70188 + PSB_PREG_OFFSET(pipe))
+#define DSPASTRIDE		PSB_DSPSTRIDE(PSB_PIPE_A)
+#define DSPCSTRIDE		PSB_DSPSTRIDE(PSB_PIPE_C)
 
 #define DSPAKEYVAL		0x70194
 #define DSPAKEYMASK		0x70198
 
 #define PSB_DSPPOS(pipe)	(0x7018C + PSB_PREG_OFFSET(pipe))
+#define DSPAPOS			PSB_DSPPOS(PSB_PIPE_A)
+#define DSPCPOS			PSB_DSPPOS(PSB_PIPE_C)
+
 #define PSB_DSPSIZE(pipe)	(0x70190 + PSB_PREG_OFFSET(pipe))
+#define DSPASIZE		PSB_DSPSIZE(PSB_PIPE_A)
+#define DSPCSIZE		PSB_DSPSIZE(PSB_PIPE_C)
+
 #define PSB_DSPSURF(pipe)	(0x7019C + PSB_PREG_OFFSET(pipe))
+#define DSPASURF		PSB_DSPSURF(PSB_PIPE_A)
+#define DSPBSURF		PSB_DSPSURF(PSB_PIPE_B)
+#define DSPCSURF		PSB_DSPSURF(PSB_PIPE_C)
+
 #define PSB_DSPTILEOFF(pipe)	(0x701A4 + PSB_PREG_OFFSET(pipe))
 
 #define DSPCKEYMAXVAL 		0x721A0
@@ -613,7 +660,22 @@ struct dpst_guardband {
 	__pipe ? 0x800 + 0x400 * (__pipe - 1) : 0;		\
 })
 
+/*
+ * Palette registers
+ */
 #define PSB_PALETTE(pipe)	(0x0a000 + PSB_PALETTE_OFFSET(pipe))
+#define PALETTE_A		PSB_PALETTE(PSB_PIPE_A)
+#define PALETTE_B		PSB_PALETTE(PSB_PIPE_B)
+#define PALETTE_C		PSB_PALETTE(PSB_PIPE_C)
+
+/*Gamma max register*/
+#define GAMMA_RED_MAX_A         0x70010
+#define GAMMA_GREEN_MAX_A       0x70014
+#define GAMMA_BLUE_MAX_A        0x70018
+
+#define GAMMA_RED_MAX_C         0x72010
+#define GAMMA_GREEN_MAX_C       0x72014
+#define GAMMA_BLUE_MAX_C        0x72018
 
 #define IS_I830(dev) ((dev)->pci_device == PCI_DEVICE_ID_INTEL_82830_CGC)
 #define IS_845G(dev) ((dev)->pci_device == PCI_DEVICE_ID_INTEL_82845G_IG)
@@ -678,6 +740,7 @@ struct dpst_guardband {
  * MOORESTOWN delta registers
  */
 #define PSB_DSI_PLL_CTRL	0x0f014
+#define MRST_DPLL_A		0x0f014
 #define PSB_DPLL_CTRL		0x0f018
 #define MDFLD_INPUT_REF_SEL	(1 << 14) 
 #define MDFLD_VCO_SEL		(1 << 16) 
@@ -686,6 +749,7 @@ struct dpst_guardband {
 #define MDFLD_PWR_GATE_EN	(1 << 30) 
 #define MDFLD_P1_MASK		(0x1FF << 17) 
 #define PSB_DSI_PLL_DIV_M1	0x0f040
+#define MRST_FPA0		0x0f040
 #define PSB_DPLL_DIV0		0x0f048
 #define MRST_PERF_MODE		0x020f4
 
@@ -751,6 +815,41 @@ Ignore alpha.1110 = 32 - bit RGBX(8 : 8 : 8 : 8) pixel format.
 /*
  * Moorestown registers.
  */
+/*===========================================================================
+; General Constants
+;--------------------------------------------------------------------------*/
+#define BIT0  0x00000001
+#define BIT1  0x00000002
+#define BIT2  0x00000004
+#define BIT3  0x00000008
+#define BIT4  0x00000010
+#define BIT5  0x00000020
+#define BIT6  0x00000040
+#define BIT7  0x00000080
+#define BIT8  0x00000100
+#define BIT9  0x00000200
+#define BIT10 0x00000400
+#define BIT11 0x00000800
+#define BIT12 0x00001000
+#define BIT13 0x00002000
+#define BIT14 0x00004000
+#define BIT15 0x00008000
+#define BIT16 0x00010000
+#define BIT17 0x00020000
+#define BIT18 0x00040000
+#define BIT19 0x00080000
+#define BIT20 0x00100000
+#define BIT21 0x00200000
+#define BIT22 0x00400000
+#define BIT23 0x00800000
+#define BIT24 0x01000000
+#define BIT25 0x02000000
+#define BIT26 0x04000000
+#define BIT27 0x08000000
+#define BIT28 0x10000000
+#define BIT29 0x20000000
+#define BIT30 0x40000000
+#define BIT31 0x80000000
 /*===========================================================================
 ; MIPI IP registers
 ;--------------------------------------------------------------------------*/
@@ -1156,6 +1255,33 @@ gamma settings.
 #define SKU_100 					0x02
 #define SKU_100L 					0x04
 #define SKU_BYPASS 					0x08
+
+/* MDFLD delta registers */
+#define PIPEB			0x1
+#define PIPEC			0x2
+#define PIPEB_OFFSET		0x1000
+#define PIPEC_OFFSET		0x2000
+#define PIPEA_COLOR_COEF0 	0x60070
+  #define CC_1_POS		16
+  #define CC_0_POS		0
+#define PIPEA_COLOR_COEF2 	0x60074
+#define PIPEA_COLOR_COEF11 	0x60078
+#define PIPEA_COLOR_COEF12 	0x6007c
+#define PIPEA_COLOR_COEF21 	0x60080
+#define PIPEA_COLOR_COEF22 	0x60084
+#define PIPEB_COLOR_COEF0 	0x61070
+#define PIPEB_COLOR_COEF2 	0x61074
+#define PIPEB_COLOR_COEF11 	0x61078
+#define PIPEB_COLOR_COEF12 	0x6107c
+#define PIPEB_COLOR_COEF21 	0x61080
+#define PIPEB_COLOR_COEF22 	0x61084
+#define PIPEC_COLOR_COEF0 	0x62070
+#define PIPEC_COLOR_COEF2 	0x62074
+#define PIPEC_COLOR_COEF11 	0x62078
+#define PIPEC_COLOR_COEF12 	0x6207c
+#define PIPEC_COLOR_COEF21 	0x62080
+#define PIPEC_COLOR_COEF22 	0x62084
+
 #if 0
 /* ************************************************************************* *\
 DSI command data structure

@@ -51,6 +51,12 @@
 #define IPC_CMD_PANEL_ON        1
 #define IPC_CMD_PANEL_OFF       0
 
+typedef enum _UHBUsage
+{
+    OSPM_UHB_ONLY_IF_ON = 0,
+    OSPM_UHB_FORCE_POWER_ON,
+} UHBUsage;
+
 //extern int psb_check_msvdx_idle(struct drm_device *dev);
 //extern int lnc_check_topaz_idle(struct drm_device *dev);
 /* Use these functions to power down video HW for D0i3 purpose  */
