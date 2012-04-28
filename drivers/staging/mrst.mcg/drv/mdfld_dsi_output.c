@@ -462,79 +462,6 @@ static enum drm_connector_status mdfld_dsi_connector_detect
 	return dsi_connector->status;
 }
 
-static int mdfld_dsi_connector_set_property(struct drm_connector *connector,
-					struct drm_property *property,
-					uint64_t value)
-{
-	struct drm_encoder *encoder = connector->encoder;
-	struct backlight_device *psb_bd;
-
-	PSB_DEBUG_ENTRY("\n");
-
-	if (!strcmp(property->name, "scaling mode") && encoder) {
-		struct psb_intel_crtc * psb_crtc = to_psb_intel_crtc(encoder->crtc);
-		bool bTransitionFromToCentered;
-		uint64_t curValue;
-
-		if (!psb_crtc)
-			goto set_prop_error;
-
-		switch (value) {
-		case DRM_MODE_SCALE_FULLSCREEN:
-			break;
-		case DRM_MODE_SCALE_CENTER:
-			break;
-		case DRM_MODE_SCALE_NO_SCALE:
-			break;
-		case DRM_MODE_SCALE_ASPECT:
-			break;
-		default:
-			goto set_prop_error;
-		}
-
-		if (drm_connector_property_get_value(connector, property, &curValue))
-			goto set_prop_error;
-
-		if (curValue == value)
-			goto set_prop_done;
-
-		if (drm_connector_property_set_value(connector, property, value))
-			goto set_prop_error;
-
-		bTransitionFromToCentered = (curValue == DRM_MODE_SCALE_NO_SCALE) ||
-			(value == DRM_MODE_SCALE_NO_SCALE);
-
-		if (psb_crtc->saved_mode.hdisplay != 0 &&
-		    psb_crtc->saved_mode.vdisplay != 0) {
-			if (bTransitionFromToCentered) {
-				if (!drm_crtc_helper_set_mode(encoder->crtc, &psb_crtc->saved_mode,
-					    encoder->crtc->x, encoder->crtc->y, encoder->crtc->fb))
-					goto set_prop_error;
-			} else {
-				struct drm_encoder_helper_funcs *pEncHFuncs  = encoder->helper_private;
-				pEncHFuncs->mode_set(encoder, &psb_crtc->saved_mode,
-						     &psb_crtc->saved_adjusted_mode);
-			}
-		}
-	} else if (!strcmp(property->name, "backlight") && encoder) {
-		PSB_DEBUG_ENTRY("backlight level = %d\n", (int)value);
-		if (drm_connector_property_set_value(connector, property, value))
-			goto set_prop_error;
-		else {
-			PSB_DEBUG_ENTRY("set brightness to %d", (int)value);
-			psb_bd = psb_get_backlight_device();
-			if(psb_bd) {
-				psb_bd->props.brightness = value;
-				psb_set_brightness(psb_bd);
-			}
-		}
-	} 
-set_prop_done:
-    return 0;
-set_prop_error:
-    return -1;
-}
-
 static void mdfld_dsi_connector_destroy(struct drm_connector * connector)
 {
 	struct psb_intel_output * psb_output = to_psb_intel_output(connector);
@@ -620,57 +547,7 @@ static int mdfld_dsi_connector_mode_valid(struct drm_connector * connector, stru
 
 static void mdfld_dsi_connector_dpms(struct drm_connector *connector, int mode)
 {
-#ifdef CONFIG_PM_RUNTIME
-	struct drm_device * dev = connector->dev;
-	struct drm_psb_private * dev_priv = dev->dev_private;
-	bool panel_on, panel_on1, panel_on2;
-#endif
-	/*first, execute dpms*/
 	drm_helper_connector_dpms(connector, mode);
-
-#ifdef CONFIG_PM_RUNTIME
-	if(is_panel_vid_or_cmd(dev)) {
-		/*DPI panel*/
-		panel_on = dev_priv->dpi_panel_on;
-		panel_on2 = dev_priv->dpi_panel_on2;
-	} else {
-		/*DBI panel*/
-		panel_on = dev_priv->dbi_panel_on;
-		panel_on2 = dev_priv->dbi_panel_on2;
-	}
-
-
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND,
-				OSPM_UHB_ONLY_IF_ON))
-		return ;
-
-	acquire_ospm_lock();
-	if (dev_priv->bhdmiconnected)
-		panel_on1 = (REG_READ(HDMIB_CONTROL) & HDMIB_PORT_EN);
-	else
-		panel_on1 = false;
-	release_ospm_lock();
-
-	/*then check all display panels + monitors status*/
-	if (!panel_on && !panel_on2 && !panel_on1) {
-		/*request rpm idle*/
-		if(dev_priv->rpm_enabled) {
-			pm_request_idle(&dev->pdev->dev);
-		}
-	}
-
-	/**
-	 * if rpm wasn't enabled yet, try to allow it
-	 * FIXME: won't enable rpm for DPI since DPI
-	 * CRTC setting is a little messy now.
-	 * Enable it later!
-	 */
-#if 0 /* revist to check if we can enable rpm for DPI */
-	if(!dev_priv->rpm_enabled && !is_panel_vid_or_cmd(dev))
-		ospm_runtime_pm_allow(dev);
-#endif
-	ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
-#endif
 }
 
 static struct drm_encoder * mdfld_dsi_connector_best_encoder(struct drm_connector * connector) 
@@ -706,7 +583,6 @@ static const struct drm_connector_funcs mdfld_dsi_connector_funcs = {
 	.restore = mdfld_dsi_connector_restore,
 	.detect = mdfld_dsi_connector_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
-	.set_property = mdfld_dsi_connector_set_property,
 	.destroy = mdfld_dsi_connector_destroy,
 };
 
@@ -1162,12 +1038,6 @@ int mdfld_dsi_output_init(struct drm_device *dev,
 		}
 		encoder->private = dsi_config;
 		dsi_config->encoders[MDFLD_DSI_ENCODER_DBI] = encoder;
-
-		if (pipe == 2)
-			dev_priv->encoder2 = encoder;
-	
-		if (pipe == 0)
-			dev_priv->encoder0 = encoder;
 	}
 	
 	if(p_vid_funcs) {
@@ -1178,12 +1048,6 @@ int mdfld_dsi_output_init(struct drm_device *dev,
 		}
 		encoder->private = dsi_config;
 		dsi_config->encoders[MDFLD_DSI_ENCODER_DPI] = encoder;
-
-		if (pipe == 2)
-			dev_priv->encoder2 = encoder;
-
-		if (pipe == 0)
-			dev_priv->encoder0 = encoder;
 	}
 	
 	drm_sysfs_connector_add(connector);

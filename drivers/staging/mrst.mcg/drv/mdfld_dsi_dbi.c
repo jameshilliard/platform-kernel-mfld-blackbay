@@ -29,39 +29,10 @@
 #include "mdfld_dsi_dbi_dpu.h"
 #include "mdfld_dsi_pkg_sender.h"
 
- #include "psb_powermgmt.h"
-#ifdef CONFIG_GFX_RTPM
- #include <linux/pm_runtime.h>
-#endif
-
-int enable_gfx_rtpm = 0;
+#include "psb_powermgmt.h"
 
 int enter_dsr = 0;
 struct mdfld_dsi_dbi_output *gdbi_output;
-
-#ifdef CONFIG_GFX_RTPM
-static void psb_runtimepm_wq_handler(struct work_struct *work);
-DECLARE_DELAYED_WORK(rtpm_work, psb_runtimepm_wq_handler);
-
-void psb_runtimepm_wq_handler(struct work_struct *work)
-{
-	struct drm_psb_private * dev_priv =  gpDrmDevice->dev_private;
-
-	if(drm_psb_ospm && !enable_gfx_rtpm) {
-		printk(KERN_ALERT "Enable GFX runtime_pm \n");
-
-		dev_priv->rpm_enabled = 1;
-
-		enable_gfx_rtpm = 1;
-
-	        pm_runtime_enable(&gpDrmDevice->pdev->dev);
-		pm_runtime_set_active(&gpDrmDevice->pdev->dev);
-
-	        pm_runtime_allow(&gpDrmDevice->pdev->dev);
-	}
-}
-#endif
-
 
 /**
  * set refreshing area
@@ -461,8 +432,8 @@ void mdfld_dsi_dbi_enter_dsr (struct mdfld_dsi_dbi_output * dbi_output, int pipe
 	}
 
 	p_funcs = dbi_output->p_funcs;
-	if (p_funcs && (p_funcs->esd_detection))
-		mdfld_error_detect_correct_timer_end(dev);
+	//if (p_funcs && (p_funcs->esd_detection))
+	//	mdfld_error_detect_correct_timer_end(dev);
 
 	mdfld_disable_te(dev, pipe);
 
@@ -607,8 +578,8 @@ static void mdfld_dbi_output_exit_dsr (struct mdfld_dsi_dbi_output * dbi_output,
 	/*clean IN_DSR flag*/
 	dbi_output->mode_flags &= ~MODE_SETTING_IN_DSR;
 
-	if (p_funcs && (p_funcs->esd_detection))
-		mdfld_error_detect_correct_timer_start(dev);
+	//if (p_funcs && (p_funcs->esd_detection))
+	//	mdfld_error_detect_correct_timer_start(dev);
 fun_exit:
 	spin_unlock(&dev_priv->dsr_lock);
 }
@@ -710,13 +681,6 @@ void mdfld_dsi_dbi_exit_dsr (struct drm_device *dev, u32 update_src, void *p_sur
 	int i;
 
 	dbi_output = dsr_info->dbi_outputs;
-
-#ifdef CONFIG_PM_RUNTIME
-	 if(drm_psb_ospm && !enable_gfx_rtpm) {
-//                pm_runtime_allow(&gpDrmDevice->pdev->dev);
-//		schedule_delayed_work(&rtpm_work, 120 * 1000);
-        }
-#endif
 
 	/*for each output, exit dsr*/
 	for(i=0; i<dsr_info->dbi_output_num; i++) {
@@ -1078,12 +1042,6 @@ struct mdfld_dsi_encoder *mdfld_dsi_dbi_init(struct drm_device *dev,
 		else
 			p_funcs->dsi_controller_init(dsi_config, pipe, true);
 	}
-	if (dsi_connector->status == connector_status_connected) {
-		if (pipe == 0)
-			dev_priv->panel_desc |= DISPLAY_A;
-		if (pipe == 2)
-			dev_priv->panel_desc |= DISPLAY_C;
-	}
 	/* mdfld_dsi_controller_dbi_init(dsi_config, pipe); */
 
 	/* TODO: get panel info from DDB */
@@ -1136,13 +1094,9 @@ struct mdfld_dsi_encoder *mdfld_dsi_dbi_init(struct drm_device *dev,
 
 	dev_priv->dsr_fb_update = 0;
 	dev_priv->b_dsr_enable = false;
-	dev_priv->b_async_flip_enable = false;
-	dev_priv->exit_idle = mdfld_dsi_dbi_exit_dsr;
-	dev_priv->async_flip_update_fb = mdfld_dsi_dbi_async_flip_fb_update;
-	dev_priv->async_check_fifo_empty = mdfld_dsi_dbi_async_check_fifo_empty;
-#if defined(CONFIG_MDFLD_DSI_DPU) || defined(CONFIG_MDFLD_DSI_DSR)
-	dev_priv->b_dsr_enable_config = true;
-#endif /*CONFIG_MDFLD_DSI_DSR*/
+	//dev_priv->b_async_flip_enable = false;
+	//dev_priv->async_flip_update_fb = mdfld_dsi_dbi_async_flip_fb_update;
+	//dev_priv->async_check_fifo_empty = mdfld_dsi_dbi_async_check_fifo_empty;
 
 	dbi_output->first_boot = true;
 	dbi_output->mode_flags = MODE_SETTING_IN_ENCODER;

@@ -33,17 +33,8 @@
 
 #include "displays/tpo_cmd.h"
 #include "displays/tpo_vid.h"
-#include "displays/tmd_cmd.h"
 #include "displays/tmd_vid.h"
-#include "displays/pyr_cmd.h"
-#include "displays/pyr_vid.h"
 #include "displays/tmd_6x10_vid.h"
-#include "displays/h8c7_vid.h"
-#include "displays/auo_sc1_vid.h"
-#include "displays/auo_sc1_cmd.h"
-#include "displays/gi_sony_vid.h"
-#include "displays/gi_sony_cmd.h"
-#include "displays/h8c7_cmd.h"
 #include "displays/hdmi.h"
 #include "psb_drv.h"
 
@@ -114,71 +105,14 @@ void init_panel(struct drm_device* dev, int mipi_pipe, enum panel_type p_type)
 	struct panel_funcs * p_vid_funcs = NULL;
 	int ret = 0;
 
-	dev_priv->cur_pipe = mipi_pipe;
 	p_cmd_funcs = kzalloc(sizeof(struct panel_funcs), GFP_KERNEL);
 	p_vid_funcs = kzalloc(sizeof(struct panel_funcs), GFP_KERNEL);
 	
 	switch (p_type) {
-	case TPO_CMD:
-		kfree(p_vid_funcs);
-		p_vid_funcs = NULL;
-		tpo_cmd_init(dev, p_cmd_funcs);
-		ret = mdfld_dsi_output_init(dev, mipi_pipe, NULL, p_cmd_funcs, NULL);
-		break;
-	case TPO_VID:
-		kfree(p_cmd_funcs);
-		p_cmd_funcs = NULL;
-		tpo_vid_init(dev, p_vid_funcs);
-		ret = mdfld_dsi_output_init(dev, mipi_pipe, NULL, NULL, p_vid_funcs);
-		break;
-	case AUO_SC1_CMD:
-		kfree(p_vid_funcs);
-		p_vid_funcs = NULL;
-		auo_sc1_cmd_init(dev, p_cmd_funcs);
-		ret = mdfld_dsi_output_init(dev, mipi_pipe, NULL, p_cmd_funcs,
-				NULL);
-		break;
-	case AUO_SC1_VID:
-		kfree(p_cmd_funcs);
-		p_cmd_funcs = NULL;
-		auo_sc1_vid_init(dev, p_vid_funcs);
-		ret = mdfld_dsi_output_init(dev, mipi_pipe, NULL, NULL,
-				p_vid_funcs);
-		break;
-	case GI_SONY_CMD:
-		kfree(p_vid_funcs);
-		p_vid_funcs = NULL;
-		gi_sony_cmd_init(dev, p_cmd_funcs);
-		ret = mdfld_dsi_output_init(dev, mipi_pipe, NULL, p_cmd_funcs,
-				NULL);
-		break;
-	case H8C7_CMD:
-		kfree(p_vid_funcs);
-		p_vid_funcs = NULL;
-		h8c7_cmd_init(dev, p_cmd_funcs);
-		ret = mdfld_dsi_output_init(dev, mipi_pipe, NULL, p_cmd_funcs,
-				NULL);
-		break;
-	case GI_SONY_VID:
-		kfree(p_cmd_funcs);
-		p_cmd_funcs = NULL;
-		gi_sony_vid_init(dev, p_vid_funcs);
-		ret = mdfld_dsi_output_init(dev, mipi_pipe, NULL, NULL,
-				p_vid_funcs);
-		break;
 	case TMD_6X10_VID:
 		kfree(p_cmd_funcs);
 		p_cmd_funcs = NULL;
 		tmd_6x10_vid_init(dev, p_vid_funcs);
-		ret = mdfld_dsi_output_init(dev, mipi_pipe,
-					NULL,
-					NULL,
-					p_vid_funcs);
-		break;
-	case H8C7_VID:
-		kfree(p_cmd_funcs);
-		p_cmd_funcs = NULL;
-		h8c7_vid_init(dev, p_vid_funcs);
 		ret = mdfld_dsi_output_init(dev, mipi_pipe,
 					NULL,
 					NULL,
@@ -189,29 +123,6 @@ void init_panel(struct drm_device* dev, int mipi_pipe, enum panel_type p_type)
 		kfree(p_vid_funcs);
 		p_vid_funcs = NULL;
 		ret = mdfld_dsi_output_init(dev, mipi_pipe, NULL, p_cmd_funcs, NULL);
-		break;
-	case TMD_VID:
-		kfree(p_cmd_funcs);
-		p_cmd_funcs = NULL;
-		tmd_vid_init(dev, p_vid_funcs);
-		ret = mdfld_dsi_output_init(dev, mipi_pipe, NULL, NULL, p_vid_funcs);
-		break;
-	case PYR_CMD:
-		kfree(p_vid_funcs);
-		p_vid_funcs = NULL;
-		pyr_cmd_init(dev, p_cmd_funcs);
-		ret = mdfld_dsi_output_init(dev, mipi_pipe, NULL, p_cmd_funcs, NULL);
-		break;
-	case PYR_VID:
-		/*pyr_vid_init(dev, p_vid_funcs);*/
-		kfree(p_cmd_funcs);
-		p_cmd_funcs = NULL;
-		ret = mdfld_dsi_output_init(dev, mipi_pipe, NULL, NULL, p_vid_funcs);
-		break;
-	case TPO:	/*TPO panel supports both cmd & vid interfaces*/
-		tpo_cmd_init(dev, p_cmd_funcs);
-		tpo_vid_init(dev, p_vid_funcs);
-		ret = mdfld_dsi_output_init(dev, mipi_pipe, NULL, p_cmd_funcs, p_vid_funcs);
 		break;
 	case TMD:
 	case PYR:

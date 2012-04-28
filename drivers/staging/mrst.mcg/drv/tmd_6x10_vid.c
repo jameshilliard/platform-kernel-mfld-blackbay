@@ -657,7 +657,7 @@ struct drm_display_mode *pr2_vid_get_config_mode(struct drm_device *dev)
 		PSB_DEBUG_ENTRY("vtotal is %d\n", mode->vtotal);
 		PSB_DEBUG_ENTRY("clock is %d\n", mode->clock);
 	} else {
-		mode->hdisplay = 800;
+		mode->hdisplay = 600;
 		mode->vdisplay = 1024;
 		mode->hsync_start = 823;
 		mode->hsync_end = 831;

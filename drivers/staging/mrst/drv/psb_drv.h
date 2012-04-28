@@ -922,6 +922,8 @@ struct drm_psb_private {
 	 */
 	uint32_t swap_chain_flag;
 
+	spinlock_t dsr_lock;
+
 	bool hdmi_done_reading_edid;
 	bool xserver_start;
 

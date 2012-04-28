@@ -1759,13 +1759,10 @@ static int __dpi_panel_power_off(struct mdfld_dsi_config *dsi_config,
 					OSPM_UHB_FORCE_POWER_ON))
 		return -EAGAIN;
 
-	ctx->lastbrightnesslevel = psb_brightness;
 	if (p_funcs->set_brightness(dsi_config, 0))
 		DRM_ERROR("Failed to set panel brightness\n");
 
 	/*save the plane informaton, for it will updated*/
-	ctx->dspsurf = dev_priv->init_screen_start;
-	ctx->dsplinoff = dev_priv->init_screen_offset;
 	ctx->pipestat = REG_READ(regs->pipestat_reg);
 	ctx->dspcntr = REG_READ(regs->dspcntr_reg);
 	ctx->dspstride= REG_READ(regs->dspstride_reg);
@@ -1907,15 +1904,11 @@ static int __mdfld_dsi_dpi_set_power(struct drm_encoder *encoder, bool on)
 	int pipe;
 	struct drm_device *dev;
 	struct drm_psb_private *dev_priv;
-	static int last_ospm_suspend = -1;
 
 	if (!encoder) {
 		DRM_ERROR("Invalid encoder\n");
 		return -EINVAL;
 	}
-
-	PSB_DEBUG_ENTRY("%s, last_ospm_suspend = %s\n", (on ? "on" : "off"),
-			(last_ospm_suspend ? "true" : "false"));
 
 	dsi_encoder = MDFLD_DSI_ENCODER(encoder);
 	dpi_output = MDFLD_DSI_DPI_OUTPUT(dsi_encoder);
@@ -1929,22 +1922,11 @@ static int __mdfld_dsi_dpi_set_power(struct drm_encoder *encoder, bool on)
 	if (dsi_connector->status != connector_status_connected)
 		return 0;
 
-	mutex_lock(&dsi_config->context_lock);
-
-	if (last_ospm_suspend == -1)
-		last_ospm_suspend = false;
-
 	if (dpi_output->first_boot && dsi_config->dsi_hw_context.panel_on) {
 		printk(KERN_ALERT "skip panle power setting for first boot!"
 				" panel is already powered on\n");
 		goto fun_exit;
 	}
-
-	/**
-	 * if ospm has turned panel off, but dpms tries to turn panel on, skip
-	 */
-	if (dev_priv->dpms_on_off && on && last_ospm_suspend)
-		goto fun_exit;
 
 	switch (on) {
 	case true:
@@ -1952,17 +1934,13 @@ static int __mdfld_dsi_dpi_set_power(struct drm_encoder *encoder, bool on)
 		if (dsi_config->dsi_hw_context.panel_on)
 			goto fun_exit;
 		/* For DPMS case, just turn on/off panel */
-		if (dev_priv->dpms_on_off) {
+		{
 			if (mdfld_dsi_dpi_panel_turn_on(dsi_config)) {
 				DRM_ERROR("Faild to turn on panel\n");
 				goto set_power_err;
 			}
-		} else {
-			if (__dpi_panel_power_on(dsi_config, p_funcs)) {
-				DRM_ERROR("Faild to turn on panel\n");
-				goto set_power_err;
-			}
-		}
+		} 
+
 		/**
 		 * If power on, turn off color mode by default,
 		 * let panel in full color mode
@@ -1970,23 +1948,13 @@ static int __mdfld_dsi_dpi_set_power(struct drm_encoder *encoder, bool on)
 		mdfld_dsi_dpi_set_color_mode(dsi_config, false);
 
 		dsi_config->dsi_hw_context.panel_on = 1;
-		last_ospm_suspend = false;
 		break;
 	case false:
-		if (dev_priv->dpms_on_off &&
-				dsi_config->dsi_hw_context.panel_on) {
+		if (dsi_config->dsi_hw_context.panel_on) {
 			if (mdfld_dsi_dpi_panel_shut_down(dsi_config))
 				DRM_ERROR("Faild to shutdown panel\n");
-
-			last_ospm_suspend = false;
-		} else if (!dev_priv->dpms_on_off && !last_ospm_suspend) {
-			if (__dpi_panel_power_off(dsi_config, p_funcs)) {
-				DRM_ERROR("Faild to turn off panel\n");
-				goto set_power_err;
-			}
-			/* ospm suspend called? */
-			last_ospm_suspend = true;
 		}
+
 		dsi_config->dsi_hw_context.panel_on = 0;
 		break;
 	default:
@@ -1994,11 +1962,9 @@ static int __mdfld_dsi_dpi_set_power(struct drm_encoder *encoder, bool on)
 	}
 
 fun_exit:
-	mutex_unlock(&dsi_config->context_lock);
 	PSB_DEBUG_ENTRY("successfully\n");
 	return 0;
 set_power_err:
-	mutex_unlock(&dsi_config->context_lock);
 	PSB_DEBUG_ENTRY("unsuccessfully!!!!\n");
 	return -EAGAIN;
 }
@@ -2018,11 +1984,6 @@ void mdfld_dsi_dpi_set_power(struct drm_encoder *encoder, bool on)
 	PSB_DEBUG_ENTRY("set power %s on pipe %d\n", on ? "On" : "Off", pipe);
 
 	dpi_output = MDFLD_DSI_DPI_OUTPUT(dsi_encoder);
-
-	if (pipe)
-		if (!(dev_priv->panel_desc & DISPLAY_B) ||
-				!(dev_priv->panel_desc & DISPLAY_C))
-			return;
 
 	if (pipe) {
 		mipi_reg = MIPI_C;
@@ -2094,20 +2055,11 @@ void mdfld_dsi_dpi_dpms(struct drm_encoder *encoder, int mode)
 
 	PSB_DEBUG_ENTRY(
 			"%s\n", (mode == DRM_MODE_DPMS_ON ? "on" : "off"));
-	if (!gbdispstatus) {
-		PSB_DEBUG_ENTRY(
-		"panel in suspend status, skip turn on/off from DMPS");
-		return ;
-	}
 
-	mutex_lock(&dev_priv->dpms_mutex);
-	dev_priv->dpms_on_off = true;
 	if (mode == DRM_MODE_DPMS_ON)
 		mdfld_dsi_dpi_set_power(encoder, true);
 	else
 		mdfld_dsi_dpi_set_power(encoder, false);
-	dev_priv->dpms_on_off = false;
-	mutex_unlock(&dev_priv->dpms_mutex);
 }
 
 bool mdfld_dsi_dpi_mode_fixup(struct drm_encoder *encoder,
@@ -2586,60 +2538,12 @@ mode_set_err:
 
 void mdfld_dsi_dpi_save(struct drm_encoder *encoder)
 {
-	printk(KERN_ALERT"%s\n", __func__);
-
-	if (!encoder)
-		return;
-
-	/*turn off*/
-	__mdfld_dsi_dpi_set_power(encoder, false);
+	return;
 }
 
 void mdfld_dsi_dpi_restore(struct drm_encoder *encoder)
 {
-	printk(KERN_ALERT"%s\n", __func__);
-
-	if (!encoder)
-		return;
-
-	/*turn on*/
-	__mdfld_dsi_dpi_set_power(encoder, true);
-}
-
-/**
- * Exit from DSR
- */
-void mdfld_dsi_dpi_exit_idle(struct drm_device *dev,
-				u32 update_src,
-				void *p_surfaceAddr,
-				bool check_hw_on_only)
-{
-	struct drm_psb_private * dev_priv = dev->dev_private;
-	unsigned long irqflags;
-
-	/* PSB_DEBUG_ENTRY("\n"); */
-
-	if (!ospm_power_is_hw_on(OSPM_DISPLAY_ISLAND)) {
-		DRM_ERROR("hw begin failed\n");
-		return;
-	}
-
-	spin_lock_irqsave(&dev_priv->irqmask_lock, irqflags);
-	if (dev_priv->b_is_in_idle) {
-		/* update the surface base address. */
-		if (p_surfaceAddr) {
-			REG_WRITE(DSPASURF, *((u32 *)p_surfaceAddr));
-#if defined(CONFIG_MDFD_DUAL_MIPI)
-			REG_WRITE(DSPCSURF, *((u32 *)p_surfaceAddr));
-#endif
-		}
-
-		mid_enable_pipe_event(dev_priv, 0);
-		psb_enable_pipestat(dev_priv, 0, PIPE_VBLANK_INTERRUPT_ENABLE);
-		dev_priv->b_is_in_idle = false;
-		dev_priv->dsr_idle_count = 0;
-	}
-	spin_unlock_irqrestore(&dev_priv->irqmask_lock, irqflags);
+	return;
 }
 
 /*
@@ -2718,17 +2622,6 @@ struct mdfld_dsi_encoder *mdfld_dsi_dpi_init(struct drm_device *dev,
 	dsi_connector->status = connector_status_connected;
 #endif
 
-	/**
-	 * TODO: can we keep these code out of display driver as
-	 * it will make display driver hard to be maintained
-	 */
-	if (dsi_connector->status == connector_status_connected) {
-		if (pipe == 0)
-			dev_priv->panel_desc |= DISPLAY_A;
-		if (pipe == 2)
-			dev_priv->panel_desc |= DISPLAY_C;
-	}
-
 	dpi_output = kzalloc(sizeof(struct mdfld_dsi_dpi_output), GFP_KERNEL);
 	if (!dpi_output) {
 		DRM_ERROR("No memory\n");
@@ -2789,11 +2682,6 @@ struct mdfld_dsi_encoder *mdfld_dsi_dpi_init(struct drm_device *dev,
 
 	dev_priv->dsr_fb_update = 0;
 	dev_priv->b_dsr_enable = false;
-	dev_priv->exit_idle = mdfld_dsi_dpi_exit_idle;
-#if defined(CONFIG_MDFLD_DSI_DPU) || defined(CONFIG_MDFLD_DSI_DSR)
-	dev_priv->b_dsr_enable_config = true;
-#endif /*CONFIG_MDFLD_DSI_DSR*/
-
 
 #ifdef CONFIG_SUPPORT_TOSHIBA_MIPI_DISPLAY
 	dev_priv->dpi_panel_on = true;
