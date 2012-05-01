@@ -1345,9 +1345,12 @@ static inline void REGISTER_WRITE8(struct drm_device *dev,
 
 #define IS_PENWELL(dev) 0 /* FIXME */
 
+#define IS_MDFLD_OLD(dev) (((dev)->pci_device & 0xfff8) == 0x0130)
 #define IS_CTP(dev) (((dev->pci_device & 0xffff) == 0x08c0) ||	\
 		     ((dev->pci_device & 0xffff) == 0x08c7) ||  \
 		     ((dev->pci_device & 0xffff) == 0x08c8))
+
+#define IS_MDFLD(dev) (IS_CTP(dev) || IS_MDFLD_OLD(dev))
 
 extern int drm_psb_cpurelax;
 extern int drm_psb_udelaydivider;

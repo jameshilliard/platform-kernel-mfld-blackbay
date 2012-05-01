@@ -80,30 +80,37 @@ enum psb_pipe {
 
 #define PSB_HTOTAL(pipe)	(0x60000 + PSB_PREG_OFFSET(pipe))
 #define HTOTAL_A		PSB_HTOTAL(PSB_PIPE_A)
+#define HTOTAL_B		PSB_HTOTAL(PSB_PIPE_B)
 #define HTOTAL_C		PSB_HTOTAL(PSB_PIPE_C)
 
 #define PSB_HBLANK(pipe)	(0x60004 + PSB_PREG_OFFSET(pipe))
 #define HBLANK_A		PSB_HBLANK(PSB_PIPE_A)
+#define HBLANK_B		PSB_HBLANK(PSB_PIPE_B)
 #define HBLANK_C		PSB_HBLANK(PSB_PIPE_C)
 
 #define PSB_HSYNC(pipe)		(0x60008 + PSB_PREG_OFFSET(pipe))
 #define HSYNC_A			PSB_HSYNC(PSB_PIPE_A)
+#define HSYNC_B			PSB_HSYNC(PSB_PIPE_B)
 #define HSYNC_C			PSB_HSYNC(PSB_PIPE_C)
 
 #define PSB_VTOTAL(pipe)	(0x6000C + PSB_PREG_OFFSET(pipe))
 #define VTOTAL_A		PSB_VTOTAL(PSB_PIPE_A)
+#define VTOTAL_B		PSB_VTOTAL(PSB_PIPE_B)
 #define VTOTAL_C		PSB_VTOTAL(PSB_PIPE_C)
 
 #define PSB_VBLANK(pipe)	(0x60010 + PSB_PREG_OFFSET(pipe))
 #define VBLANK_A		PSB_VBLANK(PSB_PIPE_A)
+#define VBLANK_B		PSB_VBLANK(PSB_PIPE_B)
 #define VBLANK_C		PSB_VBLANK(PSB_PIPE_C)
 
 #define PSB_VSYNC(pipe)		(0x60014 + PSB_PREG_OFFSET(pipe))
 #define VSYNC_A			PSB_VSYNC(PSB_PIPE_A)
+#define VSYNC_B			PSB_VSYNC(PSB_PIPE_B)
 #define VSYNC_C			PSB_VSYNC(PSB_PIPE_C)
 
 #define PSB_PIPESRC(pipe)	(0x6001C + PSB_PREG_OFFSET(pipe))
 #define PIPEASRC		PSB_PIPESRC(PSB_PIPE_A)
+#define PIPEBSRC		PSB_PIPESRC(PSB_PIPE_B)
 #define PIPECSRC		PSB_PIPESRC(PSB_PIPE_C)
 
 #define PSB_BCLRPAT(pipe)	(0x60020 + PSB_PREG_OFFSET(pipe))
@@ -569,10 +576,12 @@ struct dpst_guardband {
 
 #define PSB_DSPPOS(pipe)	(0x7018C + PSB_PREG_OFFSET(pipe))
 #define DSPAPOS			PSB_DSPPOS(PSB_PIPE_A)
+#define DSPBPOS			PSB_DSPPOS(PSB_PIPE_B)
 #define DSPCPOS			PSB_DSPPOS(PSB_PIPE_C)
 
 #define PSB_DSPSIZE(pipe)	(0x70190 + PSB_PREG_OFFSET(pipe))
 #define DSPASIZE		PSB_DSPSIZE(PSB_PIPE_A)
+#define DSPBSIZE		PSB_DSPSIZE(PSB_PIPE_B)
 #define DSPCSIZE		PSB_DSPSIZE(PSB_PIPE_C)
 
 #define PSB_DSPSURF(pipe)	(0x7019C + PSB_PREG_OFFSET(pipe))
@@ -742,6 +751,7 @@ struct dpst_guardband {
 #define PSB_DSI_PLL_CTRL	0x0f014
 #define MRST_DPLL_A		0x0f014
 #define PSB_DPLL_CTRL		0x0f018
+#define MDFLD_DPLL_B		0x0f018
 #define MDFLD_INPUT_REF_SEL	(1 << 14) 
 #define MDFLD_VCO_SEL		(1 << 16) 
 #define DPLLA_MODE_LVDS		(2 << 26)	/* mrst */
@@ -751,6 +761,7 @@ struct dpst_guardband {
 #define PSB_DSI_PLL_DIV_M1	0x0f040
 #define MRST_FPA0		0x0f040
 #define PSB_DPLL_DIV0		0x0f048
+#define MDFLD_DPLL_DIV0		0x0f048
 #define MRST_PERF_MODE		0x020f4
 
 /* MEDFIELD HDMI registers */
@@ -812,6 +823,11 @@ Ignore alpha.1110 = 32 - bit RGBX(8 : 8 : 8 : 8) pixel format.
 #define DSPAPOS			0x7018C	/* reserved */
 #define DSPASIZE		0x70190
 #endif
+
+#define MRST_DSPABASE		0x7019c
+#define MRST_DSPBBASE		0x7119c
+#define MDFLD_DSPCBASE		0x7219c
+
 /*
  * Moorestown registers.
  */
