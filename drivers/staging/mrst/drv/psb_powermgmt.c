@@ -420,6 +420,18 @@ static inline unsigned long palette_reg(int pipe, int idx)
 	return PSB_PALETTE(pipe) + (idx << 2);
 }
 
+#define CHECK_MIPI_PIPE(pipe)		\
+	(PSB_CHECK_PIPE(pipe, BIT(0) | BIT(2)))
+
+#define REG_OFFSET(pipe)			(CHECK_MIPI_PIPE(pipe) * 0x400)
+
+/* mdfld DSI controller registers */
+#define MIPI_DEVICE_READY_REG(pipe)		(0xb000 + REG_OFFSET(pipe))
+
+/* non-uniform reg offset */
+#define MIPI_PORT_CONTROL(pipe)		\
+		(CHECK_MIPI_PIPE(pipe) ? MIPI_C : MIPI)
+
 /*
  * mdfld_save_pipe_registers
  *
@@ -430,7 +442,6 @@ static inline unsigned long palette_reg(int pipe, int idx)
  */
 static int mdfld_save_pipe_registers(struct drm_device *dev, int pipe)
 {
-#if 0
 	struct drm_psb_private *dev_priv = dev->dev_private;
 	struct psb_pipe_regs *pr = &dev_priv->pipe_regs[pipe];
 	int i;
@@ -481,7 +492,7 @@ static int mdfld_save_pipe_registers(struct drm_device *dev, int pipe)
 	/*save palette (gamma) */
 	for (i = 0; i < ARRAY_SIZE(pr->palette); i++)
 		pr->palette[i] = PSB_RVDC32(palette_reg(pipe, i));
-#endif
+
 	return 0;
 }
 /*
@@ -523,7 +534,6 @@ static int mdfld_save_cursor_overlay_registers(struct drm_device *dev)
  */
 static int mdfld_restore_pipe_registers(struct drm_device *dev, int pipe)
 {
-#if 0
 	//to get  panel out of ULPS mode.
 	u32 temp = 0;
 	struct drm_psb_private *dev_priv = dev->dev_private;
@@ -683,7 +693,7 @@ static int mdfld_restore_pipe_registers(struct drm_device *dev, int pipe)
 	/*DRM_UDELAY(50000); */
 	for (i = 0; i < ARRAY_SIZE(pr->palette); i++)
 		PSB_WVDC32(pr->palette[i], palette_reg(pipe, i));
-#endif
+
 	return 0;
 }
 
