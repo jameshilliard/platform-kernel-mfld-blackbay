@@ -150,6 +150,7 @@ IMG_BOOL  MRSTLFBFlipToSurface(MRSTLFB_DEVINFO *psDevInfo,
         } else if (IS_MDFLD(dev)) {
 		if (!dev_priv->um_start) {
 			dev_priv->um_start = true;
+			dev_priv->b_async_flip_enable = true;
 			if (dev_priv->b_dsr_enable_config)
 				dev_priv->b_dsr_enable = true;
 		}
