@@ -971,8 +971,6 @@ int psb_gtt_map_meminfo_ioctl(struct drm_device *dev, void *data,
 
 	DRM_DEBUG("\n");
 
-	WARN_ON(1);
-
 	mutex_lock(&dev->mode_config.mutex);
 
 	mutex_lock(&gPVRSRVLock);
