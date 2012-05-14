@@ -75,22 +75,9 @@ int psb_set_brightness(struct backlight_device *bd)
 		adjusted_level = adjusted_level / BLC_ADJUSTMENT_MAX;
 		dev_priv->brightness_adjusted = adjusted_level;
 
-#ifndef CONFIG_MDFLD_DSI_DPU
-		if((!(dev_priv->dsr_fb_update & MDFLD_DSR_MIPI_CONTROL)) &&
-			(dev_priv->dbi_panel_on || dev_priv->dbi_panel_on2)){
-			mdfld_dsi_dbi_exit_dsr(dev,MDFLD_DSR_MIPI_CONTROL, 0, 0);
-			PSB_DEBUG_ENTRY("Out of DSR before set brightness to %d.\n",
-					dev_priv->brightness_adjusted);
-		}
-#endif
-		{
-			if (dev_priv->dbi_panel_on || dev_priv->dpi_panel_on)
-				mdfld_dsi_brightness_control(dev, 0,
-							     dev_priv->brightness_adjusted);
-		}
+		mdfld_dsi_brightness_control(dev, 0, dev_priv->brightness_adjusted);
+		mdfld_dsi_brightness_control(dev, 2, dev_priv->brightness_adjusted);
 
-		if ((dev_priv->dbi_panel_on2) || (dev_priv->dpi_panel_on2))
-			mdfld_dsi_brightness_control(dev, 2, dev_priv->brightness_adjusted);
 		ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
 	}
 
