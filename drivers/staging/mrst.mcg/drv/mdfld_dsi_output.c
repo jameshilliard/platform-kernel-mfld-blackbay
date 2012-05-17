@@ -547,6 +547,9 @@ static int mdfld_dsi_connector_mode_valid(struct drm_connector * connector, stru
 
 static void mdfld_dsi_connector_dpms(struct drm_connector *connector, int mode)
 {
+	if (early_suspend)
+		return;
+
 	drm_helper_connector_dpms(connector, mode);
 }
 

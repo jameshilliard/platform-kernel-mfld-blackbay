@@ -54,6 +54,7 @@ void ospm_power_island_up(int hw_islands);
 void ospm_power_island_down(int hw_islands);
 static bool gbSuspended = false;
 static int psb_runtime_hdmi_audio_suspend(struct drm_device *drm_dev);
+bool early_suspend = false;
 
 #if 1
 static int ospm_runtime_check_msvdx_hw_busy(struct drm_device *dev)
@@ -355,6 +356,7 @@ static void gfx_early_suspend(struct early_suspend *es)
 		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->save)
 			ehf->save(encoder);
 	}
+	early_suspend = true;
 	mutex_unlock(&dev->mode_config.mutex);
 
 	pm_runtime_put(&dev->pdev->dev);
@@ -379,6 +381,7 @@ static void gfx_late_resume(struct early_suspend *es)
 			ehf->restore(encoder);
 		}
 	}
+	early_suspend = false;
 	mutex_unlock(&dev->mode_config.mutex);
 }
 #endif

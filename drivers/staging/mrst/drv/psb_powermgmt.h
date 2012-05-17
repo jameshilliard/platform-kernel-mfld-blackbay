@@ -57,6 +57,8 @@ typedef enum _UHBUsage
     OSPM_UHB_FORCE_POWER_ON,
 } UHBUsage;
 
+extern bool early_suspend;
+
 //extern int psb_check_msvdx_idle(struct drm_device *dev);
 //extern int lnc_check_topaz_idle(struct drm_device *dev);
 /* Use these functions to power down video HW for D0i3 purpose  */
