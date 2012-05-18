@@ -2371,8 +2371,8 @@ static const struct dev_pm_ops psb_pm_ops = {
 	.runtime_suspend = psb_runtime_suspend,
 	.runtime_resume = psb_runtime_resume,
 	.runtime_idle = psb_runtime_idle,
-	.resume = ospm_power_resume,
-	.suspend = ospm_power_suspend,
+	.resume = gfx_resume,
+	.suspend = gfx_suspend,
 };
 
 static struct drm_driver driver = {

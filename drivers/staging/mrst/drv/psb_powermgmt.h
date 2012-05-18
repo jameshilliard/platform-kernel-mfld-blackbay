@@ -103,6 +103,9 @@ int psb_runtime_suspend(struct device *dev);
 int psb_runtime_resume(struct device *dev);
 int psb_runtime_idle(struct device *dev);
 
+int gfx_suspend(struct device *dev);
+int gfx_resume(struct device *dev);
+
 extern struct drm_device *gpDrmDevice;
 
 #endif /*_PSB_POWERMGMT_H_*/

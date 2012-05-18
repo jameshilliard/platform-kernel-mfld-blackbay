@@ -335,6 +335,48 @@ out:
 }
 #endif
 
+int gfx_suspend(struct device *dev)
+{
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct drm_device *drm_dev = pci_get_drvdata(pdev);
+	struct drm_encoder *encoder;
+
+	dev_info(dev, "%s\n", __func__);
+
+	mutex_lock(&drm_dev->mode_config.mutex);
+	list_for_each_entry(encoder, &drm_dev->mode_config.encoder_list, head) {
+		struct drm_encoder_helper_funcs *ehf = encoder->helper_private;
+		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->save)
+			ehf->save(encoder);
+	}
+	mutex_unlock(&drm_dev->mode_config.mutex);
+
+	return ospm_power_suspend(dev);
+}
+
+int gfx_resume(struct device *dev)
+{
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct drm_device *drm_dev = pci_get_drvdata(pdev);
+	struct drm_encoder *encoder;
+
+	dev_info(dev, "%s\n", __func__);
+
+	ospm_power_resume(dev);
+
+	mutex_lock(&drm_dev->mode_config.mutex);
+	list_for_each_entry(encoder, &drm_dev->mode_config.encoder_list, head) {
+		struct drm_encoder_helper_funcs *ehf = encoder->helper_private;
+
+		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->restore) {
+			ehf->restore(encoder);
+		}
+	}
+	mutex_unlock(&drm_dev->mode_config.mutex);
+
+	return 0;
+}
+
 #ifdef CONFIG_EARLYSUSPEND
 /*
  * REVISIT: The early suspend and late resume handlers should not call
