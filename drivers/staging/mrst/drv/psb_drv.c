@@ -64,6 +64,8 @@
 
 int drm_psb_debug;
 int drm_psb_enable_pr2_cabc = 1;
+int drm_psb_enable_gamma;
+int drm_psb_enable_color_conversion;
 /*EXPORT_SYMBOL(drm_psb_debug); */
 static int drm_psb_trap_pagefaults;
 
@@ -1060,6 +1062,7 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 	dev_priv->psb_hotplug_state = NULL;
 	dev_priv->hdmi_done_reading_edid = false;
 	dev_priv->xserver_start = false;
+	dev_priv->dpms_on_off = false;
 
 	dev_priv->dev = dev;
 	bdev = &dev_priv->bdev;
@@ -1077,6 +1080,7 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 	mutex_init(&dev_priv->temp_mem);
 	mutex_init(&dev_priv->cmdbuf_mutex);
 	mutex_init(&dev_priv->reset_mutex);
+	mutex_init(&dev_priv->dpms_mutex);
 	INIT_LIST_HEAD(&dev_priv->context.validate_list);
 	INIT_LIST_HEAD(&dev_priv->context.kern_validate_list);
 

@@ -934,6 +934,9 @@ struct drm_psb_private {
 
 	uint32_t hdmi_audio_interrupt_mask;
 
+	bool dpms_on_off;
+	struct mutex dpms_mutex;
+
 	/*psb fb dev*/
 	void * fbdev;
 	bool b_pmic_backlight;
@@ -1149,6 +1152,8 @@ struct backlight_device * psb_get_backlight_device(void);
 
 extern int drm_psb_debug;
 extern int drm_psb_enable_pr2_cabc ;
+extern int drm_psb_enable_gamma;
+extern int drm_psb_enable_color_conversion;
 extern int drm_tc35876x_debug;
 extern int drm_psb_no_fb;
 extern int drm_topaz_sbuswa;

@@ -348,26 +348,12 @@ static void gfx_early_suspend(struct early_suspend *es)
 	struct drm_encoder *encoder;
 
 	dev_dbg(&dev->pdev->dev, "%s\n", __func__);
-	dev_priv->hdmi_audio_busy =
-			psb_runtime_hdmi_audio_suspend(dev) == -EBUSY;
 
 	mutex_lock(&dev->mode_config.mutex);
 	list_for_each_entry(encoder, &dev->mode_config.encoder_list, head) {
 		struct drm_encoder_helper_funcs *ehf = encoder->helper_private;
-		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->dpms
-#ifndef JIRA_ANDROID-1553
-	/*
-	 * Local MIPI fails to turn back on from a DPMS off/on cycle if
-	 * HDMI audio returns busy to disallow system suspend.
-	 * Once ANDROID-1553 is fixed, the expectation is to turn off
-	 * MIPI but keep display island on if there is active audio
-	 * playback over HDMI.
-	 * Refer Jira bug# Android-1553 for more details.
-	 */
-			&& !dev_priv->hdmi_audio_busy
-#endif
-		)
-			ehf->dpms(encoder, DRM_MODE_DPMS_OFF);
+		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->save)
+			ehf->save(encoder);
 	}
 	mutex_unlock(&dev->mode_config.mutex);
 
@@ -389,26 +375,8 @@ static void gfx_late_resume(struct early_suspend *es)
 	list_for_each_entry(encoder, &dev->mode_config.encoder_list, head) {
 		struct drm_encoder_helper_funcs *ehf = encoder->helper_private;
 
-		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->mode_set
-		    && ehf->dpms
-#ifndef JIRA_ANDROID-1553
-	/*
-	  Local MIPI fails to turn back on from a DPMS off/on cycle if HDMI
-	  audio returns busy to disallow system suspend.
-	  Once ANDROID-1553 is fixed, the expectation is to turn off MIPI but
-	  keep display island on if there is active audio playback over HDMI
-	  Refer Jira bug# Android-1553 for more details.
-	*/
-			&& !(dev_priv->hdmi_audio_busy)
-#endif
-		) {
-			struct drm_crtc *crtc = encoder->crtc;
-
-			if (crtc)
-				ehf->mode_set(encoder,
-					      &crtc->mode,
-					      &crtc->hwmode);
-			ehf->dpms(encoder, DRM_MODE_DPMS_ON);
+		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->restore) {
+			ehf->restore(encoder);
 		}
 	}
 	mutex_unlock(&dev->mode_config.mutex);
@@ -447,6 +415,16 @@ static int mdfld_save_pipe_registers(struct drm_device *dev, int pipe)
 	int i;
 
 	PSB_DEBUG_ENTRY("\n");
+
+	/**
+	 * For MIPI panels, all plane/pipe/port/DSI controller values
+	 * were already saved in dsi_hw_context, no need to save/restore
+	 * for these registers.
+	 * NOTE: only support TMD panel now, add support for other MIPI
+	 * panels later
+	 */
+	if (pipe != 1 && ((get_panel_type(dev, pipe) == TMD_6X10_VID)))
+		return 0;
 
 	switch (pipe) {
 	case 0:
@@ -547,6 +525,16 @@ static int mdfld_restore_pipe_registers(struct drm_device *dev, int pipe)
 	u32 dpll_val;
 
 	PSB_DEBUG_ENTRY("\n");
+
+	/**
+	 * For MIPI panels, all plane/pipe/port/DSI controller values
+	 * were already saved in dsi_hw_context, no need to save/restore
+	 * for these registers.
+	 * NOTE: only support TMD panel now, add support for other MIPI
+	 * panels later
+	 */
+	if (pipe != 1 && ((get_panel_type(dev, pipe) == TMD_6X10_VID)))
+		return 0;
 
 	switch (pipe) {
 	case 0:

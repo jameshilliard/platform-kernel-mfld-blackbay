@@ -1759,10 +1759,13 @@ static int __dpi_panel_power_off(struct mdfld_dsi_config *dsi_config,
 					OSPM_UHB_FORCE_POWER_ON))
 		return -EAGAIN;
 
+	ctx->lastbrightnesslevel = dev_priv->brightness;
 	if (p_funcs->set_brightness(dsi_config, 0))
 		DRM_ERROR("Failed to set panel brightness\n");
 
 	/*save the plane informaton, for it will updated*/
+	ctx->dspsurf = REG_READ(regs->dspsurf_reg);
+	ctx->dsplinoff = REG_READ(regs->dsplinoff_reg);
 	ctx->pipestat = REG_READ(regs->pipestat_reg);
 	ctx->dspcntr = REG_READ(regs->dspcntr_reg);
 	ctx->dspstride= REG_READ(regs->dspstride_reg);
@@ -1934,12 +1937,17 @@ static int __mdfld_dsi_dpi_set_power(struct drm_encoder *encoder, bool on)
 		if (dsi_config->dsi_hw_context.panel_on)
 			goto fun_exit;
 		/* For DPMS case, just turn on/off panel */
-		{
+		if (dev_priv->dpms_on_off) {
 			if (mdfld_dsi_dpi_panel_turn_on(dsi_config)) {
 				DRM_ERROR("Faild to turn on panel\n");
 				goto set_power_err;
 			}
-		} 
+		} else {
+			if (__dpi_panel_power_on(dsi_config, p_funcs)) {
+				DRM_ERROR("Faild to turn on panel\n");
+				goto set_power_err;
+			}
+		}
 
 		/**
 		 * If power on, turn off color mode by default,
@@ -1950,9 +1958,15 @@ static int __mdfld_dsi_dpi_set_power(struct drm_encoder *encoder, bool on)
 		dsi_config->dsi_hw_context.panel_on = 1;
 		break;
 	case false:
-		if (dsi_config->dsi_hw_context.panel_on) {
+		if (dev_priv->dpms_on_off &&
+		    dsi_config->dsi_hw_context.panel_on) {
 			if (mdfld_dsi_dpi_panel_shut_down(dsi_config))
 				DRM_ERROR("Faild to shutdown panel\n");
+		} else if (!dev_priv->dpms_on_off) {
+			if (__dpi_panel_power_off(dsi_config, p_funcs)) {
+				DRM_ERROR("Faild to turn off panel\n");
+				goto set_power_err;
+			}
 		}
 
 		dsi_config->dsi_hw_context.panel_on = 0;
@@ -2056,10 +2070,14 @@ void mdfld_dsi_dpi_dpms(struct drm_encoder *encoder, int mode)
 	PSB_DEBUG_ENTRY(
 			"%s\n", (mode == DRM_MODE_DPMS_ON ? "on" : "off"));
 
+	mutex_lock(&dev_priv->dpms_mutex);
+	dev_priv->dpms_on_off = true;
 	if (mode == DRM_MODE_DPMS_ON)
 		mdfld_dsi_dpi_set_power(encoder, true);
 	else
 		mdfld_dsi_dpi_set_power(encoder, false);
+	dev_priv->dpms_on_off = false;
+	mutex_unlock(&dev_priv->dpms_mutex);
 }
 
 bool mdfld_dsi_dpi_mode_fixup(struct drm_encoder *encoder,
@@ -2538,12 +2556,24 @@ mode_set_err:
 
 void mdfld_dsi_dpi_save(struct drm_encoder *encoder)
 {
-	return;
+	printk(KERN_ALERT"%s\n", __func__);
+
+	if (!encoder)
+		return;
+
+	/*turn off*/
+	__mdfld_dsi_dpi_set_power(encoder, false);
 }
 
 void mdfld_dsi_dpi_restore(struct drm_encoder *encoder)
 {
-	return;
+	printk(KERN_ALERT"%s\n", __func__);
+
+	if (!encoder)
+		return;
+
+	/*turn on*/
+	__mdfld_dsi_dpi_set_power(encoder, true);
 }
 
 /*
