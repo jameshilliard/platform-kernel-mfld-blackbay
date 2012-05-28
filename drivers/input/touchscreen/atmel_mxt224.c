@@ -52,6 +52,9 @@ static int mxt_write_block(struct i2c_client *client, u16 addr, u16 length,
 #ifdef CONFIG_HAS_EARLYSUSPEND
 void mxt_early_suspend(struct early_suspend *h);
 void mxt_late_resume(struct early_suspend *h);
+#else
+void mxt_first_suspend(struct device *dev);
+void mxt_last_resume(struct device *dev);
 #endif
 
 #define DRIVER_VERSION "0.9a"
@@ -171,11 +174,11 @@ struct mxt_data {
 	u8                   (*valid_interrupt)(void);
 	u8                   (*read_chg)(void);
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
 	u8                   T7[3];
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend es;
-	bool                 suspended;
 #endif
+	bool                 suspended;
 
 #ifdef DEBUG
 	u8                   *last_message;
@@ -2414,18 +2417,18 @@ static int __devinit mxt_probe(struct i2c_client *client,
 
 	kfree(id_data);
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
 	mxt->suspended = FALSE;
 	mxt->T7[0] = 32;
 	mxt->T7[1] = 10;
 	mxt->T7[2] = 50;
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	mxt->es.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
 	mxt->es.suspend = mxt_early_suspend;
 	mxt->es.resume = mxt_late_resume;
 
 	register_early_suspend(&mxt->es);
-	mxt_es = mxt;
 #endif
+	mxt_es = mxt;
 
 	return 0;
 
@@ -2500,6 +2503,10 @@ static int mxt_suspend(struct device *dev)
 
 	dev_dbg(&mxt->client->dev, "In function %s", __func__);
 
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	mxt_first_suspend(dev);
+#endif
+
 	if (device_may_wakeup(dev))
 		enable_irq_wake(mxt->irq);
 
@@ -2515,6 +2522,10 @@ static int mxt_resume(struct device *dev)
 	if (device_may_wakeup(dev))
 		disable_irq_wake(mxt->irq);
 
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	mxt_last_resume(dev);
+#endif
+
 	return 0;
 }
 #else
@@ -2524,6 +2535,9 @@ static int mxt_resume(struct device *dev)
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 void mxt_early_suspend(struct early_suspend *h)
+#else
+void mxt_first_suspend(struct device *dev)
+#endif
 {
 	int i;
 	u16 addr;
@@ -2568,7 +2582,11 @@ static void mxt_calibrate(struct mxt_data *mxt)
 	mxt_write_byte(mxt->client, addr, 0x55);
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 void mxt_late_resume(struct early_suspend *h)
+#else
+void mxt_last_resume(struct device *dev)
+#endif
 {
 	int ret;
 	u16 addr;
@@ -2593,7 +2611,6 @@ void mxt_late_resume(struct early_suspend *h)
 	mxt_es->suspended = FALSE;
 	mutex_unlock(&mxt_es->dev_mutex);
 }
-#endif
 
 static const struct dev_pm_ops mxt_pm_ops = {
 	.suspend = mxt_suspend,
