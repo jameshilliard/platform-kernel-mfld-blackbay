@@ -43,6 +43,7 @@ static struct led_classdev intel_kpd_led = {
 	.max_brightness		= 15,
 };
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 static void intel_kpd_led_early_suspend(struct early_suspend *h)
 {
 	led_classdev_suspend(&intel_kpd_led);
@@ -58,6 +59,7 @@ static struct early_suspend intel_kpd_led_suspend_desc = {
 	.suspend = intel_kpd_led_early_suspend,
 	.resume  = intel_kpd_led_late_resume,
 };
+#endif
 
 static int __devinit intel_kpd_led_probe(struct ipc_device *ipcdev)
 {
@@ -69,7 +71,9 @@ static int __devinit intel_kpd_led_probe(struct ipc_device *ipcdev)
 		return ret;
 	}
 	intel_keypad_led_set(&intel_kpd_led, intel_kpd_led.brightness);
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	register_early_suspend(&intel_kpd_led_suspend_desc);
+#endif
 
 	return 0;
 }
@@ -77,16 +81,46 @@ static int __devinit intel_kpd_led_probe(struct ipc_device *ipcdev)
 static int __devexit intel_kpd_led_remove(struct ipc_device *ipcdev)
 {
 	intel_keypad_led_set(&intel_kpd_led, LED_OFF);
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&intel_kpd_led_suspend_desc);
+#endif
 	led_classdev_unregister(&intel_kpd_led);
 
 	return 0;
 }
 
+#if defined(CONFIG_PM)
+static int leds_intel_kpd_suspend(struct device *dev)
+{
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	led_classdev_suspend(&intel_kpd_led);
+#endif
+	return 0;
+}
+
+static int leds_intel_kpd_resume(struct device *dev)
+{
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	led_classdev_resume(&intel_kpd_led);
+#endif
+	return 0;
+}
+#else
+#define leds_intel_kpd_suspend_suspend NULL
+#define leds_intel_kpd_resume NULL
+#endif
+
+static const struct dev_pm_ops leds_intel_kpd_pm_ops = {
+		SET_SYSTEM_SLEEP_PM_OPS(leds_intel_kpd_suspend,
+				leds_intel_kpd_resume)
+};
+
+
 static struct ipc_driver kpd_led_driver = {
 	.driver = {
 		   .name = "intel_kpd_led",
 		   .owner = THIS_MODULE,
+		   .pm = &leds_intel_kpd_pm_ops,
 	},
 	.probe = intel_kpd_led_probe,
 	.remove = __devexit_p(intel_kpd_led_remove),
