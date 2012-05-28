@@ -55,7 +55,9 @@ struct ms5607_data {
 	struct workqueue_struct *workqueue;
 
 	struct input_dev *input_dev;
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend es;
+#endif
 
 	int enabled;
 	bool powered;
@@ -362,21 +364,31 @@ static void ms5607_early_suspend(struct early_suspend *h)
 {
 	struct ms5607_data *ms5607 = container_of(h, struct ms5607_data, es);
 
+#else
+static void ms5607_first_suspend(struct device *dev)
+{
+	struct ms5607_data *ms5607 = dev_get_drvdata(dev);
+#endif
 	mutex_lock(&ms5607->lock);
 	if (ms5607->enabled)
 		ms5607_disable(ms5607);
 	mutex_unlock(&ms5607->lock);
 }
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
 static void ms5607_late_resume(struct early_suspend *h)
 {
 	struct ms5607_data *ms5607 = container_of(h, struct ms5607_data, es);
-
+#else
+static void ms5607_last_resume(struct device *dev)
+{
+	struct ms5607_data *ms5607 = dev_get_drvdata(dev);
+#endif
 	mutex_lock(&ms5607->lock);
 	if (ms5607->enabled)
 		ms5607_enable(ms5607);
 	mutex_unlock(&ms5607->lock);
 }
-#endif
 
 static int __devinit ms5607_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
@@ -502,11 +514,17 @@ static int __devexit ms5607_remove(struct i2c_client *client)
 #ifdef CONFIG_PM
 static int ms5607_resume(struct device *dev)
 {
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	ms5607_last_resume(dev);
+#endif
 	return 0;
 }
 
 static int ms5607_suspend(struct device *dev)
 {
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	ms5607_first_suspend(dev);
+#endif
 	return 0;
 }
 
