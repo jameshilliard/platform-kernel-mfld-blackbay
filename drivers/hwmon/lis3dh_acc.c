@@ -223,7 +223,9 @@ struct lis3dh_acc_data {
 	int hw_working;
 	int enabled;
 	int need_resume;
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend es;
+#endif
 
 	u8 sensitivity;
 
@@ -1086,6 +1088,12 @@ static void lis3dh_early_suspend(struct early_suspend *h)
 	struct lis3dh_acc_data *acc = container_of(h,
 					struct lis3dh_acc_data, es);
 
+#else
+static void lis3dh_first_suspend(struct device *dev)
+{
+	struct lis3dh_acc_data *acc = dev_get_drvdata(dev);
+
+#endif
 	dev_dbg(&acc->client->dev, "enter early_suspend\n");
 	disable_irq(acc->irq1);
 
@@ -1096,11 +1104,18 @@ static void lis3dh_early_suspend(struct early_suspend *h)
 	mutex_unlock(&acc->lock);
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 static void lis3dh_late_resume(struct early_suspend *h)
 {
 	struct lis3dh_acc_data *acc = container_of(h,
 					struct lis3dh_acc_data, es);
 
+#else
+static void lis3dh_last_resume(struct device *dev)
+{
+	struct lis3dh_acc_data *acc = dev_get_drvdata(dev);
+
+#endif
 	dev_dbg(&acc->client->dev, "enter late_resume\n");
 	enable_irq(acc->irq1);
 
@@ -1109,7 +1124,6 @@ static void lis3dh_late_resume(struct early_suspend *h)
 		lis3dh_acc_enable(acc);
 	mutex_unlock(&acc->lock);
 }
-#endif
 
 static int lis3dh_acc_probe(struct i2c_client *client,
 			    const struct i2c_device_id *id)
@@ -1249,7 +1263,9 @@ static int __devexit lis3dh_acc_remove(struct i2c_client *client)
 	lis3dh_acc_device_power_off(acc);
 
 	sysfs_remove_group(&client->dev.kobj, &lis3dh_attr_group);
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&acc->es);
+#endif
 
 	if (acc->pdata->exit)
 		acc->pdata->exit();
@@ -1262,11 +1278,17 @@ static int __devexit lis3dh_acc_remove(struct i2c_client *client)
 #ifdef CONFIG_PM_SLEEP
 static int lis3dh_acc_resume(struct device *dev)
 {
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	lis3dh_last_resume(dev);
+#endif
 	return 0;
 }
 
 static int lis3dh_acc_suspend(struct device *dev)
 {
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	lis3dh_first_suspend(dev);
+#endif
 	return 0;
 }
 #endif /* CONFIG_PM_SLEEP */
