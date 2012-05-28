@@ -51,7 +51,9 @@ struct hmc5883_data {
 	int delay_ms;
 
 	int enabled;
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend es;
+#endif
 };
 
 static void hmc5883_put_idle(struct hmc5883_data *hmc5883)
@@ -98,7 +100,11 @@ static int hmc5883_disable(struct hmc5883_data *hmc5883)
 static void hmc5883_early_suspend(struct early_suspend *h)
 {
 	struct hmc5883_data *hmc5883 = container_of(h, struct hmc5883_data, es);
-
+#else
+static void hmc5883_first_suspend(struct device *dev)
+{
+	struct hmc5883_data *hmc5883 = dev_get_drvdata(dev);
+#endif
 	dev_dbg(&hmc5883->client->dev, "enter %s\n", __func__);
 
 	cancel_delayed_work_sync(&hmc5883->work);
@@ -108,10 +114,15 @@ static void hmc5883_early_suspend(struct early_suspend *h)
 	mutex_unlock(&hmc5883->lock);
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 static void hmc5883_late_resume(struct early_suspend *h)
 {
 	struct hmc5883_data *hmc5883 = container_of(h, struct hmc5883_data, es);
-
+#else
+static void hmc5883_last_resume(struct device *dev)
+{
+	struct hmc5883_data *hmc5883 = dev_get_drvdata(dev);
+#endif
 	dev_dbg(&hmc5883->client->dev, "enter %s\n", __func__);
 
 	mutex_lock(&hmc5883->lock);
@@ -122,16 +133,21 @@ static void hmc5883_late_resume(struct early_suspend *h)
 
 	mutex_unlock(&hmc5883->lock);
 }
-#endif
 
 #ifdef CONFIG_PM
 static int hmc5883_suspend(struct device *dev)
 {
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	hmc5883_first_suspend(dev);
+#endif
 	return 0;
 }
 
 static int hmc5883_resume(struct device *dev)
 {
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	hmc5883_last_resume(dev);
+#endif
 	return 0;
 }
 #endif
@@ -451,7 +467,9 @@ static int hmc5883_remove(struct i2c_client *client)
 
 	sysfs_remove_group(&client->dev.kobj, &hmc5883_attr_group);
 	input_unregister_device(hmc5883->input);
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&hmc5883->es);
+#endif
 
 	mutex_unlock(&hmc5883->lock);
 
