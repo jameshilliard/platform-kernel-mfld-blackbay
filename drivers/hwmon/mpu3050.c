@@ -260,7 +260,9 @@ struct mpu_data {
 	struct i2c_client	*client;
 	struct mutex		lock;
 	struct input_dev	*input_dev;
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend	es;
+#endif
 	int			poll_interval;
 	int			enabled;
 	int			gpio;
@@ -577,7 +579,11 @@ out:
 static void mpu_early_suspend(struct early_suspend *h)
 {
 	struct mpu_data *mpu = container_of(h, struct mpu_data, es);
-
+#else
+static void mpu_first_suspend(struct device *dev)
+{
+	struct mpu_data *mpu = dev_get_drvdata(dev);
+#endif
 	disable_irq(mpu->client->irq);
 
 	mutex_lock(&mpu->lock);
@@ -585,10 +591,16 @@ static void mpu_early_suspend(struct early_suspend *h)
 	mutex_unlock(&mpu->lock);
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 static void mpu_late_resume(struct early_suspend *h)
 {
 	struct mpu_data *mpu = container_of(h, struct mpu_data, es);
 
+#else
+static void mpu_last_resume(struct device *dev)
+{
+	struct mpu_data *mpu = dev_get_drvdata(dev);
+#endif
 	enable_irq(mpu->client->irq);
 
 	mutex_lock(&mpu->lock);
@@ -596,7 +608,6 @@ static void mpu_late_resume(struct early_suspend *h)
 		mpu_enable(mpu);
 	mutex_unlock(&mpu->lock);
 }
-#endif /* CONFIG_HAS_EARLYSUSPEND */
 
 static int __devinit mpu_setup_irq(struct mpu_data *mpu)
 {
@@ -715,7 +726,9 @@ static int __devexit mpu_remove(struct i2c_client *client)
 	}
 
 	disable_irq(mpu->client->irq);
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&mpu->es);
+#endif
 	input_unregister_device(mpu->input_dev);
 	mpu_disable(mpu);
 	remove_sysfs_interfaces(&client->dev);
@@ -726,11 +739,17 @@ static int __devexit mpu_remove(struct i2c_client *client)
 #ifdef CONFIG_PM
 static int mpu_resume(struct device *dev)
 {
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	mpu_last_resume(dev);
+#endif
 	return 0;
 }
 
 static int mpu_suspend(struct device *dev)
 {
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	mpu_first_suspend(dev);
+#endif
 	return 0;
 }
 #endif
