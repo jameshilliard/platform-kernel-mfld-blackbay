@@ -130,7 +130,9 @@ struct lps331ap_data {
 	struct delayed_work input_work;
 
 	struct input_dev *input_dev;
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend es;
+#endif
 
 	int delay_ms;
 	int enabled;
@@ -420,7 +422,11 @@ static void lps331ap_early_suspend(struct early_suspend *h)
 {
 	struct lps331ap_data *lps331ap =
 		container_of(h, struct lps331ap_data, es);
-
+#else
+static void lps331ap_first_suspend(struct device *dev)
+{
+	struct lps331ap_data *lps331ap = dev_get_drvdata(dev);
+#endif
 	mutex_lock(&lps331ap->lock);
 	lps331ap->need_resume = lps331ap->enabled;
 	if (lps331ap->enabled)
@@ -428,17 +434,22 @@ static void lps331ap_early_suspend(struct early_suspend *h)
 	mutex_unlock(&lps331ap->lock);
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 static void lps331ap_late_resume(struct early_suspend *h)
 {
 	struct lps331ap_data *lps331ap =
 		container_of(h, struct lps331ap_data, es);
 
+#else
+static void lps331ap_last_resume(struct device *dev)
+{
+	struct lps331ap_data *lps331ap = dev_get_drvdata(dev);
+#endif
 	mutex_lock(&lps331ap->lock);
 	if (lps331ap->need_resume)
 		lps331ap_enable(lps331ap);
 	mutex_unlock(&lps331ap->lock);
 }
-#endif /* CONFIG_HAS_EARLYSUSPEND */
 
 static int __devinit lps331ap_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
@@ -496,7 +507,9 @@ static int __devinit lps331ap_probe(struct i2c_client *client,
 	return 0;
 
 err_sysfs:
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&lps331ap->es);
+#endif
 	input_unregister_device(lps331ap->input_dev);
 err_input_init:
 fail_init:
@@ -510,7 +523,9 @@ static int __devexit lps331ap_remove(struct i2c_client *client)
 
 	sysfs_remove_group(&client->dev.kobj, &lps331ap_attribute_group);
 	cancel_delayed_work_sync(&lps331ap->input_work);
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&lps331ap->es);
+#endif
 	input_unregister_device(lps331ap->input_dev);
 	lps331ap_power_off(lps331ap);
 	kfree(lps331ap);
@@ -520,11 +535,17 @@ static int __devexit lps331ap_remove(struct i2c_client *client)
 #ifdef CONFIG_PM
 static int lps331ap_suspend(struct device *dev)
 {
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	lps331ap_first_suspend(dev);
+#endif
 	return 0;
 }
 
 static int lps331ap_resume(struct device *dev)
 {
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	lps331ap_last_resume(dev);
+#endif
 	return 0;
 }
 #endif /* CONFIG_PM */
