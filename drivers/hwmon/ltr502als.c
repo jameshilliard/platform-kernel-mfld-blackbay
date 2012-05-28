@@ -128,7 +128,9 @@ struct alsps_device {
 	wait_queue_head_t	ambient_workq_head;
 	int			ambient_interval;
 	unsigned int		alsps_switch;
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend	es;
+#endif
 	struct mutex		lock; /*
 				       * Prevent parallel access to state
 				       * variables, lists and registers
@@ -636,7 +638,12 @@ static void alsps_early_suspend(struct early_suspend *h)
 {
 	u8 data;
 	struct alsps_device *alsps = container_of(h, struct alsps_device, es);
-
+#else
+static void alsps_first_suspend(struct device *dev)
+{
+	u8 data;
+	struct alsps_device *alsps = dev_get_drvdata(dev);
+#endif
 	dev_dbg(&alsps->client->dev, "enter %s\n", __func__);
 
 	mutex_lock(&alsps_dev->lock);
@@ -654,23 +661,30 @@ static void alsps_early_suspend(struct early_suspend *h)
 	mutex_unlock(&alsps_dev->lock);
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 static void alsps_late_resume(struct early_suspend *h)
 {
 	struct alsps_device *alsps = container_of(h, struct alsps_device, es);
-
+#else
+static void alsps_last_resume(struct device *dev)
+{
+	struct alsps_device *alsps = dev_get_drvdata(dev);
+#endif
 	dev_dbg(&alsps->client->dev, "enter %s\n", __func__);
 
 	mutex_lock(&alsps_dev->lock);
 	ltr502_switch(alsps->alsps_switch);
 	mutex_unlock(&alsps_dev->lock);
 }
-#endif
 
 static int ltr502als_suspend(struct device *dev)
 {
 	struct i2c_client *i2c_client = to_i2c_client(dev);
 	struct alsps_client *client;
 
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	alsps_first_suspend(dev);
+#endif
 	disable_irq(i2c_client->irq);
 	enable_irq_wake(i2c_client->irq);
 	if (!mutex_trylock(&alsps_dev->lock))
@@ -687,6 +701,9 @@ fail_unlock:
 fail:
 	enable_irq(i2c_client->irq);
 	disable_irq_wake(i2c_client->irq);
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	alsps_last_resume(dev);
+#endif
 	return -EBUSY;
 }
 
@@ -696,6 +713,9 @@ static int ltr502als_resume(struct device *dev)
 
 	enable_irq(client->irq);
 	disable_irq_wake(client->irq);
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	alsps_last_resume(dev);
+#endif
 	return 0;
 }
 
@@ -820,8 +840,8 @@ static int __init ltr502als_probe(struct i2c_client *client,
 	alsps->es.level = EARLY_SUSPEND_LEVEL_DISABLE_FB + 10;
 	alsps->es.suspend = alsps_early_suspend;
 	alsps->es.resume = alsps_late_resume;
-#endif
 	register_early_suspend(&alsps->es);
+#endif
 
 	return ret;
 
@@ -856,7 +876,9 @@ static int __exit ltr502als_remove(struct i2c_client *client)
 	free_irq(client->irq, alsps);
 	misc_deregister(&proximity_dev);
 	misc_deregister(&ambient_dev);
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&alsps->es);
+#endif
 	kfree(alsps);
 	return 0;
 }
