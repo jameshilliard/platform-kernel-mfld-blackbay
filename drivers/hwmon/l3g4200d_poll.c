@@ -112,7 +112,9 @@ struct l3g4200d_data {
 	struct mutex lock;
 
 	struct input_dev *input_dev;
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend es;
+#endif
 	u8 resume_state[RESUME_ENTRIES];
 	struct delayed_work work;
 	int need_resume;
@@ -594,22 +596,32 @@ static void l3g4200d_early_suspend(struct early_suspend *h)
 {
 	struct l3g4200d_data *gyro = container_of(h, struct l3g4200d_data, es);
 
+#else
+static void l3g4200d_first_suspend(struct device *dev)
+{
+	struct l3g4200d_data *gyro = dev_get_drvdata(dev);
+#endif
 	mutex_lock(&gyro->lock);
 	gyro->need_resume = l3g4200d_enabled(gyro);
 	l3g4200d_disable(gyro);
 	mutex_unlock(&gyro->lock);
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 static void l3g4200d_late_resume(struct early_suspend *h)
 {
 	struct l3g4200d_data *gyro = container_of(h, struct l3g4200d_data, es);
 
+#else
+static void l3g4200d_last_resume(struct device *dev)
+{
+	struct l3g4200d_data *gyro = dev_get_drvdata(dev);
+#endif
 	mutex_lock(&gyro->lock);
 	if (gyro->need_resume)
 		l3g4200d_enable(gyro);
 	mutex_unlock(&gyro->lock);
 }
-#endif /* CONFIG_HAS_EARLYSUSPEND */
 
 static int l3g4200d_input_init(struct l3g4200d_data *gyro)
 {
@@ -739,10 +751,12 @@ static int l3g4200d_probe(struct i2c_client *client,
 	mutex_init(&gyro->lock);
 	INIT_DELAYED_WORK(&gyro->work, l3g4200d_poll_work);
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	gyro->es.level = EARLY_SUSPEND_LEVEL_DISABLE_FB + 10;
 	gyro->es.suspend = l3g4200d_early_suspend;
 	gyro->es.resume = l3g4200d_late_resume;
 	register_early_suspend(&gyro->es);
+#endif
 
 	dev_info(&client->dev, "probed.\n");
 	return 0;
@@ -765,7 +779,9 @@ static int l3g4200d_remove(struct i2c_client *client)
 	dev_info(&client->dev, "L3G4200D driver removing\n");
 
 	remove_sysfs_interfaces(&client->dev);
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&gyro->es);
+#endif
 
 	mutex_lock(&gyro->lock);
 	l3g4200d_disable(gyro);
@@ -785,11 +801,17 @@ static int l3g4200d_remove(struct i2c_client *client)
 
 static int l3g4200d_suspend(struct device *dev)
 {
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	l3g4200d_first_suspend(dev);
+#endif
 	return 0;
 }
 
 static int l3g4200d_resume(struct device *dev)
 {
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	l3g4200d_last_resume(dev);
+#endif
 	return 0;
 }
 
