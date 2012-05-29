@@ -199,7 +199,7 @@ int sst_sync_post_message(struct ipc_post *msg)
 			retval = -EBUSY;
 			goto out;
 		}
-		usleep_range(5000, 5000);
+		udelay(500);
 		loop_count++;
 		header.full = sst_shim_read(sst_drv_ctx->shim, SST_IPCX);
 	};

@@ -98,6 +98,50 @@ static struct miscdevice lpe_ctrl = {
 };
 
 /**
+* intel_sst_irq_thread - Interrupt service routine for SST
+*
+* @irq:	irq number of interrupt
+* @context: pointer to device structre
+*
+* This function is called by OS when SST device raises
+* an interrupt. This will be result of write in IPC register
+* Source can be busy or done interrupt
+*/
+static irqreturn_t intel_sst_irq_thread(int irq, void *context)
+{
+	struct intel_sst_drv *drv = (struct intel_sst_drv *) context;
+	union ipc_header header;
+	struct stream_info *stream ;
+	unsigned int size = 0, str_id;
+
+	header.full = sst_shim_read(drv->shim, SST_IPCD);
+	if (header.part.msg_id == IPC_SST_PERIOD_ELAPSED) {
+		sst_clear_interrupt();
+		str_id = header.part.str_id;
+		stream = &sst_drv_ctx->streams[str_id];
+		if (stream->period_elapsed)
+			stream->period_elapsed(stream->pcm_substream);
+		return IRQ_HANDLED;
+	}
+	pr_debug("%s:received IPC %x\n", __func__, header.full);
+	if (header.part.large)
+		size = header.part.data;
+	if (header.part.msg_id & REPLY_MSG) {
+		sst_drv_ctx->ipc_process_msg.header = header;
+		memcpy_fromio(sst_drv_ctx->ipc_process_msg.mailbox,
+			drv->mailbox + SST_MAILBOX_RCV, size);
+		queue_work(sst_drv_ctx->process_msg_wq,
+				&sst_drv_ctx->ipc_process_msg.wq);
+	} else {
+		sst_drv_ctx->ipc_process_reply.header = header;
+		memcpy_fromio(sst_drv_ctx->ipc_process_reply.mailbox,
+			drv->mailbox + SST_MAILBOX_RCV, size);
+		queue_work(sst_drv_ctx->process_reply_wq,
+				&sst_drv_ctx->ipc_process_reply.wq);
+	}
+	return IRQ_HANDLED;
+}
+/**
 * intel_sst_interrupt - Interrupt service routine for SST
 *
 * @irq:	irq number of interrupt
@@ -109,12 +153,9 @@ static struct miscdevice lpe_ctrl = {
 */
 static irqreturn_t intel_sst_interrupt(int irq, void *context)
 {
-	union interrupt_reg isr;
+	union interrupt_reg isr, imr;
 	union ipc_header header;
-	union interrupt_reg imr;
 	struct intel_sst_drv *drv = (struct intel_sst_drv *) context;
-	unsigned int size = 0, str_id;
-	struct stream_info *stream ;
 
 	/* Do not handle interrupt in suspended state */
 	if (drv->sst_state == SST_SUSPENDED)
@@ -122,38 +163,12 @@ static irqreturn_t intel_sst_interrupt(int irq, void *context)
 
 	/* Interrupt arrived, check src */
 	isr.full = sst_shim_read(drv->shim, SST_ISRX);
-
 	if (isr.part.busy_interrupt) {
-		header.full = sst_shim_read(drv->shim, SST_IPCD);
-		if (header.part.msg_id == IPC_SST_PERIOD_ELAPSED) {
-			sst_clear_interrupt();
-			str_id = header.part.str_id;
-			stream = &sst_drv_ctx->streams[str_id];
-			if (stream->period_elapsed)
-				stream->period_elapsed(stream->pcm_substream);
-			return IRQ_HANDLED;
-		}
-		pr_debug("received IPC %x\n", header.full);
-		if (header.part.large)
-			size = header.part.data;
-		if (header.part.msg_id & REPLY_MSG) {
-			sst_drv_ctx->ipc_process_msg.header = header;
-			memcpy_fromio(sst_drv_ctx->ipc_process_msg.mailbox,
-				drv->mailbox + SST_MAILBOX_RCV, size);
-			queue_work(sst_drv_ctx->process_msg_wq,
-					&sst_drv_ctx->ipc_process_msg.wq);
-		} else {
-			sst_drv_ctx->ipc_process_reply.header = header;
-			memcpy_fromio(sst_drv_ctx->ipc_process_reply.mailbox,
-				drv->mailbox + SST_MAILBOX_RCV, size);
-			queue_work(sst_drv_ctx->process_reply_wq,
-					&sst_drv_ctx->ipc_process_reply.wq);
-		}
 		/* mask busy interrupt */
 		imr.full = sst_shim_read(drv->shim, SST_IMRX);
 		imr.part.busy_interrupt = 1;
 		sst_shim_write(sst_drv_ctx->shim, SST_IMRX, imr.full);
-		return IRQ_HANDLED;
+		return IRQ_WAKE_THREAD;
 	} else if (isr.part.done_interrupt) {
 		/* Clear done bit */
 		header.full = sst_shim_read(drv->shim, SST_IPCX);
@@ -161,14 +176,12 @@ static irqreturn_t intel_sst_interrupt(int irq, void *context)
 		sst_shim_write(sst_drv_ctx->shim, SST_IPCX, header.full);
 		/* write 1 to clear status register */;
 		isr.part.done_interrupt = 1;
-		/* dummy register for shim workaround */
 		sst_shim_write(sst_drv_ctx->shim, SST_ISRX, isr.full);
 		queue_work(sst_drv_ctx->post_msg_wq,
 			&sst_drv_ctx->ipc_post_msg.wq);
 		return IRQ_HANDLED;
 	} else
 		return IRQ_NONE;
-
 }
 
 
@@ -322,8 +335,9 @@ static int __devinit intel_sst_probe(struct pci_dev *pci,
 
 	sst_set_fw_state_locked(sst_drv_ctx, SST_UN_INIT);
 	/* Register the ISR */
-	ret = request_irq(pci->irq, intel_sst_interrupt,
-		IRQF_SHARED, SST_DRV_NAME, sst_drv_ctx);
+	ret = request_threaded_irq(pci->irq, intel_sst_interrupt,
+			intel_sst_irq_thread, IRQF_SHARED, SST_DRV_NAME,
+			sst_drv_ctx);
 	if (ret)
 		goto do_unmap_dram;
 	pr_debug("Registered IRQ 0x%x\n", pci->irq);
