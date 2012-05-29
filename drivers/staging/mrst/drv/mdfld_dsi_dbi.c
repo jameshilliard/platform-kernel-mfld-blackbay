@@ -643,6 +643,7 @@ int mdfld_dsi_dbi_async_flip_fb_update(struct drm_device *dev, int pipe)
 	struct mdfld_dsi_pkg_sender *sender = NULL;
 	int ret = IMG_TRUE;
 	int err = 0;
+	u32 damage_mask = 0;
 
 	u32 dsplinoff_reg = DSPALINOFF;
 	u32 dspsurf_reg = DSPASURF;
@@ -662,25 +663,35 @@ int mdfld_dsi_dbi_async_flip_fb_update(struct drm_device *dev, int pipe)
 		goto fun_exit;
 	}
 
-	sender = mdfld_dsi_encoder_get_pkg_sender(&dbi_output->base);
-
-	/* refresh plane changes */
-	REG_WRITE(dsplinoff_reg, REG_READ(dsplinoff_reg));
-	REG_WRITE(dspsurf_reg, REG_READ(dspsurf_reg));
-	REG_READ(dspsurf_reg);
-
-	err = mdfld_dsi_send_dcs(sender,
-			   write_mem_start,
-			   NULL,
-			   0,
-			   CMD_DATA_SRC_PIPE,
-			   MDFLD_DSI_SEND_PACKAGE);
-
-	if (err) {
-		DRM_ERROR(
-		"Error returned from mdfld_dsi_send_dcs: %d\n", ret);
-		ret = IMG_FALSE;
+	if (pipe == 0)
+		damage_mask = dev_priv->dsr_fb_update & MDFLD_DSR_DAMAGE_MASK_0;
+	else if (pipe == 2)
+		damage_mask = dev_priv->dsr_fb_update & MDFLD_DSR_DAMAGE_MASK_2;
+	else
 		goto fun_exit;
+
+	if (damage_mask) {
+		sender = mdfld_dsi_encoder_get_pkg_sender(&dbi_output->base);
+
+		/* refresh plane changes */
+		REG_WRITE(dsplinoff_reg, REG_READ(dsplinoff_reg));
+		REG_WRITE(dspsurf_reg, REG_READ(dspsurf_reg));
+		REG_READ(dspsurf_reg);
+
+		err = mdfld_dsi_send_dcs(sender,
+				write_mem_start,
+				NULL,
+				0,
+				CMD_DATA_SRC_PIPE,
+				MDFLD_DSI_SEND_PACKAGE);
+
+		if (err) {
+			DRM_ERROR(
+			"Error returned from mdfld_dsi_send_dcs: %d\n", ret);
+			ret = IMG_FALSE;
+			goto fun_exit;
+		}
+		dev_priv->dsr_fb_update &= ~damage_mask;
 	}
 
 fun_exit:
