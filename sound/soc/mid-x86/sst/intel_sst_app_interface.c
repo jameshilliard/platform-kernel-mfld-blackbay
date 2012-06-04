@@ -258,10 +258,11 @@ static int intel_sst_mmap_play_capture(u32 str_id,
 	struct snd_sst_mmap_buff_entry *tmp_buf;
 
 	pr_debug("called for str_id %d\n", str_id);
-	stream = get_stream_info(str_id);
-	if (!stream)
+	retval = sst_validate_strid(str_id);
+	if (retval)
 		return -EINVAL;
 
+	stream = &sst_drv_ctx->streams[str_id];
 	if (stream->mmapped != true)
 		return -EIO;
 
@@ -595,9 +596,10 @@ static int intel_sst_read_write(unsigned int str_id, char __user *buf,
 	struct iovec iovec;
 	unsigned long nr_segs;
 
-	stream = get_stream_info(str_id);
-	if (!stream)
+	retval = sst_validate_strid(str_id);
+	if (retval)
 		return -EINVAL;
+	stream = &sst_drv_ctx->streams[str_id];
 	if (stream->mmapped == true) {
 		pr_warn("user write and stream is mapped\n");
 		return -EIO;
@@ -680,9 +682,10 @@ ssize_t intel_sst_aio_write(struct kiocb *kiocb, const struct iovec *iov,
 		return -EINVAL;
 
 	pr_debug("called for str_id %d\n", str_id);
-	stream = get_stream_info(str_id);
-	if (!stream)
+	retval = sst_validate_strid(str_id);
+	if (retval)
 		return -EINVAL;
+	stream = &sst_drv_ctx->streams[str_id];
 	if (stream->mmapped == true)
 		return -EIO;
 	if (stream->status == STREAM_UN_INIT ||
@@ -760,9 +763,10 @@ ssize_t intel_sst_aio_read(struct kiocb *kiocb, const struct iovec *iov,
 	}
 
 	pr_debug("called for str_id %d\n", str_id);
-	stream = get_stream_info(str_id);
-	if (!stream)
+	retval = sst_validate_strid(str_id);
+	if (retval)
 		return -EINVAL;
+	stream = &sst_drv_ctx->streams[str_id];
 	if (stream->mmapped == true)
 		return -EIO;
 	if (stream->status == STREAM_UN_INIT ||
@@ -1245,11 +1249,10 @@ long intel_sst_ioctl(struct file *file_ptr, unsigned int cmd, unsigned long arg)
 			retval = -EINVAL;
 			break;
 		}
-		stream = get_stream_info(str_id);
-		if (!stream) {
-			retval = -EINVAL;
+		retval = sst_validate_strid(str_id);
+		if (retval)
 			break;
-		}
+		stream = &sst_drv_ctx->streams[str_id];
 		mutex_lock(&stream->lock);
 		if (stream->status == STREAM_INIT &&
 			stream->need_draining != true) {
