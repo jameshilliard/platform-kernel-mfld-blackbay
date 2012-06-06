@@ -42,6 +42,7 @@
 #include <sound/soc.h>
 #include <sound/jack.h>
 #include <sound/tlv.h>
+#include <sound/msic_audio_platform.h>
 #include "../codecs/sn95031.h"
 #include "mfld_common.h"
 
@@ -56,21 +57,40 @@ static struct snd_soc_jack_zone mfld_zones[] = {
 
 static void mfld_jack_enable_mic_bias(struct snd_soc_codec *codec)
 {
+	struct mfld_mc_private *ctx = snd_soc_card_get_drvdata(codec->card);
+	const struct sfi_soft_platform_id *spid = ctx->pdata->spid;
+
 	pr_debug("enable mic bias\n");
 	mutex_lock(&codec->mutex);
-	/* FIXME: GI has micbias swapped, change this when HW is fixed */
-	snd_soc_dapm_force_enable_pin(&codec->dapm, "AMIC2Bias");
+	if (spid->platform_family_id == INTEL_MFLD_PHONE &&
+		spid->product_line_id == INTEL_MFLDP_LEX_ENG &&
+		spid->hardware_id < MFLDP_LEX_PR21) {
+		/* Lex PR1.1 has micbias swapped */
+		snd_soc_dapm_force_enable_pin(&codec->dapm, "AMIC2Bias");
+	} else {
+		snd_soc_dapm_force_enable_pin(&codec->dapm, "AMIC1Bias");
+	}
 	snd_soc_dapm_sync(&codec->dapm);
 	mutex_unlock(&codec->mutex);
 }
 
 static void mfld_jack_disable_mic_bias(struct snd_soc_codec *codec)
 {
+	struct mfld_mc_private *ctx = snd_soc_card_get_drvdata(codec->card);
+	const struct sfi_soft_platform_id *spid = ctx->pdata->spid;
+
 	pr_debug("disable mic bias\n");
 	mutex_lock(&codec->mutex);
-	snd_soc_dapm_disable_pin(&codec->dapm, "AMIC2Bias");
+	if (spid->platform_family_id == INTEL_MFLD_PHONE
+		&& spid->product_line_id == INTEL_MFLDP_LEX_ENG
+		&& spid->hardware_id < MFLDP_LEX_PR21) {
+		snd_soc_dapm_disable_pin(&codec->dapm, "AMIC2Bias");
+	} else {
+		snd_soc_dapm_disable_pin(&codec->dapm, "AMIC1Bias");
+	}
 	snd_soc_dapm_sync(&codec->dapm);
 	mutex_unlock(&codec->mutex);
+
 }
 
 static int mfld_get_headset_state(struct snd_soc_jack *jack)
@@ -689,6 +709,7 @@ static int __devinit snd_mfld_mc_probe(struct ipc_device *ipcdev)
 		pr_debug("snd_soc_register_card failed %d\n", ret_val);
 		goto freeirq;
 	}
+	ctx->pdata = ipcdev->dev.platform_data;
 	ipc_set_drvdata(ipcdev, &snd_soc_card_mfld);
 	pr_debug("successfully exited probe\n");
 	return ret_val;

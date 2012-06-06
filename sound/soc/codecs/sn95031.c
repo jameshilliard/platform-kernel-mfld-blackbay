@@ -39,6 +39,7 @@
 #include <sound/initval.h>
 #include <sound/tlv.h>
 #include <sound/jack.h>
+#include <sound/sn95031_platform.h>
 #include "sn95031.h"
 
 #define SN95031_RATES (SNDRV_PCM_RATE_8000_96000)
@@ -682,18 +683,150 @@ static const struct snd_soc_dapm_route sn95031_audio_map[] = {
 
 	/* AMIC2 */
 	{ "Mic_InputR Capture Route", "AMIC", "MIC2 Enable"},
-#if (defined(CONFIG_SND_MFLD_MACHINE_GI) \
-		|| defined(CONFIG_SND_MFLD_MACHINE_GI_MODULE))
-	{ "MIC1 Enable", NULL, "AMIC2Bias"},
-	{ "MIC2 Enable", NULL, "AMIC1Bias"},
-	{ "AMIC1Bias", NULL, "AMIC2"},
-	{ "AMIC2Bias", NULL, "AMIC1"},
-#else
 	{ "MIC1 Enable", NULL, "AMIC1Bias"},
 	{ "MIC2 Enable", NULL, "AMIC2Bias"},
 	{ "AMIC1Bias", NULL, "AMIC1"},
 	{ "AMIC2Bias", NULL, "AMIC2"},
-#endif
+
+	/* Linein */
+	{ "LineIn Enable Left", NULL, "LINEINL"},
+	{ "LineIn Enable Right", NULL, "LINEINR"},
+	{ "Mic_InputL Capture Route", "LineIn", "LineIn Enable Left"},
+	{ "Mic_InputR Capture Route", "LineIn", "LineIn Enable Right"},
+
+	/* ADC connection */
+	{ "ADC Left", NULL, "Mic_InputL Capture Route"},
+	{ "ADC Right", NULL, "Mic_InputR Capture Route"},
+
+	/*DMIC connections */
+	{ "DMIC1", NULL, "DMIC12supply"},
+	{ "DMIC2", NULL, "DMIC12supply"},
+	{ "DMIC3", NULL, "DMIC34supply"},
+	{ "DMIC4", NULL, "DMIC34supply"},
+	{ "DMIC5", NULL, "DMIC56supply"},
+	{ "DMIC6", NULL, "DMIC56supply"},
+
+	{ "DMIC12Bias", NULL, "DMIC1"},
+	{ "DMIC12Bias", NULL, "DMIC2"},
+	{ "DMIC34Bias", NULL, "DMIC3"},
+	{ "DMIC34Bias", NULL, "DMIC4"},
+	{ "DMIC56Bias", NULL, "DMIC5"},
+	{ "DMIC56Bias", NULL, "DMIC6"},
+
+	/*TX path inputs*/
+	{ "Txpath1 Capture Route", "ADC Left", "ADC Left"},
+	{ "Txpath2 Capture Route", "ADC Left", "ADC Left"},
+	{ "Txpath3 Capture Route", "ADC Left", "ADC Left"},
+	{ "Txpath4 Capture Route", "ADC Left", "ADC Left"},
+	{ "Txpath1 Capture Route", "ADC Right", "ADC Right"},
+	{ "Txpath2 Capture Route", "ADC Right", "ADC Right"},
+	{ "Txpath3 Capture Route", "ADC Right", "ADC Right"},
+	{ "Txpath4 Capture Route", "ADC Right", "ADC Right"},
+	{ "Txpath1 Capture Route", "DMIC1", "DMIC1"},
+	{ "Txpath2 Capture Route", "DMIC1", "DMIC1"},
+	{ "Txpath3 Capture Route", "DMIC1", "DMIC1"},
+	{ "Txpath4 Capture Route", "DMIC1", "DMIC1"},
+	{ "Txpath1 Capture Route", "DMIC2", "DMIC2"},
+	{ "Txpath2 Capture Route", "DMIC2", "DMIC2"},
+	{ "Txpath3 Capture Route", "DMIC2", "DMIC2"},
+	{ "Txpath4 Capture Route", "DMIC2", "DMIC2"},
+	{ "Txpath1 Capture Route", "DMIC3", "DMIC3"},
+	{ "Txpath2 Capture Route", "DMIC3", "DMIC3"},
+	{ "Txpath3 Capture Route", "DMIC3", "DMIC3"},
+	{ "Txpath4 Capture Route", "DMIC3", "DMIC3"},
+	{ "Txpath1 Capture Route", "DMIC4", "DMIC4"},
+	{ "Txpath2 Capture Route", "DMIC4", "DMIC4"},
+	{ "Txpath3 Capture Route", "DMIC4", "DMIC4"},
+	{ "Txpath4 Capture Route", "DMIC4", "DMIC4"},
+	{ "Txpath1 Capture Route", "DMIC5", "DMIC5"},
+	{ "Txpath2 Capture Route", "DMIC5", "DMIC5"},
+	{ "Txpath3 Capture Route", "DMIC5", "DMIC5"},
+	{ "Txpath4 Capture Route", "DMIC5", "DMIC5"},
+	{ "Txpath1 Capture Route", "DMIC6", "DMIC6"},
+	{ "Txpath2 Capture Route", "DMIC6", "DMIC6"},
+	{ "Txpath3 Capture Route", "DMIC6", "DMIC6"},
+	{ "Txpath4 Capture Route", "DMIC6", "DMIC6"},
+
+	/* PCM2 Tx path */
+	{ "TX1 Enable", NULL, "Txpath1 Capture Route"},
+	{ "TX2 Enable", NULL, "Txpath2 Capture Route"},
+	{ "TX3 Enable", NULL, "Txpath3 Capture Route"},
+	{ "TX4 Enable", NULL, "Txpath4 Capture Route"},
+	{ "PCM2_Out", NULL, "TX1 Enable"},
+	{ "PCM2_Out", NULL, "TX2 Enable"},
+	{ "PCM2_Out", NULL, "TX3 Enable"},
+	{ "PCM2_Out", NULL, "TX4 Enable"},
+	/* PCM1 Tx path */
+	{ "PCM1_Out", NULL, "TX1 Enable"},
+	{ "PCM1_Out", NULL, "TX2 Enable"},
+	{ "PCM1_Out", NULL, "TX3 Enable"},
+	{ "PCM1_Out", NULL, "TX4 Enable"},
+};
+
+/* WORKAROUND for PR1.1 HW. To be removed after EOL of PR1.1 */
+static const struct snd_soc_dapm_route sn95031_audio_map_GI_PR11[] = {
+	/* headset and earpiece map */
+	{ "HPOUTL", NULL, "Headset Left Playback" },
+	{ "HPOUTR", NULL, "Headset Right Playback" },
+	{ "EPOUT", NULL, "Earpiece Playback" },
+
+	{ "Headset Left Playback", NULL, "Headset Playback Route"},
+	{ "Headset Right Playback", NULL, "Headset Playback Route"},
+	{ "Headset Playback Route", "Enable", "Headset Left Filter"},
+	{ "Headset Playback Route", "Enable", "Headset Right Filter"},
+
+	{ "Earpiece Playback", NULL, "Headset Left Filter"},
+	{ "Headset Left Filter", NULL, "HSDAC Left"},
+	{ "Headset Right Filter", NULL, "HSDAC Right"},
+	{ "HSDAC Left", NULL, "Mode Playback Route"},
+	{ "HSDAC Right", NULL, "Mode Playback Route"},
+	{ "Mode Playback Route", "Music", "PCM2_IN"},
+
+	/* Voice Playback path*/
+	{ "Mode Playback Route", "Voice", "PCM1_IN"},
+	/* speaker map */
+	{ "IHFOUTL", "NULL", "Speaker Left Playback"},
+	{ "IHFOUTR", "NULL", "Speaker Right Playback"},
+	{ "Speaker Left Playback", "Music", "Speaker Mux Playback Route"},
+	{ "Speaker Right Playback", "Music", "Speaker Mux Playback Route"},
+	{ "Speaker Mux Playback Route", "Music", "Speaker Left Filter"},
+	{ "Speaker Mux Playback Route", "Music", "Speaker Right Filter"},
+	{ "Speaker Mux Playback Route", "Voice", "Headset Left Filter"},
+	{ "Speaker Mux Playback Route", "Voice", "Headset Right Filter"},
+	{ "Speaker Left Filter", NULL, "IHFDAC Left"},
+	{ "Speaker Right Filter", NULL, "IHFDAC Right"},
+
+	/* vibra map */
+	{ "VIB1OUT", NULL, "Vibra1 Playback"},
+	{ "Vibra1 Playback", NULL, "Vibra1 Enable Mux"},
+	{ "Vibra1 Enable Mux", "PWM", "Vibra1 DAC"},
+	{ "Vibra1 Enable Mux", "SPI", "VIB1SPI"},
+
+	{ "VIB2OUT", NULL, "Vibra2 Playback"},
+	{ "Vibra2 Playback", NULL, "Vibra2 Enable Mux"},
+	{ "Vibra2 Enable Mux", "PWM", "Vibra2 DAC"},
+	{ "Vibra2 Enable Mux", "SPI", "VIB2SPI"},
+
+	/* lineout */
+	{ "LINEOUTL", NULL, "Lineout Left Playback"},
+	{ "LINEOUTR", NULL, "Lineout Right Playback"},
+	{ "Lineout Left Playback", NULL, "Headset Left Filter"},
+	{ "Lineout Left Playback", NULL, "Speaker Left Filter"},
+	{ "Lineout Left Playback", NULL, "Vibra1 DAC"},
+	{ "Lineout Right Playback", NULL, "Headset Right Filter"},
+	{ "Lineout Right Playback", NULL, "Speaker Right Filter"},
+	{ "Lineout Right Playback", NULL, "Vibra2 DAC"},
+
+	/* Headset (AMIC1) mic */
+	{ "Mic_InputL Capture Route", "AMIC", "MIC1 Enable"},
+
+	/* AMIC2 */
+	{ "Mic_InputR Capture Route", "AMIC", "MIC2 Enable"},
+	{ "MIC1 Enable", NULL, "AMIC2Bias"},
+	{ "MIC2 Enable", NULL, "AMIC1Bias"},
+	{ "AMIC1Bias", NULL, "AMIC2"},
+	{ "AMIC2Bias", NULL, "AMIC1"},
+
 	/* Linein */
 	{ "LineIn Enable Left", NULL, "LINEINL"},
 	{ "LineIn Enable Right", NULL, "LINEINR"},
@@ -1187,7 +1320,6 @@ static int sn95031_codec_probe(struct snd_soc_codec *codec)
 
 	snd_soc_add_controls(codec, sn95031_snd_controls,
 			     ARRAY_SIZE(sn95031_snd_controls));
-
 	snd_soc_codec_set_drvdata(codec, sn95031_ctx);
 	return 0;
 }
@@ -1213,14 +1345,30 @@ struct snd_soc_codec_driver sn95031_codec = {
 	.set_params	= sn95031_codec_set_params,
 	.dapm_widgets	= sn95031_dapm_widgets,
 	.num_dapm_widgets	= ARRAY_SIZE(sn95031_dapm_widgets),
+#if 0
 	.dapm_routes	= sn95031_audio_map,
 	.num_dapm_routes	= ARRAY_SIZE(sn95031_audio_map),
+#endif
 	.set_pll	= sn95031_codec_set_pll,
 };
 
 static int __devinit sn95031_device_probe(struct platform_device *pdev)
 {
+	struct sn95031_platform_data *pdata = pdev->dev.platform_data;
+	const struct sfi_soft_platform_id *spid = pdata->spid;
+
 	pr_debug("codec device probe called for %s\n", dev_name(&pdev->dev));
+
+	/* WORKAROUND: PR 1.1 Mic bias lines are swapped */
+	if (spid->platform_family_id == INTEL_MFLD_PHONE
+		&& spid->product_line_id == INTEL_MFLDP_LEX_ENG
+		&& spid->hardware_id < MFLDP_LEX_PR21) {
+		sn95031_codec.dapm_routes = sn95031_audio_map_GI_PR11;
+		sn95031_codec.num_dapm_routes = ARRAY_SIZE(sn95031_audio_map_GI_PR11);
+	} else {
+		sn95031_codec.dapm_routes = sn95031_audio_map;
+		sn95031_codec.num_dapm_routes = ARRAY_SIZE(sn95031_audio_map);
+	}
 	return snd_soc_register_codec(&pdev->dev, &sn95031_codec,
 			sn95031_dais, ARRAY_SIZE(sn95031_dais));
 }
