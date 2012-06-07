@@ -593,6 +593,11 @@ static void smb347_otg_drive_vbus(struct smb347_charger *smb, bool enable)
 		if (smb347_is_online(smb)) {
 			smb347_charging_enable(smb);
 			smb->otg_battery_uv = false;
+			/* Small delay-interval(10-11ms) for
+			 * STAT-C to be updated
+			 */
+			usleep_range(10000, 11000);
+
 			if (smb->pdata->use_mains)
 				power_supply_changed(&smb->mains);
 			if (smb->pdata->use_usb)
