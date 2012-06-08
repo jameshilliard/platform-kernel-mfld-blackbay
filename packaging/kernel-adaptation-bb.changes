@@ -1,0 +1,50 @@
+* Tue May 29 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com>
+- Build the out-of-tree WIFI driver that MCG uses, too
+- Take kernel config from source tree (config-tizen)
+
+* Mon May 21 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com>
+- Config changes:
+- enable wl12xx sdio
+- enable ethernet bridging support
+- enable TAP/TUN network device
+- disable ANDROID_PARANOID_NETWORK -> less strict security for socket
+  creation
+- disable MD (e.g. lvm) support
+- enable devmem
+- disable module_ronx
+
+* Wed May 16 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com>
+- Rebase the hybrid kernel on top of WW19 release from MCG
+
+* Thu May 3 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com>
+
+- Update to git~9fb7740 from MCG ICS tree
+- Update OTC PVR patches to latest version (now as individual patches
+  instead of one big diff
+- Add pvr-video patches from Topi Pohjolainen
+- New TMD 6x10 display panel patchset from Peng Li
+- Backport SMACK changes from 3.3 and enable smack in config
+- Add cmdline file (for Pre-OS)
+
+* Sat Mar 31 2012 Arron Wang <arron.wang@intel.com>
+- add nfc-tizen-20120328.patch to enable NFC feature for PR3
+
+* Wed Mar 14 2012 Jarkko Sakkinen <jarkko.sakkinen@intel.com>
+- 0001-security-new-security_inode_init_security-API-adds-f.patch
+- 0001-tmpfs-security-xattr-setting-on-inode-creation.patch
+
+* Tue Feb 21 2012 Yan Yin <yan.yin@intel.com>
+- add 0001-Enable-proc-fs-to-print-more-than-32-groups-entries.patch to make security-server work
+
+* Fri Feb 2012 Christopher Leech <christopher.leech@linux.intel.com>
+- build wl12xx_sdio module for SDIO connected Wifi module
+
+* Fri Feb 10 2012 Anas Nashig <anas.nashif@intel.com>
+- Update config
+
+* Thu Feb 9 2012 Christopher Leech <christopher.leech@linux.intel.com>
+- Fix missing config options for PR3 display panel and sound drivers
+
+* Wed Feb 8 2012 Christopher Leech <christopher.leech@linux.intel.com>
+- BlackBay PR3 kernel, initial package from UMG Android tree
+

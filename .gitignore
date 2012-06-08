@@ -79,3 +79,7 @@ GTAGS
 *.orig
 *~
 \#*#
+
+# Tizen packaging files
+!packaging/*.patch
+!packaging/*.bz2
