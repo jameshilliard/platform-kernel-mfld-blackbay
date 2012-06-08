@@ -586,14 +586,14 @@ void dsi_lvds_toshiba_bridge_panel_on(struct drm_device *dev)
 			dev_err(&cmi_lcd_i2c_client->dev,
 					"i2c write failed (%d)\n", ret);
 
-		/*changing CABC PWM frequency to 5 Khz */
+		/* changing CABC PWM frequency to 200hz */
 		ret = i2c_smbus_write_byte_data(cmi_lcd_i2c_client,
 				PANEL_FREQ_DIVIDER_HI, 0xE0);
 		if (ret < 0)
 			dev_err(&cmi_lcd_i2c_client->dev,
 					"i2c write failed (%d)\n", ret);
 		ret = i2c_smbus_write_byte_data(cmi_lcd_i2c_client,
-				PANEL_FREQ_DIVIDER_LO, 0x64);
+				PANEL_FREQ_DIVIDER_LO, 0x04);
 		if (ret < 0)
 			dev_err(&cmi_lcd_i2c_client->dev,
 					"i2c write failed (%d)\n", ret);
