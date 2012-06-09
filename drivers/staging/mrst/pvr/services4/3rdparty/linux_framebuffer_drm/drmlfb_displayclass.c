@@ -93,6 +93,28 @@ static IMG_BOOL MRSTLFBFlip(MRSTLFB_DEVINFO *psDevInfo,
 	return IMG_TRUE;
 }
 
+static inline void MRSTFBFlipComplete(MRSTLFB_SWAPCHAIN *psSwapChain, MRSTLFB_VSYNC_FLIP_ITEM* psFlipItem, MRST_BOOL bSchedule)
+{
+	MRSTLFB_VSYNC_FLIP_ITEM *psLastItem;
+	SYS_DATA				*psSysData;
+	MRST_BOOL bMISRScheduled = MRST_FALSE;
+	SysAcquireData(&psSysData);
+	if (psSwapChain) {
+		psLastItem = &(psSwapChain->sLastItem);
+		if (psLastItem->bValid && psLastItem->bFlipped && psLastItem->bCmdCompleted == MRST_FALSE)
+		{
+			psSwapChain->psPVRJTable->pfnPVRSRVCmdComplete((IMG_HANDLE)psLastItem->hCmdComplete, MRST_TRUE);
+			psLastItem->bCmdCompleted = MRST_TRUE;
+			bMISRScheduled = MRST_TRUE;
+		}
+		if (psFlipItem)
+			psSwapChain->sLastItem = *psFlipItem;
+	}
+	if (bSchedule && !bMISRScheduled)
+		OSScheduleMISR(psSysData);
+}
+
+
 static void MRSTLFBFlipOverlay(MRSTLFB_DEVINFO *psDevInfo,
 			struct intel_overlay_context *psContext)
 {
@@ -224,6 +246,7 @@ static IMG_BOOL FlushInternalVSyncQueue(MRSTLFB_SWAPCHAIN *psSwapChain,
 	psFlipItem = &psSwapChain->psVSyncFlips[psSwapChain->ulRemoveIndex];
 	ulMaxIndex = psSwapChain->ulSwapChainLength - 1;
 
+	MRSTFBFlipComplete(psSwapChain, NULL, MRST_TRUE);
 	for(i = 0; i < psSwapChain->ulSwapChainLength; i++)
 	{
 		if (psFlipItem->bValid == MRST_FALSE)
@@ -741,7 +764,7 @@ static PVRSRV_ERROR CreateDCSwapChain(IMG_HANDLE hDevice,
 	}
 
 
-	ulSwapChainLength = ui32BufferCount + 1;
+	ulSwapChainLength = ui32BufferCount + 6;
 
 
 	if(psDstSurfAttrib->pixelformat != psDevInfo->sDisplayFormat.pixelformat
@@ -786,7 +809,6 @@ static PVRSRV_ERROR CreateDCSwapChain(IMG_HANDLE hDevice,
 		eError = PVRSRV_ERROR_OUT_OF_MEMORY;
 		goto ErrorFreeSwapChain;
 	}
-
 	ppsBuffer = (MRSTLFB_BUFFER**)MRSTLFBAllocKernelMem(sizeof(MRSTLFB_BUFFER*) * ui32BufferCount);
 	if(!ppsBuffer)
 	{
@@ -810,7 +832,7 @@ static PVRSRV_ERROR CreateDCSwapChain(IMG_HANDLE hDevice,
 	psSwapChain->ulInsertIndex = 0;
 	psSwapChain->ulRemoveIndex = 0;
 	psSwapChain->psPVRJTable = &psDevInfo->sPVRJTable;
-
+	psSwapChain->sLastItem.bValid = MRST_FALSE;
 
 
 	for (i = 0; i < ui32BufferCount; i++)
@@ -899,7 +921,6 @@ static PVRSRV_ERROR DestroyDCSwapChain(IMG_HANDLE hDevice,
 	{
 		return (PVRSRV_ERROR_INVALID_PARAMS);
 	}
-
 	psDevInfo = (MRSTLFB_DEVINFO*)hDevice;
 	psSwapChain = (MRSTLFB_SWAPCHAIN*)hSwapChain;
 
@@ -1122,10 +1143,11 @@ static PVRSRV_ERROR SwapToDCSystem(IMG_HANDLE hDevice,
 	return (PVRSRV_OK);
 }
 
+
 static MRST_BOOL MRSTLFBVSyncIHandler(MRSTLFB_DEVINFO *psDevInfo, int iPipe)
 {
 	MRST_BOOL bStatus = MRST_FALSE;
-	MRSTLFB_VSYNC_FLIP_ITEM *psFlipItem;
+	MRSTLFB_VSYNC_FLIP_ITEM *psFlipItem, *psLastItem;
 	unsigned long ulMaxIndex;
 	unsigned long ulLockFlags;
 	MRSTLFB_SWAPCHAIN *psSwapChain;
@@ -1152,7 +1174,7 @@ static MRST_BOOL MRSTLFBVSyncIHandler(MRSTLFB_DEVINFO *psDevInfo, int iPipe)
 				MRST_BOOL bScheduleMISR;
 
 				bScheduleMISR = MRST_TRUE;
-				psSwapChain->psPVRJTable->pfnPVRSRVCmdComplete((IMG_HANDLE)psFlipItem->hCmdComplete, bScheduleMISR);
+				MRSTFBFlipComplete(psSwapChain, psFlipItem, MRST_TRUE);
 				psFlipItem->bCmdCompleted = MRST_TRUE;
 			}
 
@@ -1185,7 +1207,6 @@ static MRST_BOOL MRSTLFBVSyncIHandler(MRSTLFB_DEVINFO *psDevInfo, int iPipe)
 				DRMLFBFlipBuffer2(psDevInfo, psSwapChain,
 						&psFlipItem->sPlaneContexts);
 			psFlipItem->bFlipped = MRST_TRUE;
-
 
 			break;
 		}
@@ -1264,6 +1285,7 @@ static IMG_BOOL ProcessFlip2(IMG_HANDLE hCmdCookie,
 					IMG_TRUE);
 			goto ExitErrorUnlock;
 		}
+		MRSTFBFlipComplete(psSwapChain, NULL, MRST_FALSE);
 		psSwapChain->psPVRJTable->pfnPVRSRVCmdComplete(hCmdCookie,
 								IMG_TRUE);
 #if defined(MRST_USING_INTERRUPTS)
@@ -1301,7 +1323,6 @@ static IMG_BOOL ProcessFlip2(IMG_HANDLE hCmdCookie,
 
 	if (psFlipItem->bValid == MRST_FALSE) {
 		unsigned long ulMaxIndex = psSwapChain->ulSwapChainLength - 1;
-
 		if (psSwapChain->ulInsertIndex == psSwapChain->ulRemoveIndex) {
 			/*update sprite plane context*/
 			if (DRMLFBFlipBuffer2(
@@ -1406,6 +1427,7 @@ static IMG_BOOL ProcessFlip(IMG_HANDLE  hCmdCookie,
 			goto ExitErrorUnlock;
 		}
 
+		MRSTFBFlipComplete(psSwapChain, NULL, MRST_FALSE);
 		psSwapChain->psPVRJTable->pfnPVRSRVCmdComplete(hCmdCookie, IMG_TRUE);
 
 #if defined(MRST_USING_INTERRUPTS)
@@ -1439,7 +1461,6 @@ static IMG_BOOL ProcessFlip(IMG_HANDLE  hCmdCookie,
 	if(psFlipItem->bValid == MRST_FALSE)
 	{
 		unsigned long ulMaxIndex = psSwapChain->ulSwapChainLength - 1;
-
 		if(psSwapChain->ulInsertIndex == psSwapChain->ulRemoveIndex)
 		{
 			if (DRMLFBFlipBuffer(psDevInfo,
@@ -1940,6 +1961,17 @@ static MRST_ERROR InitDev(MRSTLFB_DEVINFO *psDevInfo)
 	return MRST_OK;
 }
 
+IMG_VOID MRSTQuerySwapCommand(IMG_HANDLE hDev, IMG_HANDLE hSwap, IMG_HANDLE hBuffer, IMG_HANDLE hTag, IMG_UINT16* ID, IMG_BOOL* bAddRef)
+{
+	UNREFERENCED_PARAMETER(hDev);
+	UNREFERENCED_PARAMETER(hSwap);
+	UNREFERENCED_PARAMETER(hBuffer);
+	UNREFERENCED_PARAMETER(hTag);
+	UNREFERENCED_PARAMETER(ID);
+	*bAddRef = IMG_FALSE;
+}
+
+
 MRST_ERROR MRSTLFBInit(struct drm_device * dev)
 {
 
@@ -2033,6 +2065,7 @@ MRST_ERROR MRSTLFBInit(struct drm_device * dev)
 		psDevInfo->sDCJTable.pfnSwapToDCSystem = SwapToDCSystem;
 		psDevInfo->sDCJTable.pfnSetDCState = SetDCState;
 		psDevInfo->sDCJTable.pfnGetDCFrontBuffer = GetDCFrontBuffer;
+		psDevInfo->sDCJTable.pfnQuerySwapCommandID = MRSTQuerySwapCommand;
 
 
 		if(psDevInfo->sPVRJTable.pfnPVRSRVRegisterDCDevice (
