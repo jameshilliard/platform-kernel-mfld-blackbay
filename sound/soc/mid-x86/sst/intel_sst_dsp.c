@@ -401,41 +401,84 @@ end_release:
 	return retval;
 }
 
-int sst_dma_firmware(struct sst_dma *dma, struct sst_sg_list *sg_list)
+static inline int sst_dma_wait_for_completion(struct intel_sst_drv *sst)
 {
-	int retval = 0;
+	/* call prep and wait */
+	sst->desc->callback = sst_dma_transfer_complete;
+	sst->desc->callback_param = sst;
+
+	sst->dma_info_blk.condition = false;
+	sst->dma_info_blk.ret_code = 0;
+	sst->dma_info_blk.on = true;
+
+	sst->desc->tx_submit(sst_drv_ctx->desc);
+	return sst_wait_timeout(sst, &sst->dma_info_blk);
+}
+
+static int sst_dma_single_blk(struct sst_dma *dma, struct sst_sg_list *sg_list)
+{
 	enum dma_ctrl_flags flag = DMA_CTRL_ACK;
-	struct scatterlist *sg_src_list, *sg_dst_list;
-	int length;
-	pr_debug(" sst_dma_firmware\n");
+	struct scatterlist *sg_src_list, *sg_dst_list, *sg;
+	int length, i, retval = 0;
+	dma_addr_t src_addr, dstn_addr;
+	size_t dma_len;
+
+	pr_debug("Enter:%s\n", __func__);
 
 	sg_src_list = sg_list->src;
 	sg_dst_list = sg_list->dst;
 	length = sg_list->list_len;
+
+	for_each_sg(sg_src_list, sg, length, i) {
+		dma_len = sg->length;
+		pr_debug("memcpy for desc %d, length %d\n", i, dma_len);
+		/*  get one desc */
+		src_addr = sg_phys(sg);
+		dstn_addr = sg_phys(sg_dst_list);
+		if (sg_dst_list)
+			sg_dst_list = sg_next(sg_dst_list);
+		sst_drv_ctx->desc = dma->ch->device->device_prep_dma_memcpy(
+			dma->ch, dstn_addr, src_addr, dma_len, flag);
+		if (!sst_drv_ctx->desc) {
+			pr_err("failed to get desc for mempcy %d\n", i);
+			return -EIO;
+		}
+		retval = sst_dma_wait_for_completion(sst_drv_ctx);
+		if (retval)
+			pr_err("%s..timeout! %d\n", __func__, retval);
+	}
+	return retval;
+}
+
+static int sst_dma_lli(struct sst_dma *dma, struct sst_sg_list *sg_list)
+{
+	enum dma_ctrl_flags flag = DMA_CTRL_ACK;
+	int retval = 0;
+
+	pr_debug("Enter:%s\n", __func__);
+
+
 	sst_drv_ctx->desc = dma->ch->device->device_prep_dma_sg(dma->ch,
-					sg_dst_list, length,
-					sg_src_list, length, flag);
+					sg_list->dst, sg_list->list_len,
+					sg_list->src, sg_list->list_len, flag);
 	if (!sst_drv_ctx->desc)
 		return -EFAULT;
-	sst_drv_ctx->desc->callback = sst_dma_transfer_complete;
-	sst_drv_ctx->desc->callback_param = sst_drv_ctx;
-
-	sst_drv_ctx->dma_info_blk.condition = false;
-	sst_drv_ctx->dma_info_blk.ret_code = 0;
-	sst_drv_ctx->dma_info_blk.on = true;
-
-	sst_drv_ctx->desc->tx_submit(sst_drv_ctx->desc);
-	retval = sst_wait_timeout(sst_drv_ctx, &sst_drv_ctx->dma_info_blk);
+	retval = sst_dma_wait_for_completion(sst_drv_ctx);
 	if (retval)
-		pr_err("sst_dma_firmware..timeout!\n");
+		pr_err("%s..timeout! %d\n", __func__, retval);
 
 	return retval;
+}
+
+int sst_dma_firmware(struct sst_dma *dma, struct sst_sg_list *sg_list)
+{
+	pr_debug("Enter:%s\n", __func__);
+	return sst_dma_single_blk(dma, sg_list);
 }
 
 void sst_dma_free_resources(struct sst_dma *dma)
 {
 	pr_debug("entry:%s\n", __func__);
-
 	dma_release_channel(dma->ch);
 }
 
@@ -469,6 +512,7 @@ int sst_load_fw(const void *fw_in_mem, void *context)
 					&sst_drv_ctx->fw_sg_list);
 	if (ret_val)
 		goto free_dma;
+
 	sst_set_fw_state_locked(sst_drv_ctx, SST_FW_LOADED);
 	/* bring sst out of reset */
 	if (sst_drv_ctx->pci_id == SST_MRST_PCI_ID)
