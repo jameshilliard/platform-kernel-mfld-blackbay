@@ -2695,12 +2695,23 @@ int psb_runtime_idle(struct device *dev)
 #ifdef CONFIG_SUPPORT_TOSHIBA_MIPI_LVDS_BRIDGE
 DEFINE_MUTEX(vadd_mutex);
 static int i2c_access_count;
+struct delayed_work i2c_wa_delayed_wk;
+
+int psb_lvds_panel_suspend_noirq(struct device *dev)
+{
+	/* when system enters S3 while delayed work is not executed, it will
+	 * cause vadd keeps on in S3, then high power consumption in S3. to
+	 * avoid this, before entering S3, flush delayed work to make sure
+	 * there's no pending work */
+	flush_delayed_work_sync(&i2c_wa_delayed_wk);
+	return 0;
+}
 
 /* use access count to mark status of i2c bus 2, and make sure avdd is turned on
  * when accessing this i2c. when accaccess count reaches 1, then turn on lvds
  * panel's avdd
  */
-void vlcm_vadd_get()
+static void vlcm_vadd_get()
 {
 	mutex_lock(&vadd_mutex);
 	++i2c_access_count;
@@ -2709,7 +2720,7 @@ void vlcm_vadd_get()
 			pr_err("%s: faild to pull high VADD\n", __func__);
 			goto unlock;
 		}
-		msleep(260);
+		msleep(60);
 	}
 unlock:
 	mutex_unlock(&vadd_mutex);
@@ -2717,7 +2728,7 @@ unlock:
 
 /* decrease reference count, and turn vadd off when count reaches 0
  */
-void vlcm_vadd_put()
+static void vlcm_vadd_put(struct work_struct *work)
 {
 	mutex_lock(&vadd_mutex);
 	if (i2c_access_count == 0) {
@@ -2736,7 +2747,48 @@ void vlcm_vadd_put()
 unlock:
 	mutex_unlock(&vadd_mutex);
 }
+
+void psb_i2c_dw_fixup_get(unsigned short pcidev)
+{
+	int ret = 0;
+
+	if (pcidev == I2C_PCI_DEVICE_ID) {
+		ret = cancel_delayed_work(&i2c_wa_delayed_wk);
+		vlcm_vadd_get();
+		/* to make get/put consist, if work is canceled, after another
+		 * get, decrease access count */
+		if (ret) {
+			mutex_lock(&vadd_mutex);
+			--i2c_access_count;
+			mutex_unlock(&vadd_mutex);
+		}
+	}
+}
+
+void psb_i2c_dw_fixup_put(unsigned short pcidev)
+{
+	if (pcidev ==  I2C_PCI_DEVICE_ID) {
+		/*
+		 * before the scecond accessing i2c, access count will be 2,
+		 * flush work will cause access count descres to 1, then
+		 * the latter schedule_work can be delayed to 100ms.
+		 */
+		flush_delayed_work_sync(&i2c_wa_delayed_wk);
+		schedule_delayed_work(&i2c_wa_delayed_wk, HZ/10);
+	}
+}
+
+static int __init i2c_workaround_init(void)
+{
+	INIT_DELAYED_WORK(&i2c_wa_delayed_wk, vlcm_vadd_put);
+	i2c_dw_fixup_get = psb_i2c_dw_fixup_get;
+	i2c_dw_fixup_put = psb_i2c_dw_fixup_put;
+
+	return 0;
+}
+arch_initcall(i2c_workaround_init);
 #endif
+
 void mdfld_reset_panel_handler_work(struct work_struct *work)
 {
 	struct drm_psb_private *dev_priv =

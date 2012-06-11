@@ -542,7 +542,7 @@ void dsi_lvds_toshiba_bridge_panel_off(void)
 	usleep_range(1000, 2000);
 
 	/* try to turn vadd off */
-	vlcm_vadd_put();
+	i2c_dw_fixup_put(I2C_PCI_DEVICE_ID);
 }
 
 /* ************************************************************************* *\
@@ -557,7 +557,10 @@ void dsi_lvds_toshiba_bridge_panel_on(struct drm_device *dev)
 	printk(KERN_INFO "[DISPLAY ] %s\n", __func__);
 
 	/* get vadd count, and make sure vadd is on */
-	vlcm_vadd_get();
+	i2c_dw_fixup_get(I2C_PCI_DEVICE_ID);
+
+	/* before enabling GPIO_BL, need wait 200ms */
+	msleep(200);
 
 	if (cmi_lcd_i2c_client) {
 		int ret;

@@ -62,6 +62,7 @@
 #define PANEL_CM_GAIN		0x711
 #define PANEL_CM_HUETABLE_START	0x730
 #define PANEL_CM_HUETABLE_END	0x747 /* inclusive */
+#define I2C_PCI_DEVICE_ID	0x082E
 
 extern struct i2c_client *cmi_lcd_i2c_client;
 

@@ -128,8 +128,9 @@ void acquire_ospm_lock(void);
 void release_ospm_lock(void);
 
 #ifdef CONFIG_SUPPORT_TOSHIBA_MIPI_LVDS_BRIDGE
-extern void vlcm_vadd_get(void);
-extern void vlcm_vadd_put(void);
+extern void (*i2c_dw_fixup_get)(unsigned short pcidev);
+extern void (*i2c_dw_fixup_put)(unsigned short pcidev);
+extern int psb_lvds_panel_suspend_noirq(struct device *dev);
 #endif
 
 #endif /*_PSB_POWERMGMT_H_*/

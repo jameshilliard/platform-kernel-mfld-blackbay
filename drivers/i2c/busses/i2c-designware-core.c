@@ -34,6 +34,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/delay.h>
 #include <linux/semaphore.h>
+#include <linux/pci.h>
 #include "i2c-designware-core.h"
 
 static char *abort_sources[] = {
@@ -452,6 +453,8 @@ static int i2c_dw_handle_tx_abort(struct dw_i2c_dev *dev)
 		return -EIO;
 }
 
+void (*i2c_dw_fixup_get)(unsigned short pcidev) = NULL;
+void (*i2c_dw_fixup_put)(unsigned short pcidev) = NULL;
 /*
  * Prepare controller for a transaction and call i2c_dw_xfer_msg
  */
@@ -459,11 +462,16 @@ int
 i2c_dw_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 {
 	struct dw_i2c_dev *dev = i2c_get_adapdata(adap);
+	struct pci_dev *pdev = container_of(dev->dev, struct pci_dev, dev);
 	int ret;
 
 	dev_dbg(dev->dev, "%s: msgs: %d\n", __func__, num);
 
 	down(&dev->lock);
+
+	if (i2c_dw_fixup_get)
+		i2c_dw_fixup_get(pdev->device);
+
 	pm_runtime_get_sync(dev->dev);
 
 	INIT_COMPLETION(dev->cmd_complete);
@@ -517,6 +525,10 @@ i2c_dw_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 done:
 	pm_runtime_mark_last_busy(dev->dev);
 	pm_runtime_put_autosuspend(dev->dev);
+
+	if (i2c_dw_fixup_put)
+		i2c_dw_fixup_put(pdev->device);
+
 	up(&dev->lock);
 
 	return ret;

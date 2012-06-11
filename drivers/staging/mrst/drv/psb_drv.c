@@ -4090,6 +4090,9 @@ static const struct dev_pm_ops psb_pm_ops = {
 	.runtime_idle = psb_runtime_idle,
 	.suspend = psb_runtime_suspend,
 	.resume = psb_runtime_resume,
+#ifdef CONFIG_SUPPORT_TOSHIBA_MIPI_LVDS_BRIDGE
+	.suspend_noirq = psb_lvds_panel_suspend_noirq,
+#endif
 };
 
 static struct drm_driver driver = {
