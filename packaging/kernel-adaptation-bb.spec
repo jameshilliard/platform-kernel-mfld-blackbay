@@ -54,7 +54,6 @@ Provides: kernel-devel = %{kernel_full_version}
 Provides: kernel-devel-uname-r = %{kernel_full_version}
 Requires(pre): /usr/bin/find
 Requires: %{name} = %{version}-%{release}
-Requires: hardlink
 AutoReqProv: no
 
 %description devel
@@ -188,7 +187,6 @@ rm -rf %{buildroot}
 
 %post
 ln -sf vmlinuz-%{kernel_full_version} /boot/kernel
-
 
 %post devel
 if [ -x /usr/sbin/hardlink ]; then
