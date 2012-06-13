@@ -595,7 +595,6 @@ static long mt9e013_s_signal(struct v4l2_subdev *sd, int *signal)
 
 	switch (*signal) {
 	case ATOMISP_IOC_SIGNAL_SOF:
-		dev->frame_valid = true;
 		ret = queue_work(dev->wq, &dev->work);
 		break;
 	case ATOMISP_IOC_SIGNAL_EOF:
@@ -617,6 +616,7 @@ static void work_queue_callback(struct work_struct *work)
 						  work);
 
 	mutex_lock(&dev->input_lock);
+	dev->frame_valid = true;
 
 	if (dev->suspended_exposure_request) {
 		dev->suspended_exposure_request = false;
