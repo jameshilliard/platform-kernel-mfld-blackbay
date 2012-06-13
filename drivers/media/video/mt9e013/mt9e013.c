@@ -1991,15 +1991,65 @@ mt9e013_set_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh,
 }
 
 static int
+__mt9e013_g_parm(struct mt9e013_device *dev, struct v4l2_streamparm *param)
+{
+	memset(param, 0, sizeof(*param));
+
+	param->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	param->parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
+	param->parm.capture.capturemode = dev->run_mode;
+	param->parm.capture.timeperframe.numerator = 1;
+	param->parm.capture.timeperframe.denominator =
+				mt9e013_res[dev->fmt_idx].fps;
+
+	return 0;
+}
+
+static int
+mt9e013_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *param)
+{
+	struct mt9e013_device *dev = to_mt9e013_sensor(sd);
+	int ret;
+
+	if (param->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
+		return -EINVAL;
+
+	mutex_lock(&dev->input_lock);
+	ret = __mt9e013_g_parm(dev, param);
+	mutex_unlock(&dev->input_lock);
+
+	return ret;
+}
+
+static int
 mt9e013_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *param)
 {
 	struct mt9e013_device *dev = to_mt9e013_sensor(sd);
 	int ret;
 
-	dev->run_mode = param->parm.capture.capturemode;
+	if (param->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
+		return -EINVAL;
 
 	mutex_lock(&dev->input_lock);
+
+	dev->run_mode = param->parm.capture.capturemode;
+
 	ret = mt9e013_setup_sensor_mode(sd);
+	if (ret)
+		goto fail_unlock;
+
+	/* Reset sensor mode */
+	dev->fmt_idx = 0;
+	dev->fps = mt9e013_res[dev->fmt_idx].fps;
+	dev->pixels_per_line = mt9e013_res[dev->fmt_idx].pixels_per_line;
+	dev->lines_per_frame = mt9e013_res[dev->fmt_idx].lines_per_frame;
+	dev->coarse_itg = 0;
+	dev->fine_itg = 0;
+	dev->gain = 0;
+
+	__mt9e013_g_parm(dev, param);
+
+fail_unlock:
 	mutex_unlock(&dev->input_lock);
 	return ret;
 }
@@ -2067,6 +2117,7 @@ static const struct v4l2_subdev_video_ops mt9e013_video_ops = {
 	.g_mbus_fmt = mt9e013_g_mbus_fmt,
 	.s_mbus_fmt = mt9e013_s_mbus_fmt,
 	.s_parm = mt9e013_s_parm,
+	.g_parm = mt9e013_g_parm,
 	.g_frame_interval = mt9e013_g_frame_interval,
 };
 
