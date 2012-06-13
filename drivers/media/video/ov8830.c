@@ -2796,9 +2796,32 @@ ov8830_set_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh,
 }
 
 static int
+ov8830_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *param)
+{
+	struct ov8830_device *dev = to_ov8830_sensor(sd);
+	int ret;
+
+	if (param->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
+		return -EINVAL;
+
+	memset(param, 0, sizeof(*param));
+
+	param->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	param->parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
+	param->parm.capture.capturemode = dev->run_mode;
+	param->parm.capture.timeperframe.numerator = 1;
+	param->parm.capture.timeperframe.denominator =
+			ov8830_res[dev->fmt_idx].fps;
+	return ret;
+}
+
+static int
 ov8830_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *param)
 {
 	struct ov8830_device *dev = to_ov8830_sensor(sd);
+
+	if (param->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
+		return -EINVAL;
 
 	dev->run_mode = param->parm.capture.capturemode;
 
@@ -2815,7 +2838,16 @@ ov8830_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *param)
 		ov8830_res = ov8830_res_preview;
 		N_RES = N_RES_PREVIEW;
 	}
-	return 0;
+
+	/* Reset sensor mode */
+	dev->fmt_idx = 0;
+	dev->fps = ov8830_res[dev->fmt_idx].fps;
+	dev->pixels_per_line = ov8830_res[dev->fmt_idx].pixels_per_line;
+	dev->lines_per_frame = ov8830_res[dev->fmt_idx].lines_per_frame;
+	dev->exposure = 0;
+	dev->gain = 0;
+
+	return ov8830_g_parm(dev, param);
 }
 
 static int
@@ -2871,6 +2903,7 @@ static const struct v4l2_subdev_video_ops ov8830_video_ops = {
 	.g_mbus_fmt = ov8830_g_mbus_fmt,
 	.s_mbus_fmt = ov8830_s_mbus_fmt,
 	.s_parm = ov8830_s_parm,
+	.g_parm = ov8830_g_parm,
 	.g_frame_interval = ov8830_g_frame_interval,
 };
 
