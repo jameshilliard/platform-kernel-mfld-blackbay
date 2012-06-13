@@ -517,13 +517,13 @@ static struct drm_ioctl_desc psb_ioctls[] = {
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_STOLEN_MEMORY, psb_stolen_memory_ioctl,
 	DRM_AUTH),
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_REGISTER_RW, psb_register_rw_ioctl,
-	DRM_AUTH),
+	DRM_AUTH | DRM_UNLOCKED),
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_GTT_MAP,
 	psb_gtt_map_meminfo_ioctl,
-	DRM_AUTH),
+	DRM_AUTH | DRM_UNLOCKED),
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_GTT_UNMAP,
 	psb_gtt_unmap_meminfo_ioctl,
-	DRM_AUTH),
+	DRM_AUTH | DRM_UNLOCKED),
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_GETPAGEADDRS,
 	psb_getpageaddrs_ioctl,
 	DRM_AUTH),
@@ -1802,6 +1802,7 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 
 	mutex_init(&dev_priv->dsr_mutex);
 	mutex_init(&dev_priv->gamma_csc_lock);
+	mutex_init(&dev_priv->overlay_lock);
 
 	spin_lock_init(&dev_priv->reloc_lock);
 	spin_lock_init(&dev_priv->dsr_lock);
@@ -3122,7 +3123,8 @@ static void overlay_wait_vblank(struct drm_device *dev,
 	 * the vblank waiting from being interrupted by randomly mode
 	 * setting & dpms from user space.
 	 */
-	mutex_lock(&dev->mode_config.mutex);
+	if (!mutex_trylock(&dev->mode_config.mutex))
+		return;
 
 	/*
 	 * FIXME: don't enable vblank in this way.
@@ -3205,6 +3207,7 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 	UHBUsage usage =
 		arg->b_force_hw_on ? OSPM_UHB_FORCE_POWER_ON : OSPM_UHB_ONLY_IF_ON;
 
+	mutex_lock(&dev_priv->overlay_lock);
 	if (arg->display_write_mask != 0) {
 		if (ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND, usage)) {
 			if (arg->display_write_mask & REGRWBITS_PFIT_CONTROLS)
@@ -3342,6 +3345,7 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 					if (ret) {
 						printk(KERN_ERR
 							"Invalid parameter\n");
+						mutex_unlock(&dev_priv->overlay_lock);
 						return -EINVAL;
 					}
 				}
@@ -3410,6 +3414,7 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 					if (ret) {
 						printk(KERN_ERR
 							"Invalid parameter\n");
+						mutex_unlock(&dev_priv->overlay_lock);
 						return -EINVAL;
 					}
 				}
@@ -3624,6 +3629,7 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 		}
 	}
 
+	mutex_unlock(&dev_priv->overlay_lock);
 	return 0;
 }
 
