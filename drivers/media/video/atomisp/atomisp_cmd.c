@@ -2685,20 +2685,46 @@ int atomisp_shading_correction(struct atomisp_device *isp, int flag,
  */
 int atomisp_digital_zoom(struct atomisp_device *isp, int flag, __s32 *value)
 {
-	u32 zoom;
+	int zoom, zoom_max;
+
+	if (isp->params.yuv_us_en && isp->main_format) {
+		/* If upscaling is enabled, we have to ensure minimum zoom */
+		int effective_w = isp->main_format->in.width;
+		int effective_h = isp->main_format->in.height;
+		int output_w = isp->main_format->out.width;
+		int output_h = isp->main_format->out.height;
+		int zw, zh;
+
+		if (output_w <= 0 || output_h <= 0)
+			return -EDOM;
+
+		zw = 64 * effective_w / output_w;
+		zh = 64 * effective_h / output_h;
+
+		zoom_max = min(zw, zh);
+
+		if (zoom_max <= 1)
+			return -EDOM;
+	} else {
+		zoom_max = 64;
+	}
 
 	if (flag == 0) {
 		sh_css_get_zoom_factor(&zoom, &zoom);
+		zoom = 64 * zoom / zoom_max;
 		*value = 64 - zoom;
 	} else {
-		if (*value < 0)
-			return -EINVAL;
-
 		zoom = *value;
+
+		/* Limit control value between 0..64 */
+		if (zoom < 0)
+			zoom = 0;
 		if (zoom >= 64)
 			zoom = 64;
-		zoom = 64 - zoom;
 
+		/* Scale control value in reverse between CSS allowed range */
+		zoom = 64 - zoom;
+		zoom = zoom * zoom_max / 64;
 		sh_css_set_zoom_factor(zoom, zoom);
 	}
 
@@ -3262,6 +3288,7 @@ int atomisp_set_fmt(struct video_device *vdev, struct v4l2_format *f)
 	unsigned int padding_w = pad_w,
 		     padding_h = pad_h;
 	struct v4l2_streamparm sensor_parm;
+	int zoom = 0;
 	int ret;
 
 	if ((f->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) &&
@@ -3426,6 +3453,7 @@ done:
 				     pipe->format->out.height * 2);
 
 	pipe->capq.field = f->fmt.pix.field;
+	atomisp_digital_zoom(isp, 1, &zoom);
 
 	return 0;
 }
