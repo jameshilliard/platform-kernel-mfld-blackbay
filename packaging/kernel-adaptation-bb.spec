@@ -31,7 +31,7 @@ Provides: k%{kernel_full_version}
 AutoReq: no
 AutoProv: yes
 
-Source0: ftp://ftp.kernel.org/pub/linux/kernel/v3.x/linux-%{upstream_version}.tar.bz2
+Source0: %{name}-%{version}.tar.bz2
 Source1: cmdline
 Source2: ti-wlan-2fc817c.tar.bz2
 Source3: wl12xx-compat-build.sh
@@ -66,10 +66,10 @@ against the %{variant} kernel package.
 ###
 %prep
 # Unpack the kernel tarbal
-%setup -q -n linux-%{upstream_version}
+%setup -q
 
 # Unpack TI wifi driver and copy&patch its builder script
-%setup -q -T -D -a 2 -n linux-%{upstream_version}
+%setup -q -T -D -a 2
 install -m755 %{SOURCE3} .
 %patch0 -p1
 

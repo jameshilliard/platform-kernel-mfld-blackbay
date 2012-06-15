@@ -1,3 +1,9 @@
+* Fri Jun 15 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> v3.0.8@19a3b7a
+- tizen packaging: make gbs happy about the tarball name
+- tizen packaging: get rid of the hard dependency to hardlink
+- tizen packaging: update wifi driver build script patch
+- tizen packaging: Rewrite .spec
+
 * Tue May 29 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com>
 - Build the out-of-tree WIFI driver that MCG uses, too
 - Take kernel config from source tree (config-tizen)
