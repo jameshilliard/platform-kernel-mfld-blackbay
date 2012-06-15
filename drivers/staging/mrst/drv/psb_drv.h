@@ -433,6 +433,8 @@ typedef int(* pfn_screen_event_handler)(struct drm_device* psDrmDevice, int stat
 #define GCT_R10_HEADER_SIZE	16
 #define GCT_R10_DISPLAY_DESC_SIZE	28
 
+#define PSB_REG_PRINT_SIZE    40960
+
 struct drm_psb_private {
 	/*
 	 * DSI info.
@@ -1079,7 +1081,7 @@ struct drm_psb_private {
 
         /* read register value through sysfs. */
         int count;
-        char buf[256];
+	char *buf;
 
 	/*for HDMI flip chain*/
 #define DRM_PSB_HDMI_FLIP_ARRAY_SIZE 4
