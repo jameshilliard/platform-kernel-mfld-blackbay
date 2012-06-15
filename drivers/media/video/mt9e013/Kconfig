@@ -14,6 +14,7 @@ choice
 
 config VIDEO_MT9E013_BLACKBAY
 	bool "MT9E013 settings for Blackbay"
+	select VIDEO_MT9E013_LOW_FOV
 	---help---
 	  Default mt9e013 sensor settings for Blackbay
 config VIDEO_MT9E013_LEXINGTON
@@ -25,3 +26,10 @@ config VIDEO_MT9E013_ENZO
 	---help---
 	  Default mt9e013 sensor settings for Enzo
 endchoice
+
+config VIDEO_MT9E013_LOW_FOV
+	bool "Micron mt9e013 sensor low FOV modes"
+	depends on VIDEO_MT9E013
+	default n
+	---help---
+	  Enable low field-of-view (FOV) modes for Micron mt9e013 sensor.

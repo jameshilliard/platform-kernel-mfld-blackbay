@@ -279,6 +279,7 @@ static struct mt9e013_reg const mt9e013_WIDE_PREVIEW_30fps[] = {
 };
 
 /*****************************video************************/
+#ifdef CONFIG_VIDEO_MT9E013_LOW_FOV
 static struct mt9e013_reg const mt9e013_1080p_strong_dvs_30fps[] = {
 	/*	1080p strong dvs */
 	GROUPED_PARAMETER_HOLD_ENABLE,
@@ -302,6 +303,7 @@ static struct mt9e013_reg const mt9e013_1080p_strong_dvs_30fps[] = {
 	{MT9E013_16BIT, {0x0404},	0x0010	}, /*	SCALE_M	16 */
 	{MT9E013_TOK_TERM, {0}, 0}
 };
+#endif
 
 static struct mt9e013_reg const mt9e013_720p_strong_dvs_30fps[] = {
 	/*	720p strong dvs */
@@ -743,6 +745,7 @@ static struct mt9e013_resolution mt9e013_res_video[] = {
 		 .bin_factor_y =	1,
 		 .skip_frames = 0,
 	},
+#ifdef CONFIG_VIDEO_MT9E013_LOW_FOV
 	{
 		 .desc =	"1080p_strong_dvs_30fps",
 		 .width =	2336,
@@ -756,6 +759,7 @@ static struct mt9e013_resolution mt9e013_res_video[] = {
 		 .bin_factor_y =	0,
 		 .skip_frames = 0,
 	},
+#endif
 	{
 		 .desc =	"enzofullhd_strong_dvs_30fps",
 		 .width =	1640	,

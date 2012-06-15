@@ -296,6 +296,7 @@ static struct mt9e013_reg const mt9e013_PREVIEW1640_30fps[] = {
 };
 
 /*****************************video************************/
+#ifdef CONFIG_VIDEO_MT9E013_LOW_FOV
 static struct mt9e013_reg const mt9e013_1080p_strong_dvs_30fps[] = {
 	/*	1080p strong dvs */
 	GROUPED_PARAMETER_HOLD_ENABLE,
@@ -317,6 +318,31 @@ static struct mt9e013_reg const mt9e013_1080p_strong_dvs_30fps[] = {
 	/* Scaler configuration */
 	{MT9E013_16BIT, {0x0400},	0x0000	}, /*	SCALE_MODE	0 */
 	{MT9E013_16BIT, {0x0404},	0x0010	}, /*	SCALE_M	16 */
+	{MT9E013_TOK_TERM, {0}, 0}
+};
+#endif
+
+static struct mt9e013_reg const enzofullhd_strong_dvs_30fps[] = {
+	/* enzofullhd_strong_dvs_30fps */
+	GROUPED_PARAMETER_HOLD_ENABLE,
+	/* Frame size & Timing Configuration*/
+	{MT9E013_16BIT, {0x0340}, 0x060E }, /* FRAME_LENGTH_LINES 1550 */
+	{MT9E013_16BIT, {0x0342}, 0x1020 }, /* LINE_LENGTH_PCK	4128 */
+	{MT9E013_16BIT, {0x0344}, 0x0000 }, /* X_ADDR_START	0 */
+	{MT9E013_16BIT, {0x0346}, 0x0114 }, /* Y_ADDR_START	276 */
+	{MT9E013_16BIT, {0x0348}, 0x0CCF }, /* X_ADDR_END	3279 */
+	{MT9E013_16BIT, {0x034A}, 0x088D }, /* Y_ADDR_END	2189 */
+	{MT9E013_16BIT, {0x034C}, 0x0668 }, /* X_OUTPUT_SIZE	1640 */
+	{MT9E013_16BIT, {0x034E}, 0x03BC }, /* Y_OUTPUT_SIZE	956 */
+	{MT9E013_16BIT, {0x3040}, 0x04C3 }, /* READ_MODE 0 0 1 0 0 1 0 3 3 */
+	{MT9E013_16BIT | MT9E013_RMW, {0x306E}, 0x0010, 0x1}, /* TRUE_BAYER */
+	/* Initial integration time */
+	{MT9E013_16BIT, {0x3010}, 0x0130 }, /* FINE_CORRECTION	304 */
+	{MT9E013_16BIT, {0X3012}, 0x0573 }, /* COARSE_INTEGRATION_TIME	1395 */
+	{MT9E013_16BIT, {0X3014}, 0x0846 }, /* FINE_INTEGRATION_TIME	2118 */
+	/* Scaler configuration */
+	{MT9E013_16BIT, {0x0400}, 0x0000 }, /* SCALE_MODE	0 */
+	{MT9E013_16BIT, {0x0404}, 0x0010 }, /* SCALE_M	16 */
 	{MT9E013_TOK_TERM, {0}, 0}
 };
 
@@ -751,6 +777,20 @@ static struct mt9e013_resolution mt9e013_res_video[] = {
 		 .skip_frames = 0,
 	},
 	{
+		 .desc =	"enzofullhd_strong_dvs_30fps",
+		 .width =	1640	,
+		 .height =	956	,
+		 .fps =		30	,
+		 .used =	0	,
+		 .pixels_per_line = 0x1020, /* consistent with regs arrays */
+		 .lines_per_frame = 0x060E, /* consistent with regs arrays */
+		 .regs =	enzofullhd_strong_dvs_30fps	,
+		 .bin_factor_x =	1,
+		 .bin_factor_y =	1,
+		 .skip_frames = 0,
+	},
+#ifdef CONFIG_VIDEO_MT9E013_LOW_FOV
+	{
 		 .desc =	"1080p_strong_dvs_30fps",
 		 .width =	2336,
 		 .height =	1308,
@@ -763,6 +803,7 @@ static struct mt9e013_resolution mt9e013_res_video[] = {
 		 .bin_factor_y =	0,
 		 .skip_frames = 0,
 	},
+#endif
 };
 
 #define N_RES_VIDEO (ARRAY_SIZE(mt9e013_res_video))
