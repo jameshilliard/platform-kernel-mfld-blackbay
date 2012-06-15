@@ -79,17 +79,18 @@
 
 /* adc to lux calculation channel coefficients for different ranges */
 #define CH0_COEFF_RANGE0	17743
-#define CH1_COEFF_RANGE0	-11059
+#define CH1_COEFF_RANGE0	11059
 #define CH0_COEFF_RANGE1	37725
-#define CH1_COEFF_RANGE1	13363
-#define CH0_COEFF_RANGE2	16900
-#define CH1_COEFF_RANGE2	1690
-#define CH0_COEFF_RANGE3	16900
-#define CH1_COEFF_RANGE3	-490
+#define CH1_COEFF_RANGE1	-13363
+#define CH0_COEFF_RANGE2	2075
+#define CH1_COEFF_RANGE2	960
 
 #define RATIO_RANGE0		45
-#define RATIO_RANGE1		64
-#define RATIO_RANGE2		85
+#define RATIO_RANGE1		71
+#define RATIO_RANGE2		95
+
+#define WINDOW_COMP		50
+#define COEFF_SCALE		10000
 
 #define IN_THRESHOLD_RANGE	1
 #define LUX_TO_ADC_LOTHRESH	2
@@ -175,6 +176,7 @@ static int ltr301_get_lux(struct ltr301_chip *chip)
 	int ratio = 0;
 	int ch0_coeff = 0;
 	int ch1_coeff = 0;
+	int wc = 0;
 
 	ch1 = ltr301_read_word(chip, ALS_DATA_CH1_0);
 	if (ch1 < 0)
@@ -190,20 +192,20 @@ static int ltr301_get_lux(struct ltr301_chip *chip)
 	if (ratio < RATIO_RANGE0)	{
 		ch0_coeff = CH0_COEFF_RANGE0;
 		ch1_coeff = CH1_COEFF_RANGE0;
+		wc = WINDOW_COMP;
 	} else if (ratio < RATIO_RANGE1) {
 		ch0_coeff = CH0_COEFF_RANGE1;
 		ch1_coeff = CH1_COEFF_RANGE1;
-	} else if (ratio < RATIO_RANGE2) {
+	} else {
 		ch0_coeff = CH0_COEFF_RANGE2;
 		ch1_coeff = CH1_COEFF_RANGE2;
-	} else {
-		ch0_coeff = CH0_COEFF_RANGE3;
-		ch1_coeff = CH1_COEFF_RANGE3;
 	}
 
 	chip->ch0 = ch0;
 	/* ch_coeff are x10000, compensate for window loss while scaling down */
-	lux = ((ch0 * ch0_coeff) - (ch1 * ch1_coeff)) / (100 * chip->opacity);
+	lux = (ch0 * ch0_coeff + ch1 * ch1_coeff) * chip->opacity / COEFF_SCALE;
+	if (lux >= wc)
+		lux += wc;
 
 	dev_dbg(&chip->client->dev, "%s:ch0=%d, ch1=%d, lux=%d\n",
 						__func__, ch0, ch1, lux);
