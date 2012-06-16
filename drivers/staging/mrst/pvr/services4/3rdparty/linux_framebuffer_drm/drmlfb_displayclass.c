@@ -1109,7 +1109,7 @@ void MRSTLFBFlipTimerFn(unsigned long arg)
 	MRSTLFB_DEVINFO *psDevInfo = (MRSTLFB_DEVINFO *)arg;
 	unsigned long ulLockFlags;
 	MRSTLFB_SWAPCHAIN *psSwapChain;
-	printk(KERN_WARNING "MRSTLFBFlipTimerFn trigered\n");
+	MRSTLFB_VSYNC_FLIP_ITEM *psLastItem;
 
 	spin_lock_irqsave(&psDevInfo->sSwapChainLock, ulLockFlags);
 
@@ -1121,10 +1121,14 @@ void MRSTLFBFlipTimerFn(unsigned long arg)
 	}
 	if (psSwapChain->ulRemoveIndex == psSwapChain->ulInsertIndex)
 	{
-		printk(KERN_INFO "MRSTLFBFlipTimerFn: swapchain is empty\n");
-		goto ExitUnlock;
+		psLastItem = &(psSwapChain->sLastItem);
+		if (psLastItem->bValid && psLastItem->bFlipped && psLastItem->bCmdCompleted == MRST_FALSE)
+		{
+			MRSTFBFlipComplete(psSwapChain, NULL, MRST_TRUE);
+			goto ExitUnlock;
+		}
 	}
-	printk(KERN_WARNING "MRSTLFBFlipTimerFn: flush flip queue\n");
+	printk(KERN_WARNING "MRSTLFBFlipTimerFn: swapchain is not empty, flush queue\n");
 	FlushInternalVSyncQueue(psSwapChain, MRST_TRUE);
 ExitUnlock:
 	spin_unlock_irqrestore(&psDevInfo->sSwapChainLock, ulLockFlags);
@@ -1147,7 +1151,7 @@ static PVRSRV_ERROR SwapToDCSystem(IMG_HANDLE hDevice,
 static MRST_BOOL MRSTLFBVSyncIHandler(MRSTLFB_DEVINFO *psDevInfo, int iPipe)
 {
 	MRST_BOOL bStatus = MRST_FALSE;
-	MRSTLFB_VSYNC_FLIP_ITEM *psFlipItem, *psLastItem;
+	MRSTLFB_VSYNC_FLIP_ITEM *psFlipItem;
 	unsigned long ulMaxIndex;
 	unsigned long ulLockFlags;
 	MRSTLFB_SWAPCHAIN *psSwapChain;
@@ -1214,12 +1218,8 @@ static MRST_BOOL MRSTLFBVSyncIHandler(MRSTLFB_DEVINFO *psDevInfo, int iPipe)
 
 		psFlipItem = &psSwapChain->psVSyncFlips[psSwapChain->ulRemoveIndex];
 	}
-
 	if (psSwapChain->ulRemoveIndex == psSwapChain->ulInsertIndex)
-	{
 		bStatus = MRST_TRUE;
-		del_timer(&psDevInfo->sFlipTimer);
-	}
 	else
 		mod_timer(&psDevInfo->sFlipTimer, FLIP_TIMEOUT + jiffies);
 ExitUnlock:
