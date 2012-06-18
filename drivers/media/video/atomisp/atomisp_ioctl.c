@@ -1575,18 +1575,20 @@ static int atomisp_g_parm(struct file *file, void *fh,
 {
 	struct video_device *vdev = video_devdata(file);
 	struct atomisp_device *isp = video_get_drvdata(vdev);
+	int ret;
+
+	if (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
+		return -EINVAL;
 
 	mutex_lock(&isp->input_lock);
-
-	if (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-		v4l2_err(&atomisp_dev,
-			    "unsupport v4l2 buf type\n");
+	ret = v4l2_subdev_call(isp->inputs[isp->input_curr].camera,
+				video, g_parm, parm);
+	if (ret) {
+		v4l2_err(&atomisp_dev, "sensor g_parm failed\n");
 		mutex_unlock(&isp->input_lock);
-		return -EINVAL;
+		return ret;
 	}
-
 	parm->parm.capture.capturemode = isp->sw_contex.run_mode;
-
 	mutex_unlock(&isp->input_lock);
 	return 0;
 }
