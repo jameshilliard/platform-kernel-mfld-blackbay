@@ -1990,7 +1990,11 @@ static void init_hsm(void)
 	iotg->hsm.a_clr_err = 0;
 
 	if (iotg->otg.state == OTG_STATE_A_IDLE) {
+#ifdef CONFIG_HAS_WAKELOCK
 		wake_lock(&pnw->wake_lock);
+#else
+		pm_stay_awake(pnw->dev);
+#endif
 		pm_runtime_get(pnw->dev);
 	}
 
@@ -2515,7 +2519,11 @@ static void penwell_otg_work(struct work_struct *work)
 			hsm->a_bus_req = 1;
 
 			/* Prevent device enter D0i1 or S3*/
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_lock(&pnw->wake_lock);
+#else
+			pm_stay_awake(pnw->dev);
+#endif
 			pm_runtime_get(pnw->dev);
 
 			iotg->otg.state = OTG_STATE_A_IDLE;
@@ -2770,7 +2778,11 @@ static void penwell_otg_work(struct work_struct *work)
 			hsm->a_bus_req = 1;
 
 			/* Prevent device enter D0i1 or S3*/
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_lock(&pnw->wake_lock);
+#else
+			pm_stay_awake(pnw->dev);
+#endif
 			pm_runtime_get(pnw->dev);
 
 			iotg->otg.state = OTG_STATE_A_IDLE;
@@ -2849,7 +2861,11 @@ static void penwell_otg_work(struct work_struct *work)
 				*/
 				/* disallow D3 or D0i3 */
 				pm_runtime_get(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 				wake_lock(&pnw->wake_lock);
+#else
+				pm_stay_awake(pnw->dev);
+#endif
 				iotg->otg.state = OTG_STATE_B_WAIT_ACON;
 				penwell_otg_add_timer(TB_ASE0_BRST_TMR);
 			} else
@@ -2914,7 +2930,11 @@ static void penwell_otg_work(struct work_struct *work)
 
 			/* allow D3 and D0i3 */
 			pm_runtime_put(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_unlock(&pnw->wake_lock);
+#else
+			pm_relax(pnw->dev);
+#endif
 			iotg->otg.state = OTG_STATE_B_IDLE;
 		} else if (hsm->a_conn) {
 			/* Move to B_HOST state, A connected */
@@ -2947,7 +2967,11 @@ static void penwell_otg_work(struct work_struct *work)
 
 			/* allow D3 and D0i3 in A_WAIT_BCON */
 			pm_runtime_put(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_unlock(&pnw->wake_lock);
+#else
+			pm_relax(pnw->dev);
+#endif
 			iotg->otg.state = OTG_STATE_B_PERIPHERAL;
 		} else if (hsm->id == ID_ACA_C) {
 			/* Make sure current limit updated */
@@ -3004,7 +3028,11 @@ static void penwell_otg_work(struct work_struct *work)
 
 			/* allow D3 and D0i3 in A_WAIT_BCON */
 			pm_runtime_put(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_unlock(&pnw->wake_lock);
+#else
+			pm_relax(pnw->dev);
+#endif
 			iotg->otg.state = OTG_STATE_B_IDLE;
 		} else if (!hsm->b_bus_req || !hsm->a_conn
 					|| hsm->test_device) {
@@ -3028,7 +3056,11 @@ static void penwell_otg_work(struct work_struct *work)
 
 			/* allow D3 and D0i3 in A_WAIT_BCON */
 			pm_runtime_put(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_unlock(&pnw->wake_lock);
+#else
+			pm_relax(pnw->dev);
+#endif
 			iotg->otg.state = OTG_STATE_B_PERIPHERAL;
 		} else if (hsm->id == ID_ACA_C) {
 			/* Make sure current limit updated */
@@ -3056,7 +3088,11 @@ static void penwell_otg_work(struct work_struct *work)
 
 			/* Decrement the device usage counter */
 			pm_runtime_put(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_unlock(&pnw->wake_lock);
+#else
+			pm_relax(pnw->dev);
+#endif
 		} else if (hsm->id == ID_ACA_A) {
 
 			penwell_otg_update_chrg_cap(CHRG_ACA, CHRG_CURR_ACA);
@@ -3082,7 +3118,11 @@ static void penwell_otg_work(struct work_struct *work)
 
 			/* allow D3 and D0i3 in A_WAIT_BCON */
 			pm_runtime_put(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_unlock(&pnw->wake_lock);
+#else
+			pm_relax(pnw->dev);
+#endif
 
 			iotg->otg.state = OTG_STATE_A_WAIT_BCON;
 
@@ -3171,10 +3211,14 @@ static void penwell_otg_work(struct work_struct *work)
 
 			/* allow D3 and D0i3 in A_WAIT_BCON */
 			pm_runtime_put(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_unlock(&pnw->wake_lock);
 			/* at least give some time to USB HOST to enumerate
 			* devices before trying to suspend the system*/
 			wake_lock_timeout(&pnw->wake_lock, 5 * HZ);
+#else
+			pm_relax(pnw->dev);
+#endif
 
 			iotg->otg.state = OTG_STATE_A_WAIT_BCON;
 		}
@@ -3198,7 +3242,11 @@ static void penwell_otg_work(struct work_struct *work)
 
 			/* disallow D3 or D0i3 */
 			pm_runtime_get(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_lock(&pnw->wake_lock);
+#else
+			pm_stay_awake(pnw->dev);
+#endif
 			iotg->otg.state = OTG_STATE_A_WAIT_VFALL;
 		} else if (!hsm->a_vbus_vld) {
 			/* Move to A_VBUS_ERR state, over-current detected */
@@ -3217,7 +3265,11 @@ static void penwell_otg_work(struct work_struct *work)
 			penwell_otg_phy_low_power(1);
 			/* disallow D3 or D0i3 */
 			pm_runtime_get(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_lock(&pnw->wake_lock);
+#else
+			pm_stay_awake(pnw->dev);
+#endif
 			iotg->otg.state = OTG_STATE_A_VBUS_ERR;
 		} else if (hsm->b_conn) {
 			/* Move to A_HOST state, device connected */
@@ -3271,7 +3323,11 @@ static void penwell_otg_work(struct work_struct *work)
 
 			/* disallow D3 or D0i3 */
 			pm_runtime_get(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_lock(&pnw->wake_lock);
+#else
+			pm_stay_awake(pnw->dev);
+#endif
 			iotg->otg.state = OTG_STATE_A_WAIT_VFALL;
 		} else if (hsm->test_device && hsm->tst_maint_tmout) {
 
@@ -3293,7 +3349,11 @@ static void penwell_otg_work(struct work_struct *work)
 
 			/* disallow D3 or D0i3 */
 			pm_runtime_get(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_lock(&pnw->wake_lock);
+#else
+			pm_stay_awake(pnw->dev);
+#endif
 			iotg->otg.state = OTG_STATE_A_IDLE;
 		} else if (!hsm->a_vbus_vld) {
 			/* Move to A_VBUS_ERR state */
@@ -3319,7 +3379,11 @@ static void penwell_otg_work(struct work_struct *work)
 
 			/* disallow D3 or D0i3 */
 			pm_runtime_get(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_lock(&pnw->wake_lock);
+#else
+			pm_stay_awake(pnw->dev);
+#endif
 			iotg->otg.state = OTG_STATE_A_VBUS_ERR;
 		} else if (!hsm->a_bus_req && iotg->otg.host->b_hnp_enable) {
 			/* Move to A_SUSPEND state */
@@ -3351,7 +3415,11 @@ static void penwell_otg_work(struct work_struct *work)
 
 			/* disallow D3 or D0i3 */
 			pm_runtime_get(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_lock(&pnw->wake_lock);
+#else
+			pm_stay_awake(pnw->dev);
+#endif
 			iotg->otg.state = OTG_STATE_A_SUSPEND;
 		} else if (!hsm->b_conn && hsm->test_device
 						&& hsm->otg_vbus_off) {
@@ -3375,7 +3443,11 @@ static void penwell_otg_work(struct work_struct *work)
 
 			/* disallow D3 or D0i3 */
 			pm_runtime_get(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_lock(&pnw->wake_lock);
+#else
+			pm_stay_awake(pnw->dev);
+#endif
 			iotg->otg.state = OTG_STATE_A_WAIT_VFALL;
 
 		} else if (!hsm->b_conn) {
@@ -3450,7 +3522,11 @@ static void penwell_otg_work(struct work_struct *work)
 
 			/* allow D3 and D0i3 in A_WAIT_BCON */
 			pm_runtime_put(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_unlock(&pnw->wake_lock);
+#else
+			pm_relax(pnw->dev);
+#endif
 			iotg->otg.state = OTG_STATE_A_WAIT_BCON;
 		} else if (!hsm->b_conn && pnw->iotg.otg.host->b_hnp_enable) {
 			/* Move to A_PERIPHERAL state, HNP */
@@ -3495,7 +3571,11 @@ static void penwell_otg_work(struct work_struct *work)
 
 			/* allow D3 and D0i3 in A_HOST */
 			pm_runtime_put(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_unlock(&pnw->wake_lock);
+#else
+			pm_relax(pnw->dev);
+#endif
 			iotg->otg.state = OTG_STATE_A_HOST;
 		} else if (hsm->id == ID_ACA_A) {
 			penwell_otg_update_chrg_cap(CHRG_ACA, CHRG_CURR_ACA);
@@ -3569,7 +3649,11 @@ static void penwell_otg_work(struct work_struct *work)
 
 			/* allow D3 and D0i3 in A_WAIT_BCON */
 			pm_runtime_put(pnw->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_unlock(&pnw->wake_lock);
+#else
+			pm_relax(pnw->dev);
+#endif
 			iotg->otg.state = OTG_STATE_A_WAIT_BCON;
 		} else if (hsm->id == ID_A && hsm->b_bus_suspend) {
 			if (!timer_pending(&pnw->hsm_timer))
@@ -4165,7 +4249,11 @@ static int penwell_otg_probe(struct pci_dev *pdev,
 	spin_lock_init(&pnw->iotg.hnp_poll_lock);
 	spin_lock_init(&pnw->notify_lock);
 
+#ifdef CONFIG_HAS_WAKELOCK
 	wake_lock_init(&pnw->wake_lock, WAKE_LOCK_SUSPEND, "pnw_wake_lock");
+#else
+	device_init_wakeup(pnw->dev, 1);
+#endif
 
 	init_timer(&pnw->hsm_timer);
 	init_timer(&pnw->bus_mon_timer);
@@ -4341,8 +4429,11 @@ static void penwell_otg_remove(struct pci_dev *pdev)
 	/* disable OTGSC interrupt as OTGSC doesn't change in reset */
 	writel(0, pnw->iotg.base + CI_OTGSC);
 
+#ifdef CONFIG_HAS_WAKELOCK
 	wake_lock_destroy(&pnw->wake_lock);
-
+#else
+	device_set_wakeup_enable(pnw->dev, 0);
+#endif
 	if (pdev->irq)
 		free_irq(pdev->irq, pnw);
 	if (pnw->cfg_region)
