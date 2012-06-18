@@ -1360,8 +1360,12 @@ static int msic_batt_do_charging(struct msic_power_module_info *mbi,
 	}
 
 	/* prevent system from entering s3 while charger is connected */
+#ifdef CONFIG_HAS_WAKELOCK
 	if (!wake_lock_active(&mbi->wakelock))
 		wake_lock(&mbi->wakelock);
+#else
+	pm_stay_awake(msic_dev);
+#endif
 
 	retval = intel_scu_ipc_ioread8(MSIC_BATT_CHR_CHRCTRL_ADDR, &val);
 	if (retval) {
@@ -2005,9 +2009,12 @@ static void msic_batt_disconn(struct work_struct *work)
 	mutex_unlock(&mbi->batt_lock);
 
 	/* release the wake lock when charger is unplugged */
+#ifdef CONFIG_HAS_WAKELOCK
 	if (wake_lock_active(&mbi->wakelock))
 		wake_unlock(&mbi->wakelock);
-
+#else
+	pm_relax(msic_dev);
+#endif
 	power_supply_changed(&mbi->usb);
 }
 
@@ -2795,6 +2802,10 @@ static int msic_battery_probe(struct ipc_device *ipcdev)
 	ipc_set_drvdata(ipcdev, mbi);
 	msic_dev = &ipcdev->dev;
 
+#ifndef CONFIG_HAS_WAKELOCK
+	device_init_wakeup(msic_dev, 1);
+#endif
+
 	/* initialize all required framework before enabling interrupts */
 
 	/* OTG Disconnect is being called from IRQ context
@@ -3009,6 +3020,11 @@ static int msic_battery_remove(struct ipc_device *ipcdev)
 		free_irq(mbi->irq, mbi);
 		pm_runtime_get_noresume(&mbi->ipcdev->dev);
 		do_exit_ops(mbi);
+
+#ifndef CONFIG_HAS_WAKELOCK
+		device_set_wakeup_enable(msic_dev, 0);
+#endif
+
 		if (mbi->msic_intr_iomap != NULL)
 			iounmap(mbi->msic_intr_iomap);
 		device_remove_file(&ipcdev->dev, &dev_attr_charge_enable);
