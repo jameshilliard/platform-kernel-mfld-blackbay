@@ -92,8 +92,13 @@ static void update_timer_locked(struct alarm_queue *base, bool head_removed)
 		return;
 	}
 
-	if (is_wakeup && !suspended && head_removed)
+	if (is_wakeup && !suspended && head_removed) {
+#ifdef CONFIG_HAS_WAKELOCK
 		wake_unlock(&alarm_rtc_wake_lock);
+#else
+		pm_relax(&alarm_platform_dev->dev);
+#endif
+	}
 
 	if (!base->first)
 		return;
@@ -105,7 +110,11 @@ static void update_timer_locked(struct alarm_queue *base, bool head_removed)
 
 	if (is_wakeup && suspended) {
 		pr_alarm(FLOW, "changed alarm while suspened\n");
+#ifdef CONFIG_HAS_WAKELOCK
 		wake_lock_timeout(&alarm_rtc_wake_lock, 1 * HZ);
+#else
+		pm_wakeup_event(&alarm_platform_dev->dev, jiffies_to_msecs(1*HZ));
+#endif
 		return;
 	}
 
@@ -308,7 +317,11 @@ int alarm_set_rtc(struct timespec new_time)
 
 	mutex_lock(&alarm_setrtc_mutex);
 	spin_lock_irqsave(&alarm_slock, flags);
+#ifdef CONFIG_HAS_WAKELOCK
 	wake_lock(&alarm_rtc_wake_lock);
+#else
+	pm_stay_awake(&alarm_platform_dev->dev);
+#endif
 	getnstimeofday(&tmp_time);
 	for (i = 0; i < ANDROID_ALARM_SYSTEMTIME; i++) {
 		hrtimer_try_to_cancel(&alarms[i].timer);
@@ -353,7 +366,11 @@ int alarm_set_rtc(struct timespec new_time)
 		pr_alarm(ERROR, "alarm_set_rtc: "
 			"Failed to set RTC, time will be lost on reboot\n");
 err:
+#ifdef CONFIG_HAS_WAKELOCK
 	wake_unlock(&alarm_rtc_wake_lock);
+#else
+	pm_relax(&alarm_platform_dev->dev);
+#endif
 	mutex_unlock(&alarm_setrtc_mutex);
 	return ret;
 }
@@ -424,7 +441,11 @@ static void alarm_triggered_func(void *p)
 	if (!(rtc->irq_data & RTC_AF))
 		return;
 	pr_alarm(INT, "rtc alarm triggered\n");
+#ifdef CONFIG_HAS_WAKELOCK
 	wake_lock_timeout(&alarm_rtc_wake_lock, 1 * HZ);
+#else
+	pm_stay_awake(&alarm_platform_dev->dev);
+#endif
 }
 
 static struct alarm_queue *alarm_find_next_wakeup_hrtimer(void)
@@ -501,7 +522,11 @@ static int alarm_suspend(struct device *dev)
 
 			spin_lock_irqsave(&alarm_slock, flags);
 			suspended = false;
+#ifdef CONFIG_HAS_WAKELOCK
 			wake_lock_timeout(&alarm_rtc_wake_lock, 2 * HZ);
+#else
+			pm_wakeup_event(&alarm_platform_dev->dev, jiffies_to_msecs(2*HZ));
+#endif
 			update_timer_locked(&alarms[ANDROID_ALARM_RTC_WAKEUP],
 									false);
 			update_timer_locked(&alarms[
@@ -591,6 +616,9 @@ static int rtc_alarm_add_device(struct device *dev,
 		goto err3;
 	alarm_rtc_dev = rtc;
 	pr_alarm(INIT_STATUS, "using rtc device, %s, for alarms", rtc->name);
+#ifndef CONFIG_HAS_WAKELOCK
+	device_init_wakeup(dev, 1);
+#endif
 	mutex_unlock(&alarm_setrtc_mutex);
 
 	return 0;
@@ -609,6 +637,9 @@ static void rtc_alarm_remove_device(struct device *dev,
 	if (dev == &alarm_rtc_dev->dev) {
 		pr_alarm(INIT_STATUS, "lost rtc device for alarms");
 		rtc_irq_unregister(alarm_rtc_dev, &alarm_rtc_task);
+#ifndef CONFIG_HAS_WAKELOCK
+		device_set_wakeup_enable(dev, 0);
+#endif
 		platform_device_unregister(alarm_platform_dev);
 		alarm_rtc_dev = NULL;
 	}
