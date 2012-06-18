@@ -112,7 +112,11 @@ static irqreturn_t pn544_dev_irq_handler(int irq, void *dev_id)
 
 	pr_debug("%s : IRQ ENTER\n", __func__);
 
+#ifdef CONFIG_HAS_WAKELOCK
 	wake_lock_timeout(&pn544_dev->read_wake, 1*HZ);
+#else
+	pm_wakeup_event(&pn544_dev->client->dev, jiffies_to_msecs(1*HZ));
+#endif
 
 	/* Wake up waiting readers */
 	wake_up(&pn544_dev->read_wq);
@@ -199,7 +203,11 @@ static ssize_t pn544_dev_read(struct file *filp, char __user *buf,
 	/* Handle the corner case where read cycle is broken */
 	if (ret == 1 && pn544_dev->busy) {
 		pn544_dev->busy = 0;
+#ifdef CONFIG_HAS_WAKELOCK
 		wake_unlock(&pn544_dev->read_wake);
+#else
+		pm_relax(&pn544_dev->client->dev);
+#endif
 		return ret;
 	}
 
@@ -213,17 +221,29 @@ static ssize_t pn544_dev_read(struct file *filp, char __user *buf,
 	 * the suspend happens during this period, then abort the suspend.
 	 */
 	if (ret == 1) {
+#ifdef CONFIG_HAS_WAKELOCK
 		wake_lock(&pn544_dev->read_wake);
+#else
+		pm_stay_awake(&pn544_dev->client->dev);
+#endif
 		pn544_dev->busy = 1;
 	} else {
+#ifdef CONFIG_HAS_WAKELOCK
 		wake_unlock(&pn544_dev->read_wake);
+#else
+		pm_relax(&pn544_dev->client->dev);
+#endif
 		pn544_dev->busy = 0;
 
 		/* Prevent the suspend after each read cycle for 1 sec
 		 * to allow propagation of the event to upper layers of NFC
 		 * stack
 		 */
+#ifdef CONFIG_HAS_WAKELOCK
 		wake_lock_timeout(&pn544_dev->read_wake, 1*HZ);
+#else
+		pm_wakeup_event(&pn544_dev->client->dev, jiffies_to_msecs(1*HZ));
+#endif
 	}
 
 	/* Return the number of bytes read */
@@ -310,8 +330,12 @@ static int pn544_dev_release(struct inode *inode, struct file *filp)
 
 	filp->private_data = NULL;
 
+#ifdef CONFIG_HAS_WAKELOCK
 	if (wake_lock_active(&pn544_dev->read_wake))
 		wake_unlock(&pn544_dev->read_wake);
+#else
+	pm_relax(&pn544_dev->client->dev);
+#endif
 
 	return 0;
 }
@@ -426,7 +450,11 @@ static int pn544_probe(struct i2c_client *client,
 
 	/* init wakelock and queues */
 	init_waitqueue_head(&pn544_dev->read_wq);
+#ifdef CONFIG_HAS_WAKELOCK
 	wake_lock_init(&pn544_dev->read_wake, WAKE_LOCK_SUSPEND, "pn544_nfc");
+#else
+	device_init_wakeup(&client->dev, 1);
+#endif
 
 	pn544_dev->pn544_device.minor = MISC_DYNAMIC_MINOR;
 	pn544_dev->pn544_device.name = "pn544";
@@ -456,7 +484,11 @@ static int pn544_probe(struct i2c_client *client,
 err_request_irq_failed:
 	misc_deregister(&pn544_dev->pn544_device);
 err_misc_register:
+#ifdef CONFIG_HAS_WAKELOCK
 	wake_lock_destroy(&pn544_dev->read_wake);
+#else
+	device_set_wakeup_enable(&client->dev, 0);
+#endif
 	kfree(pn544_dev);
 err_exit:
 	gpio_free(platform_data->firm_gpio);
@@ -470,11 +502,19 @@ static int pn544_remove(struct i2c_client *client)
 	struct pn544_dev *pn544_dev;
 
 	pn544_dev = i2c_get_clientdata(client);
+#ifdef CONFIG_HAS_WAKELOCK
 	if (wake_lock_active(&pn544_dev->read_wake))
 		wake_unlock(&pn544_dev->read_wake);
+#else
+	pm_relax(&client->dev);
+#endif
 
 	free_irq(client->irq, pn544_dev);
+#ifdef CONFIG_HAS_WAKELOCK
 	wake_lock_destroy(&pn544_dev->read_wake);
+#else
+	device_set_wakeup_enable(&client->dev, 0);
+#endif
 	misc_deregister(&pn544_dev->pn544_device);
 	gpio_free(pn544_dev->irq_gpio);
 	gpio_free(pn544_dev->ven_gpio);
