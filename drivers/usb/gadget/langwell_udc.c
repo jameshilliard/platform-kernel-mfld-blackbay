@@ -3338,7 +3338,11 @@ static void gadget_release(struct device *_dev)
 
 	complete(dev->done);
 
+#ifdef CONFIG_HAS_WAKELOCK
 	wake_lock_destroy(&dev->wake_lock);
+#else
+	device_set_wakeup_enable(&dev->pdev->dev, 0);
+#endif
 
 	dev_dbg(&dev->pdev->dev, "<--- %s()\n", __func__);
 	kfree(dev);
@@ -3715,8 +3719,12 @@ static int langwell_udc_probe(struct pci_dev *pdev,
 	}
 #endif
 
+#ifdef CONFIG_HAS_WAKELOCK
 	wake_lock_init(&dev->wake_lock, WAKE_LOCK_SUSPEND,
 			pci_name(dev->pdev));
+#else
+	device_init_wakeup(&dev->pdev->dev, 1);
+#endif
 
 	/* done */
 	dev_info(&dev->pdev->dev, "%s\n", driver_desc);
@@ -3970,7 +3978,11 @@ static int intel_mid_start_peripheral(struct intel_mid_otg_xceiv *iotg)
 
 	dev_dbg(&dev->pdev->dev, "---> %s()\n", __func__);
 
+#ifdef CONFIG_HAS_WAKELOCK
 	wake_lock(&dev->wake_lock);
+#else
+	pm_stay_awake(&dev->pdev->dev);
+#endif
 	pm_runtime_get_sync(&dev->pdev->dev);
 
 	/* exit PHY low power suspend */
@@ -4082,7 +4094,11 @@ static int intel_mid_stop_peripheral(struct intel_mid_otg_xceiv *iotg)
 	}
 
 	pm_runtime_put(&dev->pdev->dev);
+#ifdef CONFIG_HAS_WAKELOCK
 	wake_unlock(&dev->wake_lock);
+#else
+	pm_relax(&dev->pdev->dev);
+#endif
 
 	dev_dbg(&dev->pdev->dev, "<--- %s()\n", __func__);
 	return 0;
