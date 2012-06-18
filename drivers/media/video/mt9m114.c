@@ -1318,6 +1318,33 @@ mt9m114_set_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh,
 	return 0;
 }
 
+static int
+mt9m114_g_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *param)
+{
+	struct mt9m114_device *dev = to_mt9m114_sensor(sd);
+	int ret;
+
+	if (param->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
+		return -EINVAL;
+
+	memset(param, 0, sizeof(*param));
+	param->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
+	if (dev->res >= 0 && dev->res < N_RES) {
+		param->parm.capture.capability = V4L2_CAP_TIMEPERFRAME;
+		param->parm.capture.timeperframe.numerator = 1;
+		param->parm.capture.timeperframe.denominator =
+			mt9m114_res[dev->res].fps;
+	}
+	return 0;
+}
+
+static int
+mt9m114_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *param)
+{
+	return mt9m114_g_parm(sd, param);
+}
+
 static int mt9m114_g_skip_frames(struct v4l2_subdev *sd, u32 *frames)
 {
 	int index;
@@ -1344,6 +1371,8 @@ static const struct v4l2_subdev_video_ops mt9m114_video_ops = {
 	.g_mbus_fmt = mt9m114_get_mbus_fmt,
 	.s_stream = mt9m114_s_stream,
 	.enum_framesizes = mt9m114_enum_framesizes,
+	.s_parm = mt9m114_s_parm,
+	.g_parm = mt9m114_g_parm,
 	.enum_frameintervals = mt9m114_enum_frameintervals,
 };
 
