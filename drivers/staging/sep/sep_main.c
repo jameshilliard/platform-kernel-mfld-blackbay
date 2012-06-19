@@ -79,6 +79,31 @@
 #define sep_dump_message(sep)
 #endif
 
+#define PNW_IMR_MSG_PORT      3
+#define PNW_IMR4L_MSG_REGADDR 0x50
+#define PNW_IMR4H_MSG_REGADDR 0x51
+#define PNW_IMR_ADDRESS_MASK 0x00fffffcu
+#define PNW_IMR_ADDRESS_SHIFT 8
+
+static inline u32 MDFLD_MSG_READ32(uint port, uint offset)
+{
+	int mcr = (0x10 << 24) | (port << 16) | (offset << 8);
+	uint32_t ret_val = 0;
+	struct pci_dev *pci_root = pci_get_bus_and_slot(0, 0);
+	pci_write_config_dword(pci_root, 0xD0, mcr);
+	pci_read_config_dword(pci_root, 0xD4, &ret_val);
+	pci_dev_put(pci_root);
+	return ret_val;
+}
+
+uint32_t get_imr_base(void)
+{
+	u32 low, start;
+	low = MDFLD_MSG_READ32(PNW_IMR_MSG_PORT, PNW_IMR4L_MSG_REGADDR);
+	start = (low & PNW_IMR_ADDRESS_MASK) << PNW_IMR_ADDRESS_SHIFT;
+	return start;
+}
+
 /**
  * Currenlty, there is only one SEP device per platform;
  * In event platforms in the future have more than one SEP
@@ -1155,6 +1180,8 @@ static int sep_lli_table_secure_dma(struct sep_device *sep,
 {
 	int error = 0;
 	u32 count;
+	u32 imr_base;
+
 	/* The the page of the end address of the user space buffer */
 	u32 end_page;
 	/* The page of the start address of the user space buffer */
@@ -1163,6 +1190,20 @@ static int sep_lli_table_secure_dma(struct sep_device *sep,
 	u32 num_pages;
 	/* Array of lli */
 	struct sep_lli_entry *lli_array;
+
+	/**
+	 * Please note that the app_virt_addr is only and offset
+	 * We must get the base of the IMR from the IMR register
+	 * and then add the value in app_virt addr in order to
+	 * get the address that is to be used here.
+	 */
+
+	imr_base = get_imr_base();
+
+	app_virt_addr += imr_base;
+
+	dev_dbg(&sep->pdev->dev, "[PID%d] imr base is %x\n",
+		current->pid, imr_base);
 
 	/* Set start and end pages  and num pages */
 	end_page = (app_virt_addr + data_size - 1) >> PAGE_SHIFT;
@@ -2482,8 +2523,11 @@ int sep_prepare_input_output_dma_table_in_dcb(struct sep_device *sep,
 			data_in_size = (data_in_size - tail_size);
 		}
 	}
+	dev_dbg(&sep->pdev->dev, "[PID%d] app_out_addr is %x secure_dma is %x\n",
+		current->pid, (int)app_out_address, (int)secure_dma);
+
 	/* Check if we need to build only input table or input/output */
-	if (app_out_address) {
+	if ((app_out_address != 0) || (secure_dma != false)) {
 		/* Prepare input/output tables */
 		error = sep_prepare_input_output_dma_table(sep,
 				app_in_address,
@@ -2856,8 +2900,6 @@ static long sep_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 end_function:
 	dev_dbg(&sep->pdev->dev, "[PID%d] ioctl end\n", current->pid);
-	dev_dbg(&sep->pdev->dev, "[PID%d] SEP_DRIVER_INSERT_SHARE_ADDR_CMD %x\n",
-		SEP_DRIVER_INSERT_SHARE_ADDR_CMD);
 
 	return error;
 }
