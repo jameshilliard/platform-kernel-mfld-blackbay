@@ -1397,10 +1397,12 @@ static void mdfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 		}
 #endif
 			}
-			if (get_panel_type(dev, pipe) == GI_SONY_CMD) {
-				/*reset the display island to switch DPI to DBI*/
-				ospm_power_island_down(OSPM_DISPLAY_ISLAND);
-				ospm_power_island_up(OSPM_DISPLAY_ISLAND);
+			if (!dev_priv->dsi_init_done) {
+				if (get_panel_type(dev, pipe) == GI_SONY_CMD) {
+					/*reset the display island to switch DPI to DBI*/
+					ospm_power_island_down(OSPM_DISPLAY_ISLAND);
+					ospm_power_island_up(OSPM_DISPLAY_ISLAND);
+				}
 			}
 		}
 		break;

@@ -1033,6 +1033,7 @@ static void mdfld_gi_sony_dsi_dbi_dpms(struct drm_encoder *encoder, int mode)
 		 * on work to do.
 		 */
 		mdfld_dsi_dbi_set_power(encoder, false);
+
 		bdispoff = true;
 		gbdispstatus = false;
 	}
