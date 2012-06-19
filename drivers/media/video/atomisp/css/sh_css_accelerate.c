@@ -74,14 +74,14 @@ upload_int(unsigned *sp_address, unsigned *val)
 enum sh_css_err
 sh_css_acc_load(const struct sh_css_acc_fw *firmware)
 {
+	/*
+	 * moving memory alloc out of spinlock criteria.
+	 * placing it in sh_css_acc_set_argument.
+	 */
 	struct sh_css_acc_fw_hdr *header
-		= (struct sh_css_acc_fw_hdr *)&firmware->header;
-	header->sp_args =
-		sh_css_malloc(sizeof(*header->sp_args) *
-			      header->sp.args_cnt);
-	if (!header->sp_args)
-		return sh_css_err_cannot_allocate_memory;
-	header->loaded = true;
+	    = (struct sh_css_acc_fw_hdr *)&firmware->header;
+	if (header->sp.args_cnt == 0)
+		header->loaded = true;
 	return sh_css_success;
 }
 
@@ -101,11 +101,33 @@ sh_css_acc_unload(const struct sh_css_acc_fw *firmware)
 	header->loaded   = false;
 }
 
+static enum sh_css_err
+mem_allocation_for_sp_args(struct sh_css_acc_fw *firmware)
+{
+	struct sh_css_acc_fw_hdr *header
+	    = (struct sh_css_acc_fw_hdr *)&firmware->header;
+	if (!header->loaded) {
+		if (!header->sp_args)
+			header->sp_args =
+			    sh_css_malloc(sizeof(*header->sp_args) *
+					  header->sp.args_cnt);
+		if (!header->sp_args)
+			return sh_css_err_cannot_allocate_memory;
+		header->loaded = true;
+	}
+	return sh_css_success;
+}
 /* Set argument <num> of size <size> to value <val> */
 enum sh_css_err
 sh_css_acc_set_argument(struct sh_css_acc_fw *firmware,
 			unsigned num, void *val, size_t size)
 {
+	enum sh_css_err ret;
+	ret = mem_allocation_for_sp_args(firmware);
+
+	if (ret != sh_css_success)
+		return ret;
+
 	if (num >= firmware->header.sp.args_cnt)
 		return sh_css_err_invalid_arguments;
 
@@ -247,6 +269,7 @@ sh_css_acc_start(struct sh_css_acc_fw *firmware,
 	bool is_extension = (header->type != SH_CSS_ACC_STANDALONE);
 	const struct sh_css_sp_fw *sp_fw = &header->sp.fw;
 	const unsigned char *sp_program;
+	enum sh_css_err ret;
 #if !defined(C_RUN) && !defined(HRT_UNSCHED)
 	const unsigned char *isp_program;
 #endif
@@ -254,8 +277,11 @@ sh_css_acc_start(struct sh_css_acc_fw *firmware,
 	*(const void **)&sp_fw->text = SH_CSS_ACC_SP_CODE(firmware);
 	*(const void **)&sp_fw->data = SH_CSS_ACC_SP_DATA(firmware);
 
-	if (!header->loaded)
-		return sh_css_err_invalid_arguments;
+	ret = mem_allocation_for_sp_args(firmware);
+
+	if (ret != sh_css_success)
+		return ret;
+
 	if (has_extension_args != is_extension)
 		return sh_css_err_invalid_arguments;
 

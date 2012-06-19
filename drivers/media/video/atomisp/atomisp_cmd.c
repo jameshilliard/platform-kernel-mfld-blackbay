@@ -1394,13 +1394,18 @@ int atomisp_low_light(struct atomisp_device *isp, int flag, __s32 * value)
 int atomisp_xnr(struct atomisp_device *isp, int flag, int *arg)
 {
 	int xnr_enable = (*arg == 0) ? 0 : 1;
+	unsigned long irq_flag;
 
 	if (flag == 0) {
 		*arg = isp->params.xnr_en;
 		return 0;
 	}
 
+	mutex_lock(&isp->isp_lock);
+	spin_lock_irqsave(&isp->irq_lock, irq_flag);
 	sh_css_capture_enable_xnr(xnr_enable);
+	spin_unlock_irqrestore(&isp->irq_lock, irq_flag);
+	mutex_unlock(&isp->isp_lock);
 
 	return 0;
 }
@@ -2686,6 +2691,7 @@ int atomisp_shading_correction(struct atomisp_device *isp, int flag,
 int atomisp_digital_zoom(struct atomisp_device *isp, int flag, __s32 *value)
 {
 	int zoom, zoom_max;
+	unsigned long irq_flag;
 
 	if (isp->params.yuv_us_en && isp->main_format) {
 		/* If upscaling is enabled, we have to ensure minimum zoom */
@@ -2725,7 +2731,11 @@ int atomisp_digital_zoom(struct atomisp_device *isp, int flag, __s32 *value)
 		/* Scale control value in reverse between CSS allowed range */
 		zoom = 64 - zoom;
 		zoom = zoom * zoom_max / 64;
+		mutex_lock(&isp->isp_lock);
+		spin_lock_irqsave(&isp->irq_lock, irq_flag);
 		sh_css_set_zoom_factor(zoom, zoom);
+		spin_unlock_irqrestore(&isp->irq_lock, irq_flag);
+		mutex_unlock(&isp->isp_lock);
 	}
 
 	return 0;
@@ -3780,6 +3790,7 @@ int atomisp_acc_load(struct atomisp_device *isp,
 {
 	struct sh_css_acc_fw *fw;
 	int ret;
+	unsigned long irq_flag;
 
 	mutex_lock(&isp->input_lock);
 	mutex_lock(&isp->isp_lock);
@@ -3791,7 +3802,9 @@ int atomisp_acc_load(struct atomisp_device *isp,
 		goto out;
 	}
 
+	spin_lock_irqsave(&isp->irq_lock, irq_flag);
 	ret = sh_css_load_acceleration(fw);
+	spin_unlock_irqrestore(&isp->irq_lock, irq_flag);
 	if (ret) {
 		__acc_fw_free(isp, fw);
 		v4l2_err(&atomisp_dev, "%s: Failed to load acceleration "
