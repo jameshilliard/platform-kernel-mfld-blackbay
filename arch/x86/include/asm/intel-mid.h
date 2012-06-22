@@ -16,6 +16,7 @@
 #include <linux/platform_device.h>
 
 extern u32 board_id;
+extern struct sfi_soft_platform_id spid;
 extern int intel_mid_pci_init(void);
 extern int get_gpio_by_name(const char *name);
 extern void *get_oem0_table(void);
