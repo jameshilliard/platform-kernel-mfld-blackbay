@@ -1347,7 +1347,11 @@ exit_clean_reset:
 	intel_hsi->irq_status	 = 0;
 	intel_hsi->err_status	 = 0;
 	intel_hsi->prg_cfg	 = ARASAN_RESET;
+
 	spin_unlock_irqrestore(&intel_hsi->hw_lock, flags);
+
+	/* Free all contexts to restart from scratch */
+	free_xfer_ctx(intel_hsi);
 
 	/* Re-enable all tasklets */
 	tasklet_enable(&intel_hsi->fwd_tasklet);
@@ -1355,9 +1359,6 @@ exit_clean_reset:
 
 	/* Do not forget to re-enable the interrupt */
 	enable_irq(intel_hsi->irq);
-
-	/* Free all contexts to restart from scratch */
-	free_xfer_ctx(intel_hsi);
 }
 
 /**
@@ -2410,15 +2411,14 @@ static int hsi_mid_setup(struct hsi_client *cl)
 						max(pd->rx_sg_entries[i], 1);
 	}
 
+	/* Prepare the necessary DMA contexts */
+	err = alloc_xfer_ctx(intel_hsi);
+
 	/* The controller will be configured on resume if necessary */
-	if (unlikely(intel_hsi->suspend_state == DEVICE_READY))
+	if (unlikely(!err && intel_hsi->suspend_state == DEVICE_READY))
 		err = hsi_ctrl_set_cfg(intel_hsi);
 
 	spin_unlock_irqrestore(&intel_hsi->hw_lock, flags);
-
-	/* Prepare the necessary DMA contexts */
-	if (!err)
-		err = alloc_xfer_ctx(intel_hsi);
 
 	return err;
 }
@@ -2705,8 +2705,8 @@ static int hsi_dma_complete(struct intel_controller *intel_hsi,
 	__acquires(&intel_hsi->sw_lock) __releases(&intel_hsi->sw_lock)
 	__acquires(&intel_hsi->hw_lock) __releases(&intel_hsi->hw_lock)
 {
-	struct intel_dma_ctx *dma_ctx = intel_hsi->dma_ctx[lch];
-	struct intel_dma_xfer *ongoing_xfer = dma_ctx->ongoing;
+	struct intel_dma_ctx *dma_ctx;
+	struct intel_dma_xfer *ongoing_xfer;
 	void __iomem *ctrl = intel_hsi->ctrl_io;
 	struct hsi_msg *msg;
 	int tx_not_rx;
@@ -2718,6 +2718,11 @@ static int hsi_dma_complete(struct intel_controller *intel_hsi,
 #endif
 
 	spin_lock_irqsave(&intel_hsi->sw_lock, flags);
+	dma_ctx = intel_hsi->dma_ctx[lch];
+	BUG_ON(!dma_ctx);
+
+	ongoing_xfer = dma_ctx->ongoing;
+
 	msg = ongoing_xfer->msg;
 #ifdef USE_SOFWARE_WORKAROUND_FOR_DMA_LLI
 	lli_xfer = &ongoing_xfer->with_link_list;
