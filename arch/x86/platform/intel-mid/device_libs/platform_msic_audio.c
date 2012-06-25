@@ -19,6 +19,7 @@
 #include <sound/sn95031_platform.h>
 #include <linux/platform_device.h>
 #include <linux/mfd/intel_msic.h>
+#include <linux/jack.h>
 #include <asm/intel-mid.h>
 #include "platform_ipc.h"
 #include "platform_msic_audio.h"
@@ -52,6 +53,19 @@ static struct sn95031_platform_data sn95031_pdata = {
 static struct msic_audio_platform_data msic_audio_pdata = {
 	.spid = &spid,
 };
+
+#ifdef CONFIG_JACK_MON
+static struct jack_platform_data jack_data = {
+	.usb_online             = -1,
+	.charger_online         = -1,
+	.hdmi_online            = -1,
+	.earjack_online         = 0,
+	.earkey_online          = 0,
+	.ums_online             = -1,
+	.cdrom_online           = -1,
+	.jig_online             = -1,
+};
+#endif
 
 void *msic_audio_platform_data(void *info)
 {
@@ -105,6 +119,28 @@ void *msic_audio_platform_data(void *info)
 		platform_device_put(pdev);
 		return NULL;
 	}
+
+#ifdef CONFIG_JACK_MON
+	pdev = platform_device_alloc("jack", -1);
+	if (!pdev) {
+		pr_err("failed to allocate jack platform device\n");
+		return NULL;
+	}
+
+	ret = platform_device_add_data(pdev, &jack_data, sizeof(jack_data));
+	if (ret) {
+		pr_err("failed to add platform data to jack platform device\n");
+		platform_device_put(pdev);
+		return NULL;
+	}
+
+	ret = platform_device_add(pdev);
+	if (ret) {
+		pr_err("failed to add jack platform device\n");
+		platform_device_put(pdev);
+		return NULL;
+	}
+#endif
 
 	if (strncmp(entry->name, "msic_audio", 16) == 0)
 		handle_ipc_irq_res(entry->irq, ipc_msic_audio_res);

@@ -33,6 +33,7 @@
 #include <linux/wakelock.h>
 #include <linux/gpio.h>
 #include <linux/ipc_device.h>
+#include <linux/jack.h>
 #include <asm/intel-mid.h>
 #include <asm/intel_scu_ipcutil.h>
 #include <asm/intel_mid_gpadc.h>
@@ -46,6 +47,12 @@
 
 #define MFLD_JACK_DEBOUNCE_TIME	  250 /* mS */
 #define MFLD_GPIO_HEADSET_DET_PIN 77
+
+#ifdef CONFIG_JACK_MON
+#define JACK_UEVENT_NAME        "earjack"
+#define JACK_KEY_UEVENT_NAME    "earkey"
+#define SND_JACK_NONE           0x00
+#endif
 
 /* jack detection voltage zones */
 static struct snd_soc_jack_zone mfld_zones[] = {
@@ -70,6 +77,42 @@ static void mfld_jack_disable_mic_bias(struct snd_soc_codec *codec)
 	snd_soc_dapm_sync(&codec->dapm);
 	mutex_unlock(&codec->mutex);
 }
+
+static void mfld_jack_status_set(int jack)
+{
+	if (jack < SND_JACK_BTN_0) {
+		/* JACK */
+		switch (jack) {
+		case SND_JACK_NONE:
+			pr_debug("Jack is detached\n");
+			break;
+		case SND_JACK_HEADPHONE:
+			pr_debug("Jack is Earjack3\n");
+			break;
+		case SND_JACK_HEADSET:
+			pr_debug("Jack is Earjack4\n");
+			break;
+		default:
+			pr_debug("Jack is unknown\n");
+			return;
+		}
+		jack_event_handler(JACK_UEVENT_NAME, jack);
+	} else {
+		/* JACK Key */
+		switch (jack) {
+		case SND_JACK_BTN_0:
+			pr_debug("EAR_SEND_END is pressed\n");
+			break;
+		case SND_JACK_BTN_1:
+		case SND_JACK_BTN_2:
+		default:
+			pr_debug("The key is unknown\n");
+			return;
+		}
+		jack_event_handler(JACK_KEY_UEVENT_NAME, jack);
+	}
+}
+
 
 static int mfld_get_headset_state(struct snd_soc_jack *jack)
 {
@@ -193,6 +236,9 @@ void mfld_jack_wq(struct work_struct *work)
 		pr_err("Invalid intr_id:0x%x\n", intr_id);
 		return;
 	}
+#ifdef CONFIG_JACK_MON
+	mfld_jack_status_set(status);
+#endif
 	mfld_jack_report(jack, status);
 }
 

@@ -563,6 +563,12 @@ config EMMC_IPANIC
 	 Driver which handles kernel panics and attempts to write
 	 critical debugging data to EMMC.
 
+config JACK_MON
+	tristate "Jacks Monitoring Driver"
+	default m
+	help
+	  Jacks Monitoring Driver
+
 config SCU_LOGGING
 	tristate "Intel SCU fabric debug driver"
 	default n
