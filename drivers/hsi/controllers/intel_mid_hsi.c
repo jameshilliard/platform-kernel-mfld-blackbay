@@ -499,18 +499,18 @@ static __must_check int hsi_is_resumed(struct intel_controller *intel_hsi)
  */
 static void hsi_pm_runtime_get(struct intel_controller *intel_hsi, int mode)
 {
-#ifdef CONFIG_HAS_WAKELOCK
 	unsigned long flags;
-#endif
 
 	might_sleep_if(mode == HSI_PM_SYNC);
 
-#ifdef CONFIG_HAS_WAKELOCK
 	spin_lock_irqsave(&intel_hsi->hw_lock, flags);
 	if (intel_hsi->suspend_state != DEVICE_READY)
+#ifdef CONFIG_HAS_WAKELOCK
 		wake_lock(&intel_hsi->stay_awake);
-	spin_unlock_irqrestore(&intel_hsi->hw_lock, flags);
+#else
+		pm_stay_awake(intel_hsi->pdev);
 #endif
+	spin_unlock_irqrestore(&intel_hsi->hw_lock, flags);
 
 	if (mode == HSI_PM_ASYNC) {
 		pm_runtime_get(intel_hsi->pdev);
@@ -1089,6 +1089,8 @@ static int hsi_ctrl_suspend(struct intel_controller *intel_hsi)
 
 #ifdef CONFIG_HAS_WAKELOCK
 		wake_unlock(&intel_hsi->stay_awake);
+#else
+		pm_relax(intel_hsi->pdev);
 #endif
 	}
 exit_ctrl_suspend:
@@ -3120,6 +3122,11 @@ static int hsi_controller_init(struct intel_controller *intel_hsi)
 #ifdef DISABLE_POWER_MANAGEMENT
 	wake_lock(&intel_hsi->stay_awake);
 #endif
+#else
+	device_init_wakeup(intel_hsi->pdev, 1);
+#ifdef DISABLE_POWER_MANAGEMENT
+	pm_stay_awake(intel_hsi->pdev);
+#endif
 #endif
 
 	tasklet_init(&intel_hsi->isr_tasklet, hsi_isr_tasklet,
@@ -3147,6 +3154,11 @@ static int hsi_controller_init(struct intel_controller *intel_hsi)
 		wake_unlock(&intel_hsi->stay_awake);
 #endif
 		wake_lock_destroy(&intel_hsi->stay_awake);
+#else
+#ifdef DISABLE_POWER_MANAGEMENT
+		pm_relax(intel_hsi->pdev);
+#endif
+		device_set_wakeup_enable(intel_hsi->pdev, 0);
 #endif
 	}
 
@@ -3174,6 +3186,11 @@ static void hsi_controller_exit(struct intel_controller *intel_hsi)
 	wake_unlock(&intel_hsi->stay_awake);
 #endif
 	wake_lock_destroy(&intel_hsi->stay_awake);
+#else
+#ifdef DISABLE_POWER_MANAGEMENT
+	pm_relax(intel_hsi->pdev);
+#endif
+	device_set_wakeup_enable(intel_hsi->pdev, 0);
 #endif
 }
 
