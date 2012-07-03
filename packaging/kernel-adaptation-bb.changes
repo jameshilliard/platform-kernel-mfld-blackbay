@@ -1,8 +1,33 @@
-* Fri Jun 15 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> v3.0.8@19a3b7a
+* Tue Jul 03 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> v3.0.8@6b50efd
+[ Yong Wang ]
+- intel_mid_hsi: make system susped prevention work, even if
+  Android PM is not used
+
+* Fri Jun 29 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> v3.0.8@f55b9cd
+[ Austin Zhang ]
+- Disable Android powermanagement and enable "traditional" PM in a multitude
+  of device drivers (ms5607, mpu3050, ltr502als, lsm303-compass, lps331ap
+  lis3dh, leds-kpd, l3g4200d, hmc5883, atmel mxt224)
+- Patches to prevent system entering s3 in various scenarios when not using
+  wakelocks (usb connected, charger connected, nfc data operation underway,
+  rtc alarm)
+[ vivian, zhang ]
+- Sound: import Jack Monitoring Interface from Samsung
+[ Li Peng ]
+- gfx powermanagement fixes: fix early_suspend/late_resume for the display
+- gfx: fix backlight control failure on PR3
+
+* Mon Jun 18 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> v3.0.8@8000ad6
+- tizen config: disable GL3 cached in PVR drivers
+
+* Fri Jun 15 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> v3.0.8@32d909a
 - tizen packaging: make gbs happy about the tarball name
 - tizen packaging: get rid of the hard dependency to hardlink
+
+* Mon Jun 11 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> v3.0.8@2071860
 - tizen packaging: update wifi driver build script patch
 - tizen packaging: Rewrite .spec
+- Enabled devtmpfs in config
 
 * Tue May 29 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com>
 - Build the out-of-tree WIFI driver that MCG uses, too
