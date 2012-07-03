@@ -2036,7 +2036,9 @@ static int wl1271_op_suspend(struct ieee80211_hw *hw,
 
 	/* Do not suspend when a fw recovery is in progress */
 	if (test_bit(WL1271_FLAG_RECOVERY_WORK_PENDING, &wl->flags)) {
+#ifdef CONFIG_HAS_WAKELOCK
 		wake_lock_timeout(&wl->wake_lock, 5*HZ);
+#endif
 		return -EBUSY;
 	}
 
