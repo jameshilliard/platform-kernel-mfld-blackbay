@@ -33,8 +33,7 @@ AutoProv: yes
 
 Source0: %{name}-%{version}.tar.bz2
 Source1: cmdline
-Source2: ti-wlan-2fc817c.tar.bz2
-Source3: wl12xx-compat-build.sh
+Source2: wl12xx-compat-build.sh
 
 # Maintain these patches without the help of git-buildpackage
 # GbpIgnorePatch: 0
@@ -68,10 +67,9 @@ against the %{variant} kernel package.
 # Unpack the kernel tarbal
 %setup -q
 
-# Unpack TI wifi driver and copy&patch its builder script
-%setup -q -T -D -a 2
-install -m755 %{SOURCE3} .
-%patch0 -p1
+# Copy and patch the builder script of the TI wifi driver
+install -m755 %{SOURCE2} .
+%patch0 -p2
 
 
 
