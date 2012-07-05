@@ -1,11 +1,11 @@
-diff --git packaging/wl12xx-compat-build.sh packaging/wl12xx-compat-build.sh
-index 4b81ff1..bd49107 100755
---- packaging/wl12xx-compat-build.sh
-+++ packaging/wl12xx-compat-build.sh
-@@ -38,19 +38,20 @@ _logfile=""
- _preserve_kernel_config=""
+diff --git a/packaging/wl12xx-compat-build.sh b/packaging/wl12xx-compat-build.sh
+index dd33741..22ee7dd 100755
+--- a/packaging/wl12xx-compat-build.sh
++++ b/packaging/wl12xx-compat-build.sh
+@@ -39,19 +39,20 @@ _preserve_kernel_config=""
  _menuconfig="false"
  _config_file_type=android
+ _regdom="00"
 +_install=false
  
  init_variables() {
@@ -28,7 +28,7 @@ index 4b81ff1..bd49107 100755
      if [ -z "$CROSS_COMPILE" ];then
          export CROSS_COMPILE="`basename ${TARGET_TOOLS_PREFIX}`"
      fi
-@@ -59,7 +60,7 @@ init_variables() {
+@@ -60,7 +61,7 @@ init_variables() {
          export CROSS_COMPILE="ccache $CROSS_COMPILE"
      fi
      export ARCH=i386
@@ -37,7 +37,7 @@ index 4b81ff1..bd49107 100755
      echo >&3 "ARCH: $ARCH"
      echo >&3 "CROSS_COMPILE: $CROSS_COMPILE"
      echo >&3 "PATH: $PATH"
-@@ -85,29 +86,28 @@ init_variables() {
+@@ -86,32 +87,33 @@ init_variables() {
      esac
  
      PRODUCT_OUT=${TOP}/out/target/product/${BOARD}
@@ -52,13 +52,18 @@ index 4b81ff1..bd49107 100755
 +    local COMPAT_SRC_DIR=$TOP/ti-wlan/wl12xx-compat/
 +    local MODULE_DEST_TMP=${INSTALL_MOD_PATH}
      local MODULE_DEST=${PRODUCT_OUT}/root/lib/modules
+     local MODULE_REGDOM=$2
  
      cd ${COMPAT_SRC_DIR}
++    # Fix script permissions
++    chmod 755 ./scripts/*
+ 
+     echo "$MODULE_REGDOM" > compat_regdom
  
 -    make ARCH=${ARCH} KLIB=${MODULE_DEST_TMP} KLIB_BUILD=${KERNEL_BUILD_DIR} clean
 -    exit_on_error $? quiet
 -
-     make ARCH=${ARCH} KLIB=${MODULE_DEST_TMP} KLIB_BUILD=${KERNEL_BUILD_DIR} 
+     make ARCH=${ARCH} KLIB=${MODULE_DEST_TMP} KLIB_BUILD=${KERNEL_BUILD_DIR}
      exit_on_error $? quiet
  
 -    rm -rf ${MODULE_DEST_TMP}
@@ -77,18 +82,18 @@ index 4b81ff1..bd49107 100755
      exit_on_error $? quiet
  
      cd ${TOP}
-@@ -129,7 +129,7 @@ usage() {
+@@ -134,7 +136,7 @@ usage() {
  main() {
-     local custom_board_list="vbox mfld_cdk mfld_pr2 mfld_gi mfld_dv10 ctp_pr0 ctp_pr1 mrfl_vp mrfl_hvp mrfl_sle"
+     local custom_board_list="vbox mfld_cdk mfld_pr2 mfld_gi mfld_dv10 mfld_tablet_evx ctp_pr0 ctp_pr1 mrfl_vp mrfl_hvp mrfl_sle"
  
--    while getopts Kc:j:kthCm opt
-+    while getopts Kc:j:kthCmi opt
+-    while getopts Kc:j:kthCmr: opt
++    while getopts Kc:j:kthCmr:i opt
      do
          case "${opt}" in
          K)
-@@ -172,6 +172,9 @@ main() {
-         m)
-             _menuconfig=true
+@@ -180,6 +182,9 @@ main() {
+         r)
+             _regdom=$OPTARG
              ;;
 +        i)
 +            _install=true
@@ -96,7 +101,7 @@ index 4b81ff1..bd49107 100755
          ?)
              echo "Unknown option"
              usage
-@@ -182,11 +185,18 @@ main() {
+@@ -190,11 +195,18 @@ main() {
  
      for custom_board in $custom_board_list
      do
@@ -104,12 +109,12 @@ index 4b81ff1..bd49107 100755
 -        echo >&3 "Building kernel for $custom_board"
 -        echo >&3 "---------------------------------"
          init_variables "$custom_board"
--        make_compat ${custom_board} 
+-        make_compat ${custom_board} $_regdom
 +        if [ $_install != true ]; then
 +            echo >&3
 +            echo >&3 "Building TI WLAN modules for $custom_board"
 +            echo >&3 "---------------------------------"
-+            make_compat ${custom_board}
++            make_compat ${custom_board} $_regdom
 +        else
 +            echo >&3
 +            echo >&3 "Installing TI WLAN modules for $custom_board"
