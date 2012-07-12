@@ -1,3 +1,11 @@
+* Thu Jul 12 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> v3.0.8@49a113b
+- Update (rebase) to WW26 release from MCG (kernel and ti-wlan)
+- Add tizen_rr_defconfig for RedRidge devices
+- ti-wlan: Get rid of the ti (out-of-tree) wlan source tarball, but instead,
+  take the code  in to the kernel source tree.
+- ti-wlan: fix compilation when Android PM is disabled
+- audio: fix locking bug in the audience es305 driver
+
 * Tue Jul 03 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> v3.0.8@6b50efd
 [ Yong Wang ]
 - intel_mid_hsi: make system susped prevention work, even if
