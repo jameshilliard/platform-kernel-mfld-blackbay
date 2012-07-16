@@ -34,6 +34,7 @@
 #include <linux/pm_runtime.h>
 #include "psb_drv.h"
 #include "mdfld_dsi_lvds_bridge.h"
+#include <linux/notifier.h>
 
 #define MDFLD_DSI_BRIGHTNESS_MAX_LEVEL 100
 
@@ -545,8 +546,30 @@ static int mdfld_dsi_connector_mode_valid(struct drm_connector * connector, stru
 	return MODE_OK;
 }
 
+static BLOCKING_NOTIFIER_HEAD(screen_notifier_list);
+
+int screen_register_receiver(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_register(&screen_notifier_list, nb);
+}
+EXPORT_SYMBOL(screen_register_receiver);
+
+int screen_unregister_receiver(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_unregister(&screen_notifier_list, nb);
+}
+EXPORT_SYMBOL(screen_unregister_receiver);
+
+int screen_notifier_call_chain(unsigned long val, void *v)
+{
+	return blocking_notifier_call_chain(&screen_notifier_list, val, v);
+}
+EXPORT_SYMBOL(screen_notifier_call_chain);
+
 static void mdfld_dsi_connector_dpms(struct drm_connector *connector, int mode)
 {
+	screen_notifier_call_chain((unsigned int)mode, connector);
+
 	if (early_suspend)
 		return;
 
