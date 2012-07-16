@@ -42,6 +42,10 @@
 #include <linux/earlysuspend.h>
 #include <linux/atmel_mxt224.h>
 
+#ifndef CONFIG_HAS_EARLYSUSPEND
+#include <drm/drm_mode.h>
+#endif
+
 /* Routines for memory access within a 16 bit address space */
 
 static int mxt_read_block(struct i2c_client *client, u16 addr, u16 length,
@@ -212,6 +216,10 @@ struct mxt_data {
 
 	unsigned long	    timestamp;
 	int		    calibration_confirm;
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	struct notifier_block screen_notifier;
+	struct mutex	    notifier_status_mutex;
+#endif
 };
 
 /*
@@ -2103,6 +2111,43 @@ out_reset:
 	mxt_reset(mxt);
 }
 
+#ifndef CONFIG_HAS_EARLYSUSPEND
+extern int screen_register_receiver(struct notifier_block *nb);
+extern int screen_unregister_receiver(struct notifier_block *nb);
+
+static bool mxt_status;
+
+static int mxt224_screen_notifier_callback(struct notifier_block *self,
+				    unsigned long event_type, void *nt_data)
+{
+	struct device *dev = &mxt_es->client->dev;
+
+	if(dev == NULL)
+		return 0;
+
+	mutex_lock(&mxt_es->notifier_status_mutex);
+	switch (event_type) {
+	case DRM_MODE_DPMS_ON:
+		if (mxt_status == false) {
+			mxt_last_resume(dev);
+			mxt_status = true;
+		}
+		break;
+	case DRM_MODE_DPMS_OFF:
+		if (mxt_status == true) {
+			mxt_first_suspend(dev);
+			mxt_status = false;
+		}
+		break;
+	default:
+		break;
+	}
+	mutex_unlock(&mxt_es->notifier_status_mutex);
+
+	return 0;
+}
+#endif
+
 static int __devinit mxt_probe(struct i2c_client *client,
 			       const struct i2c_device_id *id)
 {
@@ -2430,6 +2475,13 @@ static int __devinit mxt_probe(struct i2c_client *client,
 #endif
 	mxt_es = mxt;
 
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	mxt_status = true;
+	mutex_init(&mxt_es->notifier_status_mutex);
+	mxt->screen_notifier.notifier_call = mxt224_screen_notifier_callback;
+	screen_register_receiver(&mxt->screen_notifier);
+#endif
+
 	return 0;
 
 err_irq:
@@ -2463,6 +2515,11 @@ static int __devexit mxt_remove(struct i2c_client *client)
 	mxt = i2c_get_clientdata(client);
 
 	if (mxt != NULL) {
+#ifndef CONFIG_HAS_EARLYSUSPEND
+		if(&mxt->screen_notifier != NULL)
+			screen_unregister_receiver(&mxt->screen_notifier);
+#endif
+
 		if (mxt->exit_hw != NULL)
 			mxt->exit_hw();
 
@@ -2503,10 +2560,6 @@ static int mxt_suspend(struct device *dev)
 
 	dev_dbg(&mxt->client->dev, "In function %s", __func__);
 
-#ifndef CONFIG_HAS_EARLYSUSPEND
-	mxt_first_suspend(dev);
-#endif
-
 	if (device_may_wakeup(dev))
 		enable_irq_wake(mxt->irq);
 
@@ -2521,10 +2574,6 @@ static int mxt_resume(struct device *dev)
 
 	if (device_may_wakeup(dev))
 		disable_irq_wake(mxt->irq);
-
-#ifndef CONFIG_HAS_EARLYSUSPEND
-	mxt_last_resume(dev);
-#endif
 
 	return 0;
 }
