@@ -1096,6 +1096,10 @@ static void report_mt(struct mxt_data *mxt)
 					ABS_MT_POSITION_X, finger[i].x);
 			input_report_abs(mxt->touch_input,
 					ABS_MT_POSITION_Y, finger[i].y);
+			input_report_abs(mxt->touch_input,
+					ABS_X, finger[i].x);
+			input_report_abs(mxt->touch_input,
+					ABS_Y, finger[i].y);
 		} else {
 			finger[i].status = 0;
 		}
@@ -2329,6 +2333,10 @@ static int __devinit mxt_probe(struct i2c_client *client,
 
 	/* Multitouch */
 	input_mt_init_slots(touch_input, MXT_MAX_NUM_TOUCHES);
+	input_set_abs_params(touch_input, ABS_X,
+			     TS_MIN_X, TS_MAX_X, 0, 0);
+	input_set_abs_params(touch_input, ABS_Y,
+			     TS_MIN_Y, TS_MAX_Y, 0, 0);
 	input_set_abs_params(touch_input, ABS_MT_POSITION_X,
 			     TS_MIN_X, TS_MAX_X, 0, 0);
 	input_set_abs_params(touch_input, ABS_MT_POSITION_Y,
