@@ -1,3 +1,10 @@
+* Wed Jul 18 2012 Peng Li <peng.li@intel.com> - v3.0.8
+[ Austin Zhang ]
+- Added screen-off notifier
+- Added screen off notifier callback
+- Set and send ABS_X/Y for enabling specific multitouch input driver for
+  mxt224 panel
+
 * Thu Jul 12 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> v3.0.8@49a113b
 - Update (rebase) to WW26 release from MCG (kernel and ti-wlan)
 - Add tizen_rr_defconfig for RedRidge devices
