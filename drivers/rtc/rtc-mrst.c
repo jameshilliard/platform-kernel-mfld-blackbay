@@ -457,6 +457,9 @@ vrtc_mrst_do_probe(struct device *dev, struct resource *iomem, int rtc_irq)
 	mrst_rtc.dev = dev;
 	dev_set_drvdata(dev, &mrst_rtc);
 
+	/* make RTC device wake capable from sleep */
+	device_init_wakeup(dev, true);
+
 	mrst_rtc.rtc = rtc_device_register(driver_name, dev,
 				&mrst_rtc_ops, THIS_MODULE);
 	if (IS_ERR(mrst_rtc.rtc)) {
@@ -484,9 +487,6 @@ vrtc_mrst_do_probe(struct device *dev, struct resource *iomem, int rtc_irq)
 			goto cleanup1;
 		}
 	}
-
-	/* make RTC device wake capable from sleep */
-	device_init_wakeup(dev, true);
 
 	if (__intel_mid_cpu_chip == INTEL_MID_CPU_CHIP_PENWELL) {
 		retval = intel_scu_ipc_command(IPCMSG_GET_HOBBASE, 0,
