@@ -1320,6 +1320,51 @@ int psb_runtime_idle(struct device *dev)
 	return 0;
 }
 
+void gfx_runtime_suspend(struct device *dev)
+{
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct drm_device *drm_dev = pci_get_drvdata(pdev);
+	struct drm_psb_private *dev_priv = drm_dev->dev_private;
+	struct drm_encoder *encoder;
+
+#ifdef OSPM_GFX_DPK
+	printk(KERN_ALERT  "%s\n", __func__);
+#endif
+
+	mutex_lock(&dev_priv->rpm_mutex);
+	list_for_each_entry(encoder, &drm_dev->mode_config.encoder_list, head) {
+		struct drm_encoder_helper_funcs *ehf = encoder->helper_private;
+		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->save)
+			ehf->save(encoder);
+	}
+	mutex_unlock(&dev_priv->rpm_mutex);
+
+	pm_runtime_put(dev);
+}
+
+void gfx_runtime_resume(struct device *dev)
+{
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct drm_device *drm_dev = pci_get_drvdata(pdev);
+	struct drm_psb_private *dev_priv = drm_dev->dev_private;
+	struct drm_encoder *encoder;
+
+#ifdef OSPM_GFX_DPK
+	printk(KERN_ALERT  "%s\n", __func__);
+#endif
+	pm_runtime_get_sync(dev);
+
+	mutex_lock(&dev_priv->rpm_mutex);
+	list_for_each_entry(encoder, &drm_dev->mode_config.encoder_list, head) {
+		struct drm_encoder_helper_funcs *ehf = encoder->helper_private;
+
+		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->restore) {
+			ehf->restore(encoder);
+		}
+	}
+	mutex_unlock(&dev_priv->rpm_mutex);
+}
+
 int psb_runtime_suspend(struct device *dev)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
@@ -1343,6 +1388,10 @@ int psb_runtime_resume(struct device *dev)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct drm_device *drm_dev = pci_get_drvdata(pdev);
+
+#ifdef OSPM_GFX_DPK
+	dev_dbg(&drm_dev->pdev->dev, "%s\n", __func__);
+#endif
 
 	ospm_power_resume(dev);
 	psb_runtime_hdmi_audio_resume(drm_dev);

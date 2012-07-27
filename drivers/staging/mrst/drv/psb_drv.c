@@ -1291,6 +1291,9 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 
 	dev_priv->psb_hotplug_state = psb_hotplug_init(kobj);
 
+	mutex_init(&dev_priv->rpm_mutex);
+	dev_priv->rpm_enabled = 0;
+
 	// GL3
 #ifdef CONFIG_MDFD_GL3
 	gl3_enable();

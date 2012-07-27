@@ -568,10 +568,41 @@ EXPORT_SYMBOL(screen_notifier_call_chain);
 
 static void mdfld_dsi_connector_dpms(struct drm_connector *connector, int mode)
 {
+	struct drm_device *dev = connector->dev;
+	struct drm_psb_private *dev_priv = dev->dev_private;
+	int old_dpms;
+
 	screen_notifier_call_chain((unsigned int)mode, connector);
 
+#ifdef CONFIG_EARLYSUSPEND
 	if (early_suspend)
 		return;
+#endif
+
+	if (dev_priv->rpm_enabled) {
+		old_dpms = connector->dpms;
+
+		if (mode == old_dpms)
+			return;
+
+		if ((mode < old_dpms) && (mode == DRM_MODE_DPMS_ON)) {
+			connector->dpms = mode;
+			gfx_runtime_resume(&dev->pdev->dev);
+		}
+		
+		if ((mode > old_dpms) && (old_dpms == DRM_MODE_DPMS_ON)) {
+			connector->dpms = mode;
+			gfx_runtime_suspend(&dev->pdev->dev);
+		}
+
+		connector->dpms = mode;
+		return;
+	}
+
+	if (!(dev_priv->rpm_enabled)) {
+		if (mode == DRM_MODE_DPMS_ON)
+			dev_priv->rpm_enabled = 1;
+	}
 
 	drm_helper_connector_dpms(connector, mode);
 }

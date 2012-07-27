@@ -103,6 +103,8 @@ int psb_runtime_suspend(struct device *dev);
 int psb_runtime_resume(struct device *dev);
 int psb_runtime_idle(struct device *dev);
 
+void gfx_runtime_suspend(struct device *dev);
+void gfx_runtime_resume(struct device *dev);
 int gfx_suspend(struct device *dev);
 int gfx_resume(struct device *dev);
 

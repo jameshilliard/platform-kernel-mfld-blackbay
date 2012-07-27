@@ -379,6 +379,9 @@ struct drm_psb_private {
 	struct work_struct te_work;
 	int te_pipe;
 
+	struct mutex rpm_mutex;
+	int rpm_enabled;
+
 	/*
 	 *TTM Glue.
 	 */
