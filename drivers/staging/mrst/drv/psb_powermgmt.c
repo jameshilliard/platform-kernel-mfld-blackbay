@@ -344,14 +344,21 @@ int gfx_suspend(struct device *dev)
 	dev_info(dev, "%s\n", __func__);
 
 	mutex_lock(&drm_dev->mode_config.mutex);
+	if (early_suspend)
+		goto out;
+
 	list_for_each_entry(encoder, &drm_dev->mode_config.encoder_list, head) {
 		struct drm_encoder_helper_funcs *ehf = encoder->helper_private;
 		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->save)
 			ehf->save(encoder);
 	}
+	early_suspend = true;
 	mutex_unlock(&drm_dev->mode_config.mutex);
 
 	return ospm_power_suspend(dev);
+out:
+	mutex_unlock(&drm_dev->mode_config.mutex);
+	return 0;
 }
 
 int gfx_resume(struct device *dev)
@@ -372,6 +379,7 @@ int gfx_resume(struct device *dev)
 			ehf->restore(encoder);
 		}
 	}
+	early_suspend = false;
 	mutex_unlock(&drm_dev->mode_config.mutex);
 
 	return 0;
@@ -1332,14 +1340,22 @@ void gfx_runtime_suspend(struct device *dev)
 #endif
 
 	mutex_lock(&dev_priv->rpm_mutex);
+	if (early_suspend)
+		goto out;
+
 	list_for_each_entry(encoder, &drm_dev->mode_config.encoder_list, head) {
 		struct drm_encoder_helper_funcs *ehf = encoder->helper_private;
 		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->save)
 			ehf->save(encoder);
 	}
+	early_suspend = true;
 	mutex_unlock(&dev_priv->rpm_mutex);
 
-	pm_runtime_put(dev);
+	ospm_power_suspend(dev);
+	return;
+out:
+	mutex_unlock(&dev_priv->rpm_mutex);
+	return;
 }
 
 void gfx_runtime_resume(struct device *dev)
@@ -1352,7 +1368,7 @@ void gfx_runtime_resume(struct device *dev)
 #ifdef OSPM_GFX_DPK
 	printk(KERN_ALERT  "%s\n", __func__);
 #endif
-	pm_runtime_get_sync(dev);
+	ospm_power_resume(dev);
 
 	mutex_lock(&dev_priv->rpm_mutex);
 	list_for_each_entry(encoder, &drm_dev->mode_config.encoder_list, head) {
@@ -1362,6 +1378,7 @@ void gfx_runtime_resume(struct device *dev)
 			ehf->restore(encoder);
 		}
 	}
+	early_suspend = false;
 	mutex_unlock(&dev_priv->rpm_mutex);
 }
 
