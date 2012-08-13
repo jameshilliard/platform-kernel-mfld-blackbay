@@ -1,3 +1,7 @@
+* Mon Aug 13 2012 Peng Li <peng.li@intel.com> - 3.0.8
+[ Li Peng ]
+- gfx: a better way to do gfx suspend/resume at DPMS on/off
+
 * Fri Jul 27 2012 Peng Li <peng.li@intel.com> - 3.0.8
 [ Yong Wang ] 
 - rtc-mrst: init wakeup earlier than registering RTC device
