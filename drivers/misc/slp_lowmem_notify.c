@@ -230,7 +230,7 @@ static void save_task_rss(void)
 			//atomic_long_add(atomic_long_read(&p->mm->rss_stat.count[i]), &task_rss[nr_tasks].rss);
 			task_rss[nr_tasks].rss += atomic_long_read(&p->mm->rss_stat.count[i]);
 
-		if ((++nr_tasks) > sizeof(task_rss))
+		if ((++nr_tasks) > sizeof(task_rss) / sizeof(task_rss[0]))
 			break;
 	}
 	read_unlock(&tasklist_lock);
