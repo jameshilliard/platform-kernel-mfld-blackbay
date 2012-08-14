@@ -60,4 +60,3 @@ obj-$(CONFIG_MID_I2S_DEV)	+= mid_i2s_dev/
 obj-$(CONFIG_EMMC_IPANIC)	+= emmc_ipanic.o
 obj-$(CONFIG_SCU_LOGGING)	+= intel_fabric_logging.o
 obj-$(CONFIG_UUID)	+= uuid.o
-obj-$(CONFIG_SLP_LOWMEM_NOTIFY) += slp_lowmem_notify.o

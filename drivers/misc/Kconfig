@@ -581,12 +581,6 @@ config UUID
 	---help---
 	 Driver for get UUID.
 
-config SLP_LOWMEM_NOTIFY
-        bool "Driver for SLP Low Memory Notification"
-        default n
-        help
-        Provide interface to register for low memory notifications.
-
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"

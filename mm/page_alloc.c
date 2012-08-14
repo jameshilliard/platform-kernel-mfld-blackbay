@@ -58,10 +58,6 @@
 #include <linux/memcontrol.h>
 #include <linux/prefetch.h>
 
-#ifdef CONFIG_SLP_LOWMEM_NOTIFY
-#include <linux/slp_lowmem_notify.h>
-#endif
-
 #include <asm/tlbflush.h>
 #include <asm/div64.h>
 #include "internal.h"
@@ -2324,10 +2320,6 @@ __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order,
 		put_mems_allowed();
 		return NULL;
 	}
-
-#ifdef CONFIG_SLP_LOWMEM_NOTIFY
-	memnotify_threshold(gfp_mask);
-#endif
 
 	/* First allocation attempt */
 	page = get_page_from_freelist(gfp_mask|__GFP_HARDWALL, nodemask, order,
