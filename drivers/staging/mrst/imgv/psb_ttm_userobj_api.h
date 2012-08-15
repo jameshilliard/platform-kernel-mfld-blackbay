@@ -80,4 +80,6 @@ extern int ttm_buffer_object_create(struct ttm_bo_device *bdev,
 				    struct file *persistant_swap_storage,
 				    struct ttm_buffer_object **p_bo);
 
+extern int psb_ttm_bo_check_placement(struct ttm_buffer_object *bo,
+				      struct ttm_placement *placement);
 #endif
