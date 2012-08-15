@@ -142,7 +142,9 @@ enum panel_type {
 #define PSB_NUM_VALIDATE_BUFFERS 2048
 
 #define PSB_MEM_MMU_START       0x00000000
+#define PSB_MEM_RAR_START       0xD0000000
 #define PSB_MEM_TT_START        0xE0000000
+#define PSB_MEM_MMU_TILING_START       0xB0000000
 
 #define PSB_GL3_CACHE_CTL	0x2100
 #define PSB_GL3_CACHE_STAT	0x2108
@@ -335,6 +337,27 @@ struct psb_msvdx_cmd_queue {
 	void *cmd;
 	unsigned long cmd_size;
 	uint32_t sequence;
+	uint32_t msvdx_tile;
+	uint32_t host_be_opp_enabled;
+	uint32_t deblock_cmd_offset;
+};
+
+/* Currently defined profiles */
+enum VAProfile {
+	VAProfileMPEG2Simple		= 0,
+	VAProfileMPEG2Main		= 1,
+	VAProfileMPEG4Simple		= 2,
+	VAProfileMPEG4AdvancedSimple	= 3,
+	VAProfileMPEG4Main		= 4,
+	VAProfileH264Baseline		= 5,
+	VAProfileH264Main		= 6,
+	VAProfileH264High		= 7,
+	VAProfileVC1Simple		= 8,
+	VAProfileVC1Main		= 9,
+	VAProfileVC1Advanced		= 10,
+	VAProfileH263Baseline		= 11,
+	VAProfileJPEGBaseline           = 12,
+	VAProfileH264ConstrainedBaseline = 13
 };
 
 /* Currently defined entrypoints */
@@ -347,6 +370,8 @@ enum VAEntrypoint {
 	VAEntrypointEncSlice	= 6,	/* slice level encode */
 	VAEntrypointEncPicture 	= 7	/* pictuer encode, JPEG, etc */
 };
+
+#define VA_RT_FORMAT_PROTECTED	0x80000000
 
 struct psb_video_ctx {
 	struct list_head head;
@@ -937,6 +962,8 @@ struct drm_psb_private {
 
 	uint32_t hdmi_audio_interrupt_mask;
 
+	/*hdmi connected status */
+	bool bhdmiconnected;
 	bool dpms_on_off;
 	struct mutex dpms_mutex;
 
@@ -1345,18 +1372,39 @@ static inline void REGISTER_WRITE8(struct drm_device *dev,
 
 #endif
 
+#define PSB_ALPL(_val, _base)			\
+  (((_val) >> (_base ## _ALIGNSHIFT)) << (_base ## _SHIFT))
+#define PSB_ALPLM(_val, _base)			\
+  ((((_val) >> (_base ## _ALIGNSHIFT)) << (_base ## _SHIFT)) & (_base ## _MASK))
+
+#define IS_POULSBO(dev) 0  /* (((dev)->pci_device == 0x8108) || \
+			       ((dev)->pci_device == 0x8109)) */
+
+#define IS_MRST(dev) (((dev)->pci_device & 0xfff8) == 0x4100)
 #define IS_PENWELL(dev) 0 /* FIXME */
 
+/* Will revisit it after CLOVER TRAIL PO. */
+/* pciid: CLV A0 = 0X8C7, CLV B0 = 0X8C8-0X8CB, CLV+ A0/B0 0X8CC-0X8CF.*/
 #define IS_MDFLD_OLD(dev) (((dev)->pci_device & 0xfff8) == 0x0130)
 #define IS_CTP(dev) (((dev->pci_device & 0xffff) == 0x08c0) ||	\
 		     ((dev->pci_device & 0xffff) == 0x08c7) ||  \
 		     ((dev->pci_device & 0xffff) == 0x08c8))
 
+#define IS_MRFL(dev) ((dev->pci_device & 0xFFFC) == 0x1180)
+
+#define IS_CTP_NEED_WA(dev) ((dev->pci_device & 0xffff) == 0x08c8)
+
 #define IS_MDFLD(dev) (IS_CTP(dev) || IS_MDFLD_OLD(dev))
+#define IS_MID(dev) (IS_MRST(dev) || IS_MDFLD(dev))
+
+#define IS_MSVDX(dev) (IS_MRST(dev) || IS_MDFLD(dev))
+#define IS_TOPAZ(dev) ((IS_MRST(dev) && (((dev)->pci_device & 0xfffc) != PCI_ID_TOPAZ_DISABLED)) || IS_MDFLD(dev))
 
 #define IS_D0(dev) (((dev)->pdev->revision >= 0xc) || \
 		(((dev)->pci_device & 0xffff) == 0x08c7) || \
 		(((dev)->pci_device & 0xffff) == 0x08c8))
+
+#define IS_MSVDX_MEM_TILE(dev) ((IS_MRFL(dev)))
 
 extern int drm_psb_cpurelax;
 extern int drm_psb_udelaydivider;
