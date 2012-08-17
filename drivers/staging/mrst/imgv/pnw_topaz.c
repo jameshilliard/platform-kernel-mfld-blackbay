@@ -33,7 +33,6 @@
 #include "pnw_topaz.h"
 #include "psb_powermgmt.h"
 #include "pnw_topaz_hw_reg.h"
-#include "lnc_topaz.h"
 
 #include <linux/io.h>
 #include <linux/delay.h>
@@ -53,8 +52,8 @@ static int pnw_topaz_dequeue_send(struct drm_device *dev);
 static int pnw_topaz_save_command(struct drm_device *dev, void *cmd,
 				  unsigned long cmd_size, uint32_t sequence);
 
-static void topaz_mtx_kick(struct drm_psb_private *dev_priv, uint32_t core_id,
-			   uint32_t kick_count);
+static void pnw_topaz_mtx_kick(struct drm_psb_private *dev_priv,
+			uint32_t core_id, uint32_t kick_count);
 
 IMG_BOOL pnw_topaz_interrupt(IMG_VOID *pvData)
 {
@@ -311,7 +310,7 @@ int pnw_wait_on_sync(struct drm_psb_private *dev_priv,
 	}
 
 	while (count && (sync_seq != *sync_p)) {
-		PSB_UDELAY(100);/* experimental value */
+		PSB_UDELAY(100);
 		--count;
 	}
 	if ((count == 0) && (sync_seq != *sync_p)) {
@@ -323,7 +322,7 @@ int pnw_wait_on_sync(struct drm_psb_private *dev_priv,
 	return 0;
 }
 
-int pnw_topaz_deliver_command(struct drm_device *dev,
+static int pnw_topaz_deliver_command(struct drm_device *dev,
 			      struct ttm_buffer_object *cmd_buffer,
 			      unsigned long cmd_offset, unsigned long cmd_size,
 			      void **topaz_cmd, uint32_t sequence,
@@ -417,11 +416,10 @@ int pnw_topaz_kick_null_cmd(struct drm_psb_private *dev_priv,
 	PSB_DEBUG_GENERAL("TOPAZ: Write back value for NULL CMD is %d\n",
 			  sync_seq);
 
-	topaz_mtx_kick(dev_priv, 0, 1);
+	pnw_topaz_mtx_kick(dev_priv, 0, 1);
 
 	return 0;
 }
-
 
 static void pnw_topaz_save_bias_table(struct pnw_topaz_private *topaz_priv,
 	const void *cmd, int byte_size, int core)
@@ -454,8 +452,7 @@ static void pnw_topaz_save_bias_table(struct pnw_topaz_private *topaz_priv,
 	return;
 }
 
-
-int
+static int
 pnw_topaz_send(struct drm_device *dev, void *cmd,
 	       unsigned long cmd_size, uint32_t sync_seq)
 {
@@ -601,7 +598,7 @@ pnw_topaz_send(struct drm_device *dev, void *cmd,
 
 			cur_free_space -= 4;
 			topaz_priv->topaz_cmd_count %= MAX_TOPAZ_CMD_COUNT;
-			topaz_mtx_kick(dev_priv, 0, 1);
+			pnw_topaz_mtx_kick(dev_priv, 0, 1);
 #ifdef SYNC_FOR_EACH_COMMAND
 			pnw_wait_on_sync(dev_priv, cur_cmd_header->seq,
 					 topaz_priv->topaz_mtx_wb +
@@ -665,7 +662,7 @@ out:
 	return ret;
 }
 
-int pnw_topaz_dequeue_send(struct drm_device *dev)
+static int pnw_topaz_dequeue_send(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv = dev->dev_private;
 	struct pnw_topaz_cmd_queue *topaz_cmd = NULL;
@@ -698,7 +695,7 @@ int pnw_topaz_dequeue_send(struct drm_device *dev)
 	return ret;
 }
 
-void topaz_mtx_kick(struct drm_psb_private *dev_priv, uint32_t core_id, uint32_t kick_count)
+static void pnw_topaz_mtx_kick(struct drm_psb_private *dev_priv, uint32_t core_id, uint32_t kick_count)
 {
 	PSB_DEBUG_GENERAL("TOPAZ: kick core(%d) mtx count(%d).\n",
 			  core_id, kick_count);
@@ -803,12 +800,7 @@ void pnw_topaz_handle_timeout(struct ttm_fence_device *fdev)
 {
 	struct drm_psb_private *dev_priv =
 		container_of(fdev, struct drm_psb_private, fdev);
-	struct drm_device *dev =
-		container_of((void *)dev_priv, struct drm_device, dev_private);
 	struct pnw_topaz_private *topaz_priv = dev_priv->topaz_private;
-
-	if (IS_MRST(dev))
-		return  lnc_topaz_handle_timeout(fdev);
 
 	DRM_ERROR("TOPAZ: current codec is %s\n",
 			codec_to_string(topaz_priv->topaz_cur_codec));
@@ -827,7 +819,7 @@ void pnw_map_topaz_reg(struct drm_device *dev)
 
 	resource_start = pci_resource_start(dev->pdev, PSB_MMIO_RESOURCE);
 
-	if (IS_MDFLD(dev) && !dev_priv->topaz_disabled) {
+	if (!dev_priv->topaz_disabled) {
 		dev_priv->topaz_reg = ioremap(
 					      resource_start + PNW_TOPAZ_OFFSET,
 					      PNW_TOPAZ_SIZE);
@@ -843,11 +835,9 @@ void pnw_unmap_topaz_reg(struct drm_device *dev)
 	struct drm_psb_private *dev_priv =
 		(struct drm_psb_private *)dev->dev_private;
 
-	if (IS_MDFLD(dev)) {
-		if (dev_priv->topaz_reg) {
-			iounmap(dev_priv->topaz_reg);
-			dev_priv->topaz_reg = NULL;
-		}
+	if (dev_priv->topaz_reg) {
+		iounmap(dev_priv->topaz_reg);
+		dev_priv->topaz_reg = NULL;
 	}
 
 	return;

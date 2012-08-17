@@ -25,7 +25,6 @@
 #include "psb_page_flip.h"
 #include "psb_ttm_userobj_api.h"
 #include <linux/io.h>
-#include <asm/intel-mid.h>
 #include "psb_msvdx.h"
 #include "bufferclass_video.h"
 
@@ -66,9 +65,6 @@ int psb_open(struct inode *inode, struct file *filp)
 
 	psb_fp->tfile = ttm_object_file_init(dev_priv->tdev,
 					     PSB_FILE_OBJECT_HASH_ORDER);
-	psb_fp->bcd_index = -1;
-
-	/* TODO: this list was deleted on latest UMG code */
 	INIT_LIST_HEAD(&psb_fp->pending_flips);
 
 	if (unlikely(psb_fp->tfile == NULL))
@@ -96,26 +92,23 @@ out_err0:
 int psb_release(struct inode *inode, struct file *filp)
 {
 	struct drm_file *file_priv;
+	struct drm_device *dev;
 	struct psb_fpriv *psb_fp;
 	struct drm_psb_private *dev_priv;
 	struct msvdx_private *msvdx_priv;
-	int ret, i;
-	struct psb_msvdx_ec_ctx *ec_ctx;
-	uint32_t ui32_reg_value = 0;
+	int ret;
 	file_priv = (struct drm_file *) filp->private_data;
-	struct ttm_object_file *tfile = psb_fpriv(file_priv)->tfile;
 	psb_fp = psb_fpriv(file_priv);
-	dev_priv = psb_priv(file_priv->minor->dev);
-
+	dev = file_priv->minor->dev;
+	dev_priv = psb_priv(dev);
 	msvdx_priv = (struct msvdx_private *)dev_priv->msvdx_private;
 
-	psb_cleanup_pending_events(file_priv->minor->dev, psb_fp);
+	psb_cleanup_pending_events(dev, psb_fp);
 
 	/* Disable asynchronous notifications for the DRM file descriptor. */
 	drm_fasync(-1, filp, 0);
 
 	/*cleanup for msvdx*/
-
 	if (msvdx_priv->tfile == psb_fpriv(file_priv)->tfile) {
 		msvdx_priv->fw_status = 0;
 		msvdx_priv->host_be_opp_enabled = 0;
@@ -123,20 +116,6 @@ int psb_release(struct inode *inode, struct file *filp)
 		memset(&msvdx_priv->frame_info, 0, sizeof(struct drm_psb_msvdx_frame_info) * MAX_DECODE_BUFFERS);
 	}
 
-	for (i = 0; i < PSB_MAX_EC_INSTANCE; i++) {
-		if (msvdx_priv->msvdx_ec_ctx[i]->tfile == tfile)
-			break;
-	}
-
-	if (i < PSB_MAX_EC_INSTANCE) {
-		ec_ctx = msvdx_priv->msvdx_ec_ctx[i];
-		printk(KERN_DEBUG "remove ec ctx with tfile 0x%08x\n",
-		       ec_ctx->tfile);
-		ec_ctx->tfile = NULL;
-		ec_ctx->fence = PSB_MSVDX_INVALID_FENCE;
-	}
-
-        /*this is used to cleanup bcd if app failed to call vaTerminate*/
 	if (psb_fp->bcd_index >= 0 &&
 	    psb_fp->bcd_index < BC_VIDEO_DEVICE_MAX_ID &&
 	    bc_video_id_usage[psb_fp->bcd_index] == 1) {
@@ -227,6 +206,7 @@ int psb_pl_ub_create_ioctl(struct drm_device *dev, void *data,
 				      &dev_priv->bdev, &dev_priv->ttm_lock, data);
 
 }
+
 /**
  * psb_ttm_fault - Wrapper around the ttm fault method.
  *
@@ -290,7 +270,6 @@ int psb_mmap(struct file *filp, struct vm_area_struct *vma)
 
 	return 0;
 }
-
 /*
 ssize_t psb_ttm_write(struct file *filp, const char __user *buf,
 		      size_t count, loff_t *f_pos)
@@ -318,9 +297,9 @@ int psb_verify_access(struct ttm_buffer_object *bo,
 	if (capable(CAP_SYS_ADMIN))
 		return 0;
 
-	/* workaround drm authentification issue on Android for ttm_bo_mmap */
 	if (unlikely(!file_priv->authenticated))
 		return -EPERM;
+
 	return ttm_pl_verify_access(bo, psb_fpriv(file_priv)->tfile);
 }
 
@@ -358,10 +337,10 @@ int psb_ttm_global_init(struct drm_psb_private *dev_priv)
 	global->size = sizeof(struct ttm_bo_global);
 	global->init = &ttm_bo_global_init;
 	global->release = &ttm_bo_global_release;
-	ret = drm_global_item_ref((struct drm_global_reference *)global);
+	ret = drm_global_item_ref(global);
 	if (ret != 0) {
 		DRM_ERROR("Failed setting up TTM BO subsystem.\n");
-		drm_global_item_unref((struct drm_global_reference *)global_ref);
+		drm_global_item_unref(global_ref);
 		return ret;
 	}
 
@@ -391,6 +370,7 @@ int psb_getpageaddrs_ioctl(struct drm_device *dev, void *data,
 		       "Could not find buffer object for getpageaddrs.\n");
 		return -EINVAL;
 	}
+
 	arg->gtt_offset = bo->offset;
 	ttm = bo->ttm;
 	num_pages = ttm->num_pages;
@@ -401,5 +381,6 @@ int psb_getpageaddrs_ioctl(struct drm_device *dev, void *data,
 
 	if (bo)
 		ttm_bo_unref(&bo);
+
 	return ret;
 }

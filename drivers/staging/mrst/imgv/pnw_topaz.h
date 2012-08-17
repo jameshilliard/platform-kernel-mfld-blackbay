@@ -42,16 +42,6 @@
 #define PNW_IS_JPEG_ENC(codec) \
 	(codec == IMG_CODEC_JPEG)
 
-#define PNW_IS_MPEG4_ENC(codec) \
-	(codec == IMG_CODEC_MPEG4_VBR || \
-	 codec == IMG_CODEC_MPEG4_CBR || \
-	 codec == IMG_CODEC_MPEG4_NO_RC)
-
-#define PNW_IS_H263_ENC(codec) \
-	(codec == IMG_CODEC_H263_VBR || \
-	 codec == IMG_CODEC_H263_CBR || \
-	 codec == IMG_CODEC_H263_NO_RC)
-
 extern int drm_topaz_pmpolicy;
 
 /* XXX: it's a copy of msvdx cmd queue. should have some change? */
@@ -91,8 +81,7 @@ struct pnw_topaz_private {
 	struct sysfs_dirent *sysfs_pmstate;
 	int frame_skip;
 
-	/*Save content of MTX register, whole RAM and BIAS table*/
-	void *topaz_mtx_reg_state[MAX_TOPAZ_CORES];
+	void *topaz_mtx_reg_state[MAX_TOPAZ_CORES] ;
 	struct ttm_buffer_object *topaz_mtx_data_mem[MAX_TOPAZ_CORES];
 	uint32_t topaz_cur_codec;
 	uint32_t cur_mtx_data_size[MAX_TOPAZ_CORES];

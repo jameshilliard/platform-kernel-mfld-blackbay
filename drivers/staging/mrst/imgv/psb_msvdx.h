@@ -26,8 +26,6 @@
 
 extern int drm_msvdx_pmpolicy;
 extern int drm_msvdx_delay;
-extern int hdmi_state;
-extern int drm_psb_msvdx_tiling;
 
 typedef enum {
 	PSB_DMAC_BSWAP_NO_SWAP = 0x0,   //!< No byte swapping will be performed.
@@ -98,6 +96,7 @@ int psb_cmdbuf_video(struct drm_file *priv,
 int psb_msvdx_save_context(struct drm_device *dev);
 int psb_msvdx_restore_context(struct drm_device *dev);
 int psb_msvdx_check_reset_fw(struct drm_device *dev);
+
 bool
 psb_host_second_pass(struct drm_device *dev,
 		     uint32_t ui32OperatingModeCmd,
@@ -264,8 +263,6 @@ MSVDX_CORE_CR_MSVDX_MAN_CLK_ENABLE_CR_MTX_MAN_CLK_ENABLE_MASK)
 #define MSVDX_MMU_CONTROL0		(0x0680)
 #define MSVDX_MMU_STATUS		(0x068C)
 #define MSVDX_MMU_MEM_REQ		(0x06D0)
-#define MSVDX_MMU_TILE_BASE0		(0x06D4)
-#define MSVDX_MMU_TILE_BASE1		(0x06D8)
 #define MSVDX_MTX_RAM_BANK		(0x06F0)
 #define MSVDX_MTX_DEBUG			MSVDX_MTX_RAM_BANK
 #define MSVDX_MAN_CLK_ENABLE		(0x0620)
@@ -619,55 +616,57 @@ MSVDX_CORE_CR_MSVDX_MAN_CLK_ENABLE_CR_MTX_MAN_CLK_ENABLE_MASK)
 #define VEC_LOCAL_MEM_OFFSET 0x2000
 
 /* 1311 RENDEC init msg */
-#define FW_DEVA_INIT_SIZE (16)
-#define FW_DEVA_INIT_ID (0x80)
+#define FW_DEVA_INIT_SIZE		16
+#define FW_DEVA_INIT_ID			0x80
 
 /* FW_DEVA_INIT     RENDEC_ADDR0 */
-#define FW_DEVA_INIT_RENDEC_ADDR0_START_BIT     0
-#define FW_DEVA_INIT_RENDEC_ADDR0_END_BIT       31
-#define FW_DEVA_INIT_RENDEC_ADDR0_ALIGNMENT     (4)
-#define FW_DEVA_INIT_RENDEC_ADDR0_TYPE      IMG_UINT32
-#define FW_DEVA_INIT_RENDEC_ADDR0_MASK      (0xFFFFFFFF)
-#define FW_DEVA_INIT_RENDEC_ADDR0_LSBMASK       (0xFFFFFFFF)
-#define FW_DEVA_INIT_RENDEC_ADDR0_OFFSET        (0x0004)
-#define FW_DEVA_INIT_RENDEC_ADDR0_SHIFT     (0)
+#define FW_DEVA_INIT_RENDEC_ADDR0_START_BIT	0
+#define FW_DEVA_INIT_RENDEC_ADDR0_END_BIT	31
+#define FW_DEVA_INIT_RENDEC_ADDR0_ALIGNMENT	4
+#define FW_DEVA_INIT_RENDEC_ADDR0_TYPE		IMG_UINT32
+#define FW_DEVA_INIT_RENDEC_ADDR0_MASK		0xFFFFFFFF
+#define FW_DEVA_INIT_RENDEC_ADDR0_LSBMASK       0xFFFFFFFF
+#define FW_DEVA_INIT_RENDEC_ADDR0_OFFSET        0x0004
+#define FW_DEVA_INIT_RENDEC_ADDR0_SHIFT		0
 #define FW_DEVA_INIT_RENDEC_ADDR0_SIGNED_FIELD  IMG_FALSE
 
 /* FW_DEVA_INIT     RENDEC_ADDR1 */
-#define FW_DEVA_INIT_RENDEC_ADDR1_START_BIT     0
-#define FW_DEVA_INIT_RENDEC_ADDR1_END_BIT       31
-#define FW_DEVA_INIT_RENDEC_ADDR1_ALIGNMENT     (4)
-#define FW_DEVA_INIT_RENDEC_ADDR1_TYPE      IMG_UINT32
-#define FW_DEVA_INIT_RENDEC_ADDR1_MASK      (0xFFFFFFFF)
-#define FW_DEVA_INIT_RENDEC_ADDR1_LSBMASK       (0xFFFFFFFF)
-#define FW_DEVA_INIT_RENDEC_ADDR1_OFFSET        (0x0008)
-#define FW_DEVA_INIT_RENDEC_ADDR1_SHIFT     (0)
+#define FW_DEVA_INIT_RENDEC_ADDR1_START_BIT	0
+#define FW_DEVA_INIT_RENDEC_ADDR1_END_BIT	31
+#define FW_DEVA_INIT_RENDEC_ADDR1_ALIGNMENT	4
+#define FW_DEVA_INIT_RENDEC_ADDR1_TYPE		IMG_UINT32
+#define FW_DEVA_INIT_RENDEC_ADDR1_MASK		0xFFFFFFFF
+#define FW_DEVA_INIT_RENDEC_ADDR1_LSBMASK	0xFFFFFFFF
+#define FW_DEVA_INIT_RENDEC_ADDR1_OFFSET        0x0008
+#define FW_DEVA_INIT_RENDEC_ADDR1_SHIFT		0
 #define FW_DEVA_INIT_RENDEC_ADDR1_SIGNED_FIELD  IMG_FALSE
 
 /* FW_DEVA_INIT     RENDEC_SIZE1 */
-#define FW_DEVA_INIT_RENDEC_SIZE1_START_BIT     16
-#define FW_DEVA_INIT_RENDEC_SIZE1_END_BIT       31
-#define FW_DEVA_INIT_RENDEC_SIZE1_ALIGNMENT     (2)
-#define FW_DEVA_INIT_RENDEC_SIZE1_TYPE      IMG_UINT16
-#define FW_DEVA_INIT_RENDEC_SIZE1_MASK      (0xFFFF)
-#define FW_DEVA_INIT_RENDEC_SIZE1_LSBMASK       (0xFFFF)
-#define FW_DEVA_INIT_RENDEC_SIZE1_OFFSET        (0x000E)
-#define FW_DEVA_INIT_RENDEC_SIZE1_SHIFT     (0)
-#define FW_DEVA_INIT_RENDEC_SIZE1_SIGNED_FIELD  IMG_FALSE
+#define FW_DEVA_INIT_RENDEC_SIZE1_START_BIT	16
+#define FW_DEVA_INIT_RENDEC_SIZE1_END_BIT	31
+#define FW_DEVA_INIT_RENDEC_SIZE1_ALIGNMENT	2
+#define FW_DEVA_INIT_RENDEC_SIZE1_TYPE		IMG_UINT16
+#define FW_DEVA_INIT_RENDEC_SIZE1_MASK		0xFFFF
+#define FW_DEVA_INIT_RENDEC_SIZE1_LSBMASK	0xFFFF
+#define FW_DEVA_INIT_RENDEC_SIZE1_OFFSET	0x000E
+#define FW_DEVA_INIT_RENDEC_SIZE1_SHIFT		0
+#define FW_DEVA_INIT_RENDEC_SIZE1_SIGNED_FIELD	IMG_FALSE
 
 /* FW_DEVA_INIT     RENDEC_SIZE0 */
-#define FW_DEVA_INIT_RENDEC_SIZE0_START_BIT     0
-#define FW_DEVA_INIT_RENDEC_SIZE0_END_BIT       15
-#define FW_DEVA_INIT_RENDEC_SIZE0_ALIGNMENT     (2)
-#define FW_DEVA_INIT_RENDEC_SIZE0_TYPE      IMG_UINT16
-#define FW_DEVA_INIT_RENDEC_SIZE0_MASK      (0xFFFF)
-#define FW_DEVA_INIT_RENDEC_SIZE0_LSBMASK       (0xFFFF)
-#define FW_DEVA_INIT_RENDEC_SIZE0_OFFSET        (0x000C)
-#define FW_DEVA_INIT_RENDEC_SIZE0_SHIFT     (0)
-#define FW_DEVA_INIT_RENDEC_SIZE0_SIGNED_FIELD  IMG_FALSE
+#define FW_DEVA_INIT_RENDEC_SIZE0_START_BIT	0
+#define FW_DEVA_INIT_RENDEC_SIZE0_END_BIT	15
+#define FW_DEVA_INIT_RENDEC_SIZE0_ALIGNMENT	2
+#define FW_DEVA_INIT_RENDEC_SIZE0_TYPE		IMG_UINT16
+#define FW_DEVA_INIT_RENDEC_SIZE0_MASK		0xFFFF
+#define FW_DEVA_INIT_RENDEC_SIZE0_LSBMASK	0xFFFF
+#define FW_DEVA_INIT_RENDEC_SIZE0_OFFSET	0x000C
+#define FW_DEVA_INIT_RENDEC_SIZE0_SHIFT		0
+#define FW_DEVA_INIT_RENDEC_SIZE0_SIGNED_FIELD	IMG_FALSE
 
-#define MSVDX_RESET_NEEDS_REUPLOAD_FW		(0x2)
-#define MSVDX_RESET_NEEDS_INIT_FW		(0x1)
+#define MSVDX_RESET_NEEDS_REUPLOAD_FW		0x2
+#define MSVDX_RESET_NEEDS_INIT_FW		0x1
+
+
 
 /* This type defines the framework specified message ids */
 enum {
@@ -688,8 +687,6 @@ enum {
 
 	VA_MSGID_DEBLOCK_MFLD = FWRK_MSGID_HOST_EMULATED,
 	VA_MSGID_OOLD_MFLD,
-	VA_MSGID_TEST1_MFLD,
-	VA_MSGID_HOST_BE_OPP_MFLD,
 	/*! Sent by the DXVA firmware on the MTX to the host.
 	 */
 	VA_MSGID_CMD_COMPLETED = FWRK_MSGID_START_PSR_MTXHOST_MSG,
@@ -756,15 +753,9 @@ typedef struct {
 	uint32_t address_a0;
 	uint32_t address_a1;
 	uint32_t mb_param_address;
-	uint32_t ext_stride_a;
-
 	uint32_t address_b0;
 	uint32_t address_b1;
 	uint32_t rotation_flags;
-
-	/* additional msg outside of IMG msg */
-	uint32_t address_c0;
-	uint32_t address_c1;
 } FW_VA_DEBLOCK_MSG;
 
 typedef struct drm_psb_msvdx_frame_info {
@@ -779,29 +770,7 @@ typedef struct drm_psb_msvdx_frame_info {
 	drm_psb_msvdx_decode_status_t decode_status;
 } drm_psb_msvdx_frame_info_t;
 
-#define MAX_DECODE_BUFFERS (24)
-#define PSB_MAX_EC_INSTANCE (4)
-#define PSB_MSVDX_INVALID_FENCE (0xffffffff)
-#define PSB_MSVDX_INVALID_OFFSET (0xffffffff)
-#define PSB_MSVDX_EC_ROLLBACK (9)
-
-struct psb_msvdx_ec_ctx {
-	struct ttm_object_file *tfile; /* protected by cmdbuf_mutex */
-	uint32_t context_id;
-	drm_psb_msvdx_frame_info_t frame_info[MAX_DECODE_BUFFERS];
-	drm_psb_msvdx_frame_info_t *cur_frame_info;
-	int frame_idx;
-
-	/* 12 render msg + 1 deblock msg
-	 * 12 * 20 + 1 * 48 = 288;
-	*/
-	unsigned char unfenced_cmd[300];
-	uint32_t cmd_size;
-	uint32_t deblock_cmd_offset;
-	uint32_t fence;
-	drm_psb_msvdx_decode_status_t decode_status;
-};
-
+#define MAX_DECODE_BUFFERS 24
 /* MSVDX private structure */
 struct msvdx_private {
 	int msvdx_needs_reset;
@@ -813,7 +782,6 @@ struct msvdx_private {
 	uint32_t msvdx_current_sequence;
 	uint32_t msvdx_last_sequence;
 
-	struct drm_psb_private *dev_priv;
 	/*
 	 *MSVDX Rendec Memory
 	 */
@@ -825,14 +793,6 @@ struct msvdx_private {
 	struct ttm_buffer_object *fw;
 	uint32_t is_load;
 	uint32_t mtx_mem_size;
-
-	/*
-	 *MSVDX tile regions
-	*/
-	uint32_t tile_region_start0;
-	uint32_t tile_region_end0;
-	uint32_t tile_region_start1;
-	uint32_t tile_region_end1;
 
 	/*
 	 *msvdx command queue
@@ -864,11 +824,7 @@ struct msvdx_private {
 	uint32_t ref_pic_fence;
 	/*work for error concealment*/
 	struct work_struct ec_work;
-	struct ttm_object_file *tfile; /* protected by cmdbuf_mutex */
-	struct psb_msvdx_ec_ctx *msvdx_ec_ctx[PSB_MAX_EC_INSTANCE];
-	struct psb_msvdx_ec_ctx *cur_msvdx_ec_ctx;
-	uint32_t deblock_cmd_offset;
-
+	struct ttm_object_file *tfile;
 	struct drm_video_displaying_frameinfo displaying_frame;
 };
 
@@ -1439,10 +1395,6 @@ struct msvdx_private {
 
 #define FW_VA_LAST_SLICE_OF_EXT_DMA                                         0x00001000
 
-struct psb_msvdx_ec_ctx *psb_msvdx_find_ec_ctx(
-			struct msvdx_private *msvdx_priv,
-			void *cmd);
-
 static inline void psb_msvdx_clearirq(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv = dev->dev_private;
@@ -1485,5 +1437,3 @@ do {									\
 } while (0)
 
 #endif
-
-#define IS_FW_UPDATED 1

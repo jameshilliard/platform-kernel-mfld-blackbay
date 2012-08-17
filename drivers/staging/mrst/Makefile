@@ -198,9 +198,6 @@ medfield_gfx-y += \
 	$(IMGVDIR)/psb_buffer.o \
 	$(IMGVDIR)/psb_fence.o \
 	$(IMGVDIR)/psb_mmu.o \
-	$(IMGVDIR)/lnc_topaz.o \
-	$(IMGVDIR)/lnc_topazinit.o \
-	$(IMGVDIR)/psb_msvdx_ec.o \
 	$(IMGVDIR)/psb_msvdx.o \
 	$(IMGVDIR)/psb_msvdxinit.o \
 	$(IMGVDIR)/psb_ttm_fence.o \

@@ -86,8 +86,6 @@ static int  mtx_dma_read(struct drm_device *dev, uint32_t core,
 			 uint32_t source_addr, uint32_t size);
 static int  mtx_dma_write(struct drm_device *dev,
 			  uint32_t core);
-static void pnw_topaz_restore_bias_table(struct drm_psb_private *dev_priv,
-		int core);
 
 /* Reset the encode system buffer registers.*/
 static int pnw_topazsc_reset_ESB(struct drm_psb_private *dev_priv, int core_id)
@@ -131,7 +129,7 @@ static int pnw_topazsc_reset_ESB(struct drm_psb_private *dev_priv, int core_id)
 	return 0;
 }
 
-int pnw_error_dump_reg(struct drm_psb_private *dev_priv, int core_id)
+static int pnw_error_dump_reg(struct drm_psb_private *dev_priv, int core_id)
 {
 	uint32_t reg_val;
 	int i;
@@ -259,13 +257,8 @@ int pnw_topaz_init(struct drm_device *dev)
 	if (device_create_file(&dev->pdev->dev,
 			       &dev_attr_topaz_pmstate))
 		DRM_ERROR("TOPAZ: could not create sysfs file\n");
-	topaz_priv->sysfs_pmstate = sysfs_get_dirent(
-					    dev->pdev->dev.kobj.sd,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35))
-					    NULL,
-#endif
-					    "topaz_pmstate");
-
+	topaz_priv->sysfs_pmstate = sysfs_get_dirent(dev->pdev->dev.kobj.sd,
+						NULL, "topaz_pmstate");
 
 	topaz_priv = dev_priv->topaz_private;
 
@@ -913,7 +906,7 @@ int pnw_topaz_setup_fw(struct drm_device *dev, enum drm_pnw_topaz_codec codec)
 }
 
 #if UPLOAD_FW_BY_DMA
-int topaz_upload_fw(struct drm_device *dev, enum drm_pnw_topaz_codec codec, uint32_t core_id)
+static int topaz_upload_fw(struct drm_device *dev, enum drm_pnw_topaz_codec codec, uint32_t core_id)
 {
 	struct drm_psb_private *dev_priv = dev->dev_private;
 	const struct pnw_topaz_codec_fw *cur_codec_fw;
@@ -1002,6 +995,8 @@ int topaz_upload_fw(struct drm_device *dev, enum drm_pnw_topaz_codec codec, uint
 		     & ~(MTX_DMA_BURSTSIZE_BYTES - 1)) / 4;
 
 	data_location = cur_codec_fw->data_location;
+	data_location = data_location & (~(MTX_DMA_BURSTSIZE_BYTES - 1));
+
 	PSB_DEBUG_GENERAL("TOPAZ: data_size round up to %d\n"
 			  "data_location round up to 0x%08x\n",
 			  data_size, data_location);
@@ -1040,7 +1035,7 @@ int topaz_upload_fw(struct drm_device *dev, enum drm_pnw_topaz_codec codec, uint
 	/* # return access to topaz core(deserted) */
 	/*TOPAZ_WRITE32(TOPAZ_CR_IMG_TOPAZ_DMAC_MODE, 0, core_id);*/
 
-	/* record this codec's mtx data size(+stack) for
+	/* record this codec's mtx data size for
 	 * context save & restore */
 	/* FIXME: since non-root sighting fixed by pre allocated,
 	 * only need to correct the buffer size
@@ -1201,7 +1196,7 @@ int topaz_upload_fw(struct drm_device *dev, enum drm_pnw_topaz_codec codec,
 #endif /* UPLOAD_FW_BY_DMA */
 
 /* is_increment is always 0, so use it as core_id for workaround*/
-int topaz_dma_transfer(struct drm_psb_private *dev_priv, uint32_t channel,
+static int topaz_dma_transfer(struct drm_psb_private *dev_priv, uint32_t channel,
 		       uint32_t src_phy_addr, uint32_t offset,
 		       uint32_t soc_addr, uint32_t byte_num,
 		       uint32_t is_increment, uint32_t is_write)
@@ -1330,7 +1325,7 @@ void topaz_read_core_reg(struct drm_psb_private *dev_priv,
 	release_mtx_control_from_dash(dev_priv, core);
 }
 
-void get_mtx_control_from_dash(struct drm_psb_private *dev_priv, uint32_t core)
+static void get_mtx_control_from_dash(struct drm_psb_private *dev_priv, uint32_t core)
 {
 	int debug_reg_slave_val;
 	struct pnw_topaz_private *topaz_priv = dev_priv->topaz_private;
@@ -1355,7 +1350,7 @@ void get_mtx_control_from_dash(struct drm_psb_private *dev_priv, uint32_t core)
 		     &topaz_priv->topaz_dash_access_ctrl, core);
 }
 
-void release_mtx_control_from_dash(struct drm_psb_private *dev_priv,
+static void release_mtx_control_from_dash(struct drm_psb_private *dev_priv,
 				   uint32_t core)
 {
 	struct pnw_topaz_private *topaz_priv = dev_priv->topaz_private;
@@ -1369,7 +1364,7 @@ void release_mtx_control_from_dash(struct drm_psb_private *dev_priv,
 		      F_ENCODE(1, TOPAZ_CR_MTX_DBG_IS_SLAVE), core);
 }
 
-void pnw_topaz_mmu_hwsetup(struct drm_psb_private *dev_priv, uint32_t core_id)
+static void pnw_topaz_mmu_hwsetup(struct drm_psb_private *dev_priv, uint32_t core_id)
 {
 	uint32_t pd_addr = psb_get_default_pd_addr(dev_priv->mmu);
 
@@ -1863,7 +1858,7 @@ int pnw_topaz_save_mtx_state(struct drm_device *dev)
 	return 0;
 }
 
-int mtx_dma_read(struct drm_device *dev, uint32_t core,
+static int mtx_dma_read(struct drm_device *dev, uint32_t core,
 		 uint32_t source_addr, uint32_t size)
 {
 	struct drm_psb_private *dev_priv =
@@ -1907,7 +1902,7 @@ int mtx_dma_read(struct drm_device *dev, uint32_t core,
 	return 0;
 }
 
-int mtx_dma_write(struct drm_device *dev, uint32_t core_id)
+static int mtx_dma_write(struct drm_device *dev, uint32_t core_id)
 {
 	struct drm_psb_private *dev_priv =
 		(struct drm_psb_private *)dev->dev_private;

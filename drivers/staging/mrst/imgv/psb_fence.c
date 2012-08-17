@@ -23,21 +23,20 @@
 #include "psb_drv.h"
 #include "psb_msvdx.h"
 #include "pnw_topaz.h"
-#include "lnc_topaz.h"
-
 
 static void psb_fence_poll(struct ttm_fence_device *fdev,
 			   uint32_t fence_class, uint32_t waiting_types)
 {
 	struct drm_psb_private *dev_priv =
 		container_of(fdev, struct drm_psb_private, fdev);
-	struct drm_device *dev = dev_priv->dev;
 	uint32_t sequence = 0;
-	struct msvdx_private *msvdx_priv = dev_priv->msvdx_private;
+	struct msvdx_private *msvdx_priv;
 
 
 	if (unlikely(!dev_priv))
 		return;
+
+	msvdx_priv = dev_priv->msvdx_private;
 
 	if (waiting_types == 0)
 		return;
@@ -47,12 +46,8 @@ static void psb_fence_poll(struct ttm_fence_device *fdev,
 		sequence = msvdx_priv->msvdx_current_sequence;
 		break;
 	case LNC_ENGINE_ENCODE:
-		if (IS_MDFLD(dev))
-			sequence = *((uint32_t *)
-				     ((struct pnw_topaz_private *)dev_priv->topaz_private)->topaz_sync_addr + 1);
-		else
-			sequence = *((uint32_t *)
-				     ((struct topaz_private *)dev_priv->topaz_private)->topaz_sync_addr);
+		sequence = *((uint32_t *)
+			((struct pnw_topaz_private *)dev_priv->topaz_private)->topaz_sync_addr + 1);
 		break;
 	default:
 		break;
@@ -98,8 +93,6 @@ int psb_fence_emit_sequence(struct ttm_fence_device *fdev,
 	case PSB_ENGINE_VIDEO:
 		spin_lock(&dev_priv->sequence_lock);
 		seq = dev_priv->sequence[fence_class]++;
-		/* cmds in one batch use different fence value */
-		seq <<= 4;
 		spin_unlock(&dev_priv->sequence_lock);
 		break;
 	case LNC_ENGINE_ENCODE:

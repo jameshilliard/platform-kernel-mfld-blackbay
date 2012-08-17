@@ -82,9 +82,6 @@ int drm_psb_topaz_clockgating = 0;
 static int PanelID = TMD_6X10_VID;
 char HDMI_EDID[HDMI_MONITOR_NAME_LENGTH];
 
-int hdmi_state;
-int drm_psb_msvdx_tiling;
-
 static int psb_probe(struct pci_dev *pdev, const struct pci_device_id *ent);
 
 MODULE_PARM_DESC(debug, "Enable debug output");
@@ -1069,9 +1066,6 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 
 	dev_priv->dev = dev;
 	bdev = &dev_priv->bdev;
-
-	hdmi_state = 0;
-	dev_priv->bhdmiconnected = false;
 
 	ret = psb_ttm_global_init(dev_priv);
 	if (unlikely(ret != 0))

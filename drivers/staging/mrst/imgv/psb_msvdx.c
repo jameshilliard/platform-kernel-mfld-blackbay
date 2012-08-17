@@ -23,7 +23,6 @@
 #include "psb_drm.h"
 #include "psb_drv.h"
 #include "psb_msvdx.h"
-#include "psb_msvdx_ec.h"
 #include "pnw_topaz.h"
 #include "psb_powermgmt.h"
 #include <linux/io.h>
@@ -34,13 +33,9 @@
 	list_entry((ptr)->next, type, member)
 #endif
 
-static int ied_enabled;
 
 static int psb_msvdx_send(struct drm_device *dev, void *cmd,
 			  unsigned long cmd_size);
-
-static void psb_msvdx_set_tile(struct drm_device *dev,
-				unsigned long msvdx_tile);
 
 static int psb_msvdx_dequeue_send(struct drm_device *dev)
 {
@@ -48,38 +43,21 @@ static int psb_msvdx_dequeue_send(struct drm_device *dev)
 	struct psb_msvdx_cmd_queue *msvdx_cmd = NULL;
 	int ret = 0;
 	struct msvdx_private *msvdx_priv = dev_priv->msvdx_private;
-	unsigned long irq_flags;
 
-	spin_lock_irqsave(&msvdx_priv->msvdx_lock, irq_flags);
 	if (list_empty(&msvdx_priv->msvdx_queue)) {
 		PSB_DEBUG_GENERAL("MSVDXQUE: msvdx list empty.\n");
 		msvdx_priv->msvdx_busy = 0;
-		spin_unlock_irqrestore(&msvdx_priv->msvdx_lock, irq_flags);
 		return -EINVAL;
 	}
-
 	msvdx_cmd = list_first_entry(&msvdx_priv->msvdx_queue,
 				     struct psb_msvdx_cmd_queue, head);
-	list_del(&msvdx_cmd->head);
-	spin_unlock_irqrestore(&msvdx_priv->msvdx_lock, irq_flags);
-
 	PSB_DEBUG_GENERAL("MSVDXQUE: Queue has id %08x\n", msvdx_cmd->sequence);
-	if (IS_MSVDX_MEM_TILE(dev) && drm_psb_msvdx_tiling)
-		psb_msvdx_set_tile(dev, msvdx_cmd->msvdx_tile);
-
-	if (msvdx_cmd->host_be_opp_enabled) {
-		psb_msvdx_update_frame_info(msvdx_priv,
-			msvdx_cmd->cmd + msvdx_cmd->deblock_cmd_offset);
-	}
-	psb_msvdx_backup_cmd(msvdx_priv,
-			msvdx_cmd->cmd,
-			msvdx_cmd->cmd_size,
-			msvdx_cmd->deblock_cmd_offset);
 	ret = psb_msvdx_send(dev, msvdx_cmd->cmd, msvdx_cmd->cmd_size);
 	if (ret) {
 		DRM_ERROR("MSVDXQUE: psb_msvdx_send failed\n");
 		ret = -EINVAL;
 	}
+	list_del(&msvdx_cmd->head);
 	kfree(msvdx_cmd->cmd);
 	kfree(msvdx_cmd);
 
@@ -120,9 +98,6 @@ static int psb_msvdx_map_command(struct drm_device *dev,
 	cmd = cmd_start;
 	cmd_size_remaining = cmd_size;
 
-	msvdx_priv->host_be_opp_enabled = 0;
-	msvdx_priv->deblock_cmd_offset = PSB_MSVDX_INVALID_OFFSET;
-
 	while (cmd_size_remaining > 0) {
 		uint32_t cur_cmd_size = MEMIO_READ_FIELD(cmd, FWRK_GENMSG_SIZE);
 		uint32_t cur_cmd_id = MEMIO_READ_FIELD(cmd, FWRK_GENMSG_ID);
@@ -130,17 +105,9 @@ static int psb_msvdx_map_command(struct drm_device *dev,
 		struct psb_msvdx_deblock_queue *msvdx_deblock;
 		unsigned long irq_flags;
 
-#if 0
 		PSB_DEBUG_GENERAL("cmd start at %08x cur_cmd_size = %d"
 				  " cur_cmd_id = %02x fence = %08x\n",
 				  (uint32_t) cmd, cur_cmd_size, cur_cmd_id, sequence);
-#else
-		PSB_DEBUG_GENERAL("cmd start at %08x cur_cmd_size = %d,"
-			" cmd_size_remaining = %d"
-			" cur_cmd_id = %02x fence = %08x\n",
-			(uint32_t) cmd, cur_cmd_size, cmd_size_remaining,
-			cur_cmd_id, sequence);
-#endif
 		if ((cur_cmd_size % sizeof(uint32_t))
 		    || (cur_cmd_size > cmd_size_remaining)) {
 			ret = -EINVAL;
@@ -153,36 +120,25 @@ static int psb_msvdx_map_command(struct drm_device *dev,
 			PSB_DEBUG_MSVDX("MSVDX_DEBUG: send render message. \n");
 
 			/* Fence ID */
-			if (IS_MDFLD(dev) && IS_FW_UPDATED)
-				MEMIO_WRITE_FIELD(cmd, FW_VA_DECODE_MSG_ID, sequence);
-			else
-				MEMIO_WRITE_FIELD(cmd, FW_VA_RENDER_FENCE_VALUE, sequence);
+			MEMIO_WRITE_FIELD(cmd, FW_VA_DECODE_MSG_ID, sequence);
+
 			mmu_ptd = psb_get_default_pd_addr(dev_priv->mmu);
 			msvdx_mmu_invalid = atomic_cmpxchg(&dev_priv->msvdx_mmu_invaldc,
 							   1, 0);
 			if (msvdx_mmu_invalid == 1) {
-				if (!(IS_MDFLD(dev) && IS_FW_UPDATED))
-					mmu_ptd |= 1;
-				else 
-				{
-					uint32_t flags;
-					flags = MEMIO_READ_FIELD(cmd, FW_DEVA_DECODE_FLAGS);
-					flags |= FW_DEVA_INVALIDATE_MMU;
-					MEMIO_WRITE_FIELD(cmd, FW_DEVA_DECODE_FLAGS, flags);
-					psb_gl3_global_invalidation(dev);
-				}
+				uint32_t flags;
+				flags = MEMIO_READ_FIELD(cmd, FW_DEVA_DECODE_FLAGS);
+				flags |= FW_DEVA_INVALIDATE_MMU;
+				MEMIO_WRITE_FIELD(cmd, FW_DEVA_DECODE_FLAGS, flags);
+				psb_gl3_global_invalidation(dev);
 
 				PSB_DEBUG_GENERAL("MSVDX:Set MMU invalidate\n");
 			}
 
 			/* PTD */
-			if (IS_MDFLD(dev) && IS_FW_UPDATED) {
-				uint32_t context_id;
-				context_id = MEMIO_READ_FIELD(cmd, FW_VA_DECODE_MMUPTD);
-				mmu_ptd = mmu_ptd | (context_id & 0xff);
-				MEMIO_WRITE_FIELD(cmd, FW_VA_DECODE_MMUPTD, mmu_ptd);
-			} else
-				MEMIO_WRITE_FIELD(cmd, FW_VA_RENDER_MMUPTD, mmu_ptd);
+			mmu_ptd |= MEMIO_READ_FIELD(cmd,
+						FW_VA_DECODE_MMUPTD) & 0xff;
+			MEMIO_WRITE_FIELD(cmd, FW_VA_DECODE_MMUPTD, mmu_ptd);
 			break;
 
 		case VA_MSGID_OOLD:
@@ -202,10 +158,7 @@ static int psb_msvdx_map_command(struct drm_device *dev,
 			PSB_DEBUG_GENERAL("MSVDX:Get oold cmd\n");
 
 			break;
-		case VA_MSGID_HOST_BE_OPP_MFLD:
-			msvdx_priv->host_be_opp_enabled = 1;
-			msvdx_priv->deblock_cmd_offset =
-					cmd_size - cmd_size_remaining;
+
 		case VA_MSGID_OOLD_MFLD:
 		case VA_MSGID_DEBLOCK_MFLD: {
 			FW_VA_DEBLOCK_MSG * deblock_msg;
@@ -226,18 +179,11 @@ static int psb_msvdx_map_command(struct drm_device *dev,
 				PSB_DEBUG_GENERAL("MSVDX:Set MMU invalidate\n");
 			}
 
-			/* patch to right cmd type */
-			deblock_msg->header.bits.msg_type =
-					cur_cmd_id -
-					VA_MSGID_DEBLOCK_MFLD +
-					VA_MSGID_DEBLOCK;
 
+			deblock_msg->header.bits.msg_type = cur_cmd_id - VA_MSGID_DEBLOCK_MFLD + VA_MSGID_DEBLOCK; /* patch to right cmd type */
 			deblock_msg->header.bits.msg_fence = (uint16_t)(sequence & 0xffff);
 			deblock_msg->mmu_context.bits.mmu_ptd = (mmu_ptd >> 8);
 
-			cmd += (sizeof(FW_VA_DEBLOCK_MSG) - cur_cmd_size);
-			cmd_size_remaining -= (sizeof(FW_VA_DEBLOCK_MSG) -
-					       cur_cmd_size);
 		}
 		break;
 
@@ -383,12 +329,6 @@ static int psb_msvdx_map_command(struct drm_device *dev,
 
 		cmd += cur_cmd_size;
 		cmd_size_remaining -= cur_cmd_size;
-
-		if (((sequence++) & 0xf) == 0xf) {
-			ret = -EINVAL;
-			PSB_DEBUG_GENERAL("MSVDX: too many cmds, abort\n");
-			goto out;
-		}
 	}
 
 	if (copy_cmd) {
@@ -404,19 +344,6 @@ static int psb_msvdx_map_command(struct drm_device *dev,
 		*msvdx_cmd = cmd_copy;
 	} else {
 		PSB_DEBUG_GENERAL("MSVDXQUE:did NOT copy command\n");
-		if (IS_MSVDX_MEM_TILE(dev) && drm_psb_msvdx_tiling) {
-			unsigned long msvdx_tile =
-				((dev_priv->msvdx_ctx->ctx_type >> 16) & 0xff);
-			psb_msvdx_set_tile(dev, msvdx_tile);
-		}
-		if (msvdx_priv->host_be_opp_enabled) {
-			psb_msvdx_update_frame_info(msvdx_priv,
-				cmd_start + msvdx_priv->deblock_cmd_offset);
-		}
-		psb_msvdx_backup_cmd(msvdx_priv,
-				cmd_start,
-				cmd_size,
-				msvdx_priv->deblock_cmd_offset);
 		ret = psb_msvdx_send(dev, cmd_start, cmd_size);
 		if (ret) {
 			DRM_ERROR("MSVDXQUE: psb_msvdx_send failed\n");
@@ -430,13 +357,13 @@ out:
 	return ret;
 }
 
-int psb_submit_video_cmdbuf(struct drm_device *dev,
+static int psb_submit_video_cmdbuf(struct drm_device *dev,
 			    struct ttm_buffer_object *cmd_buffer,
 			    unsigned long cmd_offset, unsigned long cmd_size,
 			    struct ttm_fence_object *fence)
 {
 	struct drm_psb_private *dev_priv = dev->dev_private;
-	uint32_t sequence =  (dev_priv->sequence[PSB_ENGINE_VIDEO] << 4);
+	uint32_t sequence =  dev_priv->sequence[PSB_ENGINE_VIDEO];
 	unsigned long irq_flags;
 	int ret = 0;
 	struct msvdx_private *msvdx_priv = dev_priv->msvdx_private;
@@ -444,38 +371,16 @@ int psb_submit_video_cmdbuf(struct drm_device *dev,
 	/* psb_schedule_watchdog(dev_priv); */
 
 	spin_lock_irqsave(&msvdx_priv->msvdx_lock, irq_flags);
-	if (!IS_D0(dev)) {
-		/* expected msvdx_needs_reset is set after previous session exited
-		 * but msvdx_hw_busy is always 1, and caused powerdown not excuted
-		 * so reload the firmware for every new context
-		 */
-		if (IS_MRST(dev) && (dev_priv->last_msvdx_ctx == NULL))
-			msvdx_priv->msvdx_needs_reset = 1; /* re-load firmware */
 
-		if (IS_MRST(dev) && dev_priv->msvdx_ctx && dev_priv->last_msvdx_ctx) {
-			uint32_t from_profile, to_profile;
-
-			from_profile =
-				(dev_priv->last_msvdx_ctx->ctx_type >> 8) &
-				0xff;
-			to_profile =
-				(dev_priv->msvdx_ctx->ctx_type >> 8) & 0xff;
-
-			/* not the same profile, and one of them is H264 constrained BP
-			 * which needs Error Concealment firmware
-			 */
-			if ((from_profile != to_profile) &&
-			    ((from_profile == VAProfileH264ConstrainedBaseline) ||
-			     (to_profile == VAProfileH264ConstrainedBaseline))) {
-				PSB_DEBUG_INIT("MSVDX: firmware switching needed\n");
-				msvdx_priv->msvdx_needs_reset = 1; /* re-load firmware */
-			}
-		}
-	}
+	/* expected msvdx_needs_reset is set after previous session exited
+	 * but msvdx_hw_busy is always 1, and caused powerdown not excuted
+	 * so reload the firmware for every new context
+	 */
 	dev_priv->last_msvdx_ctx = dev_priv->msvdx_ctx;
 
 	if (msvdx_priv->msvdx_needs_reset) {
 		spin_unlock_irqrestore(&msvdx_priv->msvdx_lock, irq_flags);
+
 		PSB_DEBUG_GENERAL("MSVDX: will reset msvdx\n");
 		if (!IS_D0(dev)) {
 			if (psb_msvdx_reset(dev_priv)) {
@@ -554,20 +459,14 @@ int psb_submit_video_cmdbuf(struct drm_device *dev,
 		msvdx_cmd->cmd = cmd;
 		msvdx_cmd->cmd_size = cmd_size;
 		msvdx_cmd->sequence = sequence;
-		msvdx_cmd->msvdx_tile =
-			((dev_priv->msvdx_ctx->ctx_type >> 16) & 0xff);
-		msvdx_cmd->deblock_cmd_offset =
-			msvdx_priv->deblock_cmd_offset;
-		msvdx_cmd->host_be_opp_enabled =
-			msvdx_priv->host_be_opp_enabled;
 		spin_lock_irqsave(&msvdx_priv->msvdx_lock, irq_flags);
 		list_add_tail(&msvdx_cmd->head, &msvdx_priv->msvdx_queue);
-		spin_unlock_irqrestore(&msvdx_priv->msvdx_lock, irq_flags);
 		if (!msvdx_priv->msvdx_busy) {
 			msvdx_priv->msvdx_busy = 1;
 			PSB_DEBUG_GENERAL("MSVDXQUE: Need immediate dequeue\n");
 			psb_msvdx_dequeue_send(dev);
 		}
+		spin_unlock_irqrestore(&msvdx_priv->msvdx_lock, irq_flags);
 	}
 
 	return ret;
@@ -634,22 +533,9 @@ static int psb_msvdx_send(struct drm_device *dev, void *cmd,
 		}
 		cmd += cur_cmd_size;
 		cmd_size -= cur_cmd_size;
-#if 0
-		if (cur_cmd_id == VA_MSGID_DEBLOCK && IS_MRST(dev)) {
-			cmd += sizeof(struct DEBLOCKPARAMS);
-			cmd_size -= sizeof(struct DEBLOCKPARAMS);
-		}
-		if (cur_cmd_id == VA_MSGID_HOST_BE_OPP && IS_MRST(dev)) {
+		if (cur_cmd_id == VA_MSGID_HOST_BE_OPP) {
 			cmd += sizeof(struct HOST_BE_OPP_PARAMS);
 			cmd_size -= sizeof(struct HOST_BE_OPP_PARAMS);
-		}
-#endif
-
-		if (cur_cmd_id == VA_MSGID_HOST_BE_OPP ||
-		    cur_cmd_id == VA_MSGID_DEBLOCK ||
-		    cur_cmd_id == VA_MSGID_OOLD) {
-			cmd += (sizeof(FW_VA_DEBLOCK_MSG) - cur_cmd_size);
-			cmd_size -= (sizeof(FW_VA_DEBLOCK_MSG) - cur_cmd_size);
 		}
 	}
 
@@ -672,17 +558,16 @@ int psb_mtx_send(struct drm_psb_private *dev_priv, const void *msg)
 
 	msg_num = (MEMIO_READ_FIELD(msg, FWRK_GENMSG_SIZE) + 3) / 4;
 
-#if 0
+	/*
 		{
 			int i;
-			printk(KERN_DEBUG "MSVDX: psb_mtx_send is %dDW\n",
-			       msg_num);
+			printk("MSVDX: psb_mtx_send is %dDW\n", msg_num);
 
 			for(i = 0; i < msg_num; i++)
-				printk(KERN_DEBUG "0x%08x ", p_msg[i]);
-			printk(KERN_DEBUG "\n");
+				printk("0x%08x ", p_msg[i]);
+			printk("\n");
 		}
-#endif
+	*/
 	buf_size = PSB_RMSVDX32(MSVDX_COMMS_TO_MTX_BUF_SIZE) & ((1 << 16) - 1);
 
 	if (msg_num > buf_size) {
@@ -875,7 +760,6 @@ static void psb_msvdx_mtx_interrupt(struct drm_device *dev)
 		PSB_WMSVDX32(clk_enable_all, MSVDX_MAN_CLK_ENABLE);
 	}
 
-
 loop: /* just for coding style check */
 	ridx = PSB_RMSVDX32(MSVDX_COMMS_TO_HOST_RD_INDEX);
 	widx = PSB_RMSVDX32(MSVDX_COMMS_TO_HOST_WRT_INDEX);
@@ -935,32 +819,21 @@ loop: /* just for coding style check */
 						    FW_VA_HW_PANIC_FIRST_MB_NUM);
 			last_mb = MEMIO_READ_FIELD(buf,
 						   FW_VA_HW_PANIC_FAULT_MB_NUM);
-			PSB_DEBUG_MSVDX("MSVDX: PANIC fence is 0x%x\n",
-					MEMIO_READ_FIELD(buf,
-						FW_VA_HW_PANIC_FENCE_VALUE));
-			PSB_DEBUG_MSVDX("MSVDX: PANIC first mb num is %d\n",
-					MEMIO_READ_FIELD(buf,
-						FW_VA_HW_PANIC_FIRST_MB_NUM));
-			PSB_DEBUG_MSVDX("MSVDX: PANIC fault mb num is %d\n",
-					MEMIO_READ_FIELD(buf,
-						FW_VA_HW_PANIC_FAULT_MB_NUM));
-			PSB_DEBUG_MSVDX("MSVDX: PANIC fe status is 0x%x\n",
-					MEMIO_READ_FIELD(buf,
-						FW_VA_HW_PANIC_FESTATUS));
-			PSB_DEBUG_MSVDX("MSVDX: PANIC be status is 0x%x\n",
-					MEMIO_READ_FIELD(buf,
-						FW_VA_HW_PANIC_BESTATUS));
+			printk("jiangfei debug: fence in panic message is %d.\n", fence);
+			PSB_DEBUG_MSVDX("MSVDX_DEBUG: PANIC MESSAGE fence is %d.\n", MEMIO_READ_FIELD(buf, FW_VA_HW_PANIC_FENCE_VALUE));
+			PSB_DEBUG_MSVDX("MSVDX_DEBUG: PANIC MESSAGE first mb num is %d.\n", MEMIO_READ_FIELD(buf, FW_VA_HW_PANIC_FIRST_MB_NUM));
+			PSB_DEBUG_MSVDX("MSVDX_DEBUG: PANIC MESSAGE fault mb num is %d.\n", MEMIO_READ_FIELD(buf, FW_VA_HW_PANIC_FAULT_MB_NUM));
+			PSB_DEBUG_MSVDX("MSVDX_DEBUG: PANIC MESSAGE fe status is 0x%x.\n", MEMIO_READ_FIELD(buf, FW_VA_HW_PANIC_FESTATUS));
+			PSB_DEBUG_MSVDX("MSVDX_DEBUG: PANIC MESSAGE be status is 0x%x.\n", MEMIO_READ_FIELD(buf, FW_VA_HW_PANIC_BESTATUS));
 		} else {
 			fence = MEMIO_READ_FIELD(buf,
 						 FW_VA_CMD_FAILED_FENCE_VALUE);
 			PSB_DEBUG_MSVDX("MSVDX_DEBUG: FAILED MESSAGE fence is %d.\n", MEMIO_READ_FIELD(buf, FW_VA_HW_PANIC_FIRST_MB_NUM));
 			PSB_DEBUG_MSVDX("MSVDX_DEBUG: FAILED MESSAGE flag is %d.\n", MEMIO_READ_FIELD(buf, FW_VA_CMD_FAILED_FLAGS));
 		}
-		if (IS_MDFLD(dev) && IS_FW_UPDATED) 
-		{
-			fence = MEMIO_READ_FIELD(buf, FW_DEVA_CMD_FAILED_MSG_ID);
-			fault = MEMIO_READ_FIELD(buf, FW_DEVA_CMD_FAILED_FLAGS);
-		}
+
+		fence = MEMIO_READ_FIELD(buf, FW_DEVA_CMD_FAILED_MSG_ID);
+		fault = MEMIO_READ_FIELD(buf, FW_DEVA_CMD_FAILED_FLAGS);
 
 		if (msg_id == VA_MSGID_CMD_HW_PANIC)
 			PSB_DEBUG_GENERAL("MSVDX: VA_MSGID_CMD_HW_PANIC:"
@@ -1028,10 +901,8 @@ loop: /* just for coding style check */
 		/* uint32_t last_mb = MEMIO_READ_FIELD(buf,
 		   FW_VA_CMD_COMPLETED_LASTMB);
 		*/
-		if (IS_MDFLD(dev) && IS_FW_UPDATED)
-			fence = MEMIO_READ_FIELD(buf, FW_VA_CMD_COMPLETED_MSG_ID);
-		else
-			fence = MEMIO_READ_FIELD(buf, FW_VA_CMD_COMPLETED_FENCE_VALUE);
+
+		fence = MEMIO_READ_FIELD(buf, FW_VA_CMD_COMPLETED_MSG_ID);
 
 		PSB_DEBUG_GENERAL("MSVDX:VA_MSGID_CMD_COMPLETED: "
 				  "FenceID: %08x, flags: 0x%x\n",
@@ -1081,12 +952,15 @@ loop: /* just for coding style check */
 						  FW_VA_DEBLOCK_REQUIRED_FENCE_VALUE);
 
 		PSB_DEBUG_GENERAL("MSVDX: VA_MSGID_DEBLOCK_REQUIRED"
-				  " Fence=%08x\n", fence);
+				  " Context=%08x\n", ctxid);
 
 
 		/*deblock and on-be-opp use the same message, there is difficulty to distinguish them*/
-		if (IS_MRST(dev) && 
-		(msvdx_priv->deblock_enabled == 1)) {
+		/*now I just let user space use cpu copy error mb*/
+		if ((msvdx_priv->deblock_enabled == 1) && (msvdx_priv->host_be_opp_enabled == 1)) {
+			DRM_ERROR("MSVDX: should not support both deblock and host_be_opp message. \n");
+			goto done;
+		} else if (msvdx_priv->deblock_enabled == 1) {
 			PSB_DEBUG_MSVDX("MSVDX_DEBUG: get deblock required message for deblock operation.\n");
 			if (list_empty(&msvdx_priv->deblock_queue)) {
 				PSB_DEBUG_GENERAL(
@@ -1143,112 +1017,71 @@ loop: /* just for coding style check */
 
 			list_del(&msvdx_deblock->head);
 			kfree(msvdx_deblock);
-		}
-		else {
-			struct psb_msvdx_ec_ctx *msvdx_ec_ctx = NULL;
-			int found = 0;
-			PSB_DEBUG_MSVDX("Get deblock required msg for ec\n");
-			for (i = 0; i < PSB_MAX_EC_INSTANCE; i++)
-				if (msvdx_priv->msvdx_ec_ctx[i]->fence
-							== (fence & (~0xf))) {
-					msvdx_ec_ctx =
-						msvdx_priv->msvdx_ec_ctx[i];
-					found++;
-				}
-			/* if found > 1, fence wrapping happens */
-			if (!msvdx_ec_ctx ||
-			    !(msvdx_ec_ctx->tfile) || found > 1) {
-				PSB_DEBUG_MSVDX(
-			"no matched ctx: fence 0x%x, found %d, ctx 0x%08x\n",
-					fence, found, msvdx_ec_ctx);
-				PSB_WMSVDX32(0, MSVDX_CMDS_END_SLICE_PICTURE);
-				PSB_WMSVDX32(1, MSVDX_CMDS_END_SLICE_PICTURE);
-				goto done;
-			}
-
-			msvdx_ec_ctx->cur_frame_info->fw_status = 1;
+		} else if (msvdx_priv->host_be_opp_enabled == 1) {
+			PSB_DEBUG_MSVDX("MSVDX_DEBUG: get deblock required message for error concealment.\n");
 
 			/* try to unblock rendec */
-			/*
 			PSB_WMSVDX32(0, MSVDX_CMDS_END_SLICE_PICTURE);
 			PSB_WMSVDX32(1, MSVDX_CMDS_END_SLICE_PICTURE);
-			*/
+
 			/*do error concealment with hw*/
-			msvdx_priv->cur_msvdx_ec_ctx = msvdx_ec_ctx;
+			msvdx_priv->ec_fence = fence;
 			schedule_work(&msvdx_priv->ec_work);
 		}
+
 		break;
 	}
 
 	case VA_MSGID_CMD_CONTIGUITY_WARNING: {
 		drm_psb_msvdx_frame_info_t *ec_frame = NULL;
 		drm_psb_msvdx_decode_status_t *fault_region = NULL;
-		struct psb_msvdx_ec_ctx *msvdx_ec_ctx = NULL;
-		uint32_t reg_idx;
-		int found = 0;
 
 		/*get erro info*/
 		uint32_t fence = MEMIO_READ_FIELD(buf,
-					FW_VA_CONTIGUITY_WARNING_FENCE_VALUE);
-		uint32_t start = MEMIO_READ_FIELD(buf,
-					FW_VA_CONTIGUITY_WARNING_BEGIN_MB_NUM);
-		uint32_t end = MEMIO_READ_FIELD(buf,
-					FW_VA_CONTIGUITY_WARNING_END_MB_NUM);
-		PSB_DEBUG_MSVDX("MSVDX: get contiguity warning message\n");
-		PSB_DEBUG_MSVDX("MSVDX: CONTIGUITY_WARNING fence %x\n",
-				MEMIO_READ_FIELD(buf,
-					FW_VA_CONTIGUITY_WARNING_FENCE_VALUE));
-		PSB_DEBUG_MSVDX("MSVDX: CONTIGUITY_WARNING end mb num %d\n",
-				MEMIO_READ_FIELD(buf,
-					FW_VA_CONTIGUITY_WARNING_END_MB_NUM));
-		PSB_DEBUG_MSVDX("MSVDX: CONTIGUITY_WARNING begin mb num %d\n",
-			MEMIO_READ_FIELD(buf,
-				FW_VA_CONTIGUITY_WARNING_BEGIN_MB_NUM));
+						  FW_VA_CONTIGUITY_WARNING_FENCE_VALUE);
+		uint32_t ui32Start = MEMIO_READ_FIELD(buf,
+						      FW_VA_CONTIGUITY_WARNING_BEGIN_MB_NUM);
+		uint32_t ui32End = MEMIO_READ_FIELD(buf,
+						    FW_VA_CONTIGUITY_WARNING_END_MB_NUM);
+		PSB_DEBUG_GENERAL("MSVDX: VA_MSGID_CMD_CONTIGUITY_WARNING\n");
+		PSB_DEBUG_MSVDX("MSVDX_DEBUG: get contiguity warning message.\n");
+		PSB_DEBUG_MSVDX("MSVDX_DEBUG: CONTIGUITY_WARNING MESSAGE fence is %d.\n", MEMIO_READ_FIELD(buf, FW_VA_CONTIGUITY_WARNING_FENCE_VALUE));
+		PSB_DEBUG_MSVDX("MSVDX_DEBUG: CONTIGUITY_WARNING MESSAGE end mb num is %d.\n", MEMIO_READ_FIELD(buf, FW_VA_CONTIGUITY_WARNING_END_MB_NUM));
+		PSB_DEBUG_MSVDX("MSVDX_DEBUG: CONTIGUITY_WARNING MESSAGE begin mb num is %d.\n", MEMIO_READ_FIELD(buf, FW_VA_CONTIGUITY_WARNING_BEGIN_MB_NUM));
 
 		/*get the frame_info struct for error concealment frame*/
-		for (i = 0; i < PSB_MAX_EC_INSTANCE; i++)
-			if (msvdx_priv->msvdx_ec_ctx[i]->fence ==
-							(fence & (~0xf))) {
-				msvdx_ec_ctx = msvdx_priv->msvdx_ec_ctx[i];
-				found++;
+		for (i = 0; i < MAX_DECODE_BUFFERS; i++) {
+			if (msvdx_priv->frame_info[i].fence == fence) {
+				ec_frame = &msvdx_priv->frame_info[i];
+				break;
 			}
-		/* psb_msvdx_mtx_message_dump(dev); */
-		if (!msvdx_ec_ctx || !(msvdx_ec_ctx->tfile) || found > 1) {
-			PSB_DEBUG_MSVDX(
-			"no matched ctx: fence 0x%x, found %d, ctx 0x%08x\n",
-				fence, found, msvdx_ec_ctx);
+		}
+		if (!ec_frame) {
+			DRM_ERROR("MSVDX: didn't find frame_info which matched the fence %d when get contiguity warning.\n", fence);
 			goto done;
-		}
-
-		/*
-		ec_frame->fw_status = 1;
-		fault_region = &ec_frame->decode_status;
-		*/
-
-		fault_region = &msvdx_ec_ctx->decode_status;
-		if (start > end)
-			start = end;
-		if (start < PSB_MSVDX_EC_ROLLBACK)
-			start = 0;
-		else
-			start -= PSB_MSVDX_EC_ROLLBACK;
-
-		if (fault_region->num_region) {
-			reg_idx = fault_region->num_region - 1;
-			if ((start <= fault_region->mb_regions[reg_idx].end) &&
-			    (end > fault_region->mb_regions[reg_idx].end))
-				fault_region->mb_regions[reg_idx].end = end;
-			else {
-				reg_idx = fault_region->num_region++;
-				fault_region->mb_regions[reg_idx].start = start;
-				fault_region->mb_regions[reg_idx].end = end;
+		} else if (msvdx_priv->host_be_opp_enabled) {
+			ec_frame->fw_status = 1;
+			fault_region = &ec_frame->decode_status;
+			if (ui32Start == 0xffff) {
+				if (fault_region->num_error_slice == 0) {
+					fault_region->start_error_mb_list[fault_region->num_error_slice] = 0;
+					fault_region->end_error_mb_list[fault_region->num_error_slice] = ui32End;
+					fault_region->num_error_slice++;
+				} else if (fault_region->end_error_mb_list[fault_region->num_error_slice - 1] == 0xffff) {
+					fault_region->end_error_mb_list[fault_region->num_error_slice - 1] = ui32End;
+				}
+			} else if (ui32Start <  ui32End) {
+				fault_region->start_error_mb_list[fault_region->num_error_slice] = ui32Start;
+				fault_region->end_error_mb_list[fault_region->num_error_slice] = ui32End;
+				fault_region->num_error_slice++;
+			} else {
+				DRM_ERROR("msvdx error: start mb counter should not be larger than end mb counter.\n");
+				goto done;
 			}
-		} else {
-			reg_idx = fault_region->num_region++;
-			fault_region->mb_regions[reg_idx].start = start;
-			fault_region->mb_regions[reg_idx].end = end;
 		}
+
 		break;
+
 	}
 	default:
 		DRM_ERROR("ERROR: msvdx Unknown message from MTX, ID:0x%08x\n", MEMIO_READ_FIELD(buf, FWRK_GENMSG_ID));
@@ -1256,12 +1089,10 @@ loop: /* just for coding style check */
 	}
 
 done:
-	PSB_DEBUG_GENERAL("MSVDX Interrupt: finish process a message\n");
 	if (ridx != widx) {
 		PSB_DEBUG_GENERAL("MSVDX Interrupt: there are more message to be read\n");
 		goto loop;
 	}
-
 	/* we get a frame/slice done, try to save some power*/
 	if (IS_D0(dev)) {
 		if (drm_msvdx_pmpolicy == PSB_PMPOLICY_POWERDOWN)
@@ -1291,10 +1122,6 @@ IMG_BOOL psb_msvdx_interrupt(IMG_VOID *pvData)
 	}
 
 	dev = (struct drm_device *)pvData;
-	if (!ospm_power_is_hw_on(OSPM_VIDEO_DEC_ISLAND) && IS_MRST(dev)) {
-		DRM_ERROR("ERROR: interrupt arrived but HW is power off\n");
-		return IMG_FALSE;
-	}
 
 	dev_priv = (struct drm_psb_private *) dev->dev_private;
 	msvdx_priv = dev_priv->msvdx_private;
@@ -1306,7 +1133,7 @@ IMG_BOOL psb_msvdx_interrupt(IMG_VOID *pvData)
 	/* driver only needs to handle mtx irq
 	 * For MMU fault irq, there's always a HW PANIC generated
 	 * if HW/FW is totally hang, the lockup function will handle
-	 * the reseting
+	 * the reseting when firmware is loaded w/o the driver
 	 */
 	if (!IS_D0(dev) &&
 	    (msvdx_stat & MSVDX_INTERRUPT_STATUS_CR_MMU_FAULT_IRQ_MASK)) {
@@ -1416,32 +1243,28 @@ int psb_check_msvdx_idle(struct drm_device *dev)
 int psb_remove_videoctx(struct drm_psb_private *dev_priv, struct file *filp)
 {
 	struct psb_video_ctx *pos, *n;
-	/* iterate to query all ctx to if there is DRM running*/
-	ied_enabled = 0;
 
 	list_for_each_entry_safe(pos, n, &dev_priv->video_ctx, head) {
 		if (pos->filp == filp) {
 			PSB_DEBUG_GENERAL("Video:remove context profile %d,"
-					  " entrypoint %d\n",
-					  (pos->ctx_type >> 8) & 0xff,
+					  " entrypoint %d",
+					  (pos->ctx_type >> 8),
 					  (pos->ctx_type & 0xff));
 
 			/* if current ctx points to it, set to NULL */
 			if (dev_priv->topaz_ctx == pos) {
 				/*Reset fw load status here.*/
-				if (IS_MDFLD(dev_priv->dev) &&
-					(VAEntrypointEncSlice ==
-						(pos->ctx_type & 0xff)
+				if (VAEntrypointEncSlice ==
+					(pos->ctx_type & 0xff)
 					|| VAEntrypointEncPicture ==
-						(pos->ctx_type & 0xff)))
+						(pos->ctx_type & 0xff))
 					pnw_reset_fw_status(dev_priv->dev);
 
 				dev_priv->topaz_ctx = NULL;
-			} else if (IS_MDFLD(dev_priv->dev) &&
-					(VAEntrypointEncSlice ==
+			} else if (VAEntrypointEncSlice ==
 						(pos->ctx_type & 0xff)
 					|| VAEntrypointEncPicture ==
-						(pos->ctx_type & 0xff)))
+						(pos->ctx_type & 0xff))
 				PSB_DEBUG_GENERAL("Remove a inactive "\
 						"encoding context.\n");
 
@@ -1455,23 +1278,9 @@ int psb_remove_videoctx(struct drm_psb_private *dev_priv, struct file *filp)
 
 			list_del(&pos->head);
 			kfree(pos);
-		}  else {
-			if (pos->ctx_type & VA_RT_FORMAT_PROTECTED)
-				ied_enabled = 1;
 		}
 	}
 	return 0;
-}
-struct psb_video_ctx *psb_find_videoctx(struct drm_psb_private *dev_priv,
-					struct file *filp)
-{
-	struct psb_video_ctx *pos, *n;
-
-	list_for_each_entry_safe(pos, n, &dev_priv->video_ctx, head) {
-		if (pos->filp == filp)
-			return pos;
-	}
-	return NULL;
 }
 
 static int psb_entrypoint_number(struct drm_psb_private *dev_priv,
@@ -1489,8 +1298,7 @@ static int psb_entrypoint_number(struct drm_psb_private *dev_priv,
 	}
 
 	list_for_each_entry_safe(pos, n, &dev_priv->video_ctx, head) {
-		if (IS_MDFLD(dev_priv->dev) &&
-				(entry_type == (pos->ctx_type & 0xff)))
+		if (entry_type == (pos->ctx_type & 0xff))
 			count++;
 
 	}
@@ -1509,9 +1317,8 @@ int lnc_video_getparam(struct drm_device *dev, void *data,
 	struct drm_psb_private *dev_priv =
 		(struct drm_psb_private *)file_priv->minor->dev->dev_private;
 	drm_psb_msvdx_frame_info_t *current_frame = NULL;
-	struct ttm_object_file *tfile = psb_fpriv(file_priv)->tfile;
 	uint32_t handle, i;
-	uint32_t offset = 0;
+
 	uint32_t device_info = 0;
 	uint32_t ctx_type = 0;
 	struct psb_video_ctx *video_ctx = NULL;
@@ -1534,10 +1341,7 @@ int lnc_video_getparam(struct drm_device *dev, void *data,
 				   sizeof(rar_ci_info));
 		break;
 	case LNC_VIDEO_FRAME_SKIP:
-		if (IS_MRST(dev))
-			ret = lnc_video_frameskip(dev, arg->value);
-		else if (IS_MDFLD(dev)) /* Medfield should not call it */
-			ret = -EFAULT;
+		ret = -EFAULT;
 		break;
 	case LNC_VIDEO_DEVICE_INFO:
 		device_info = 0xffff & dev_priv->video_device_fuse;
@@ -1560,42 +1364,15 @@ int lnc_video_getparam(struct drm_device *dev, void *data,
 		video_ctx->filp = file_priv->filp;
 		list_add(&video_ctx->head, &dev_priv->video_ctx);
 
-		if (IS_MDFLD(dev_priv->dev) &&
-				(VAEntrypointEncSlice ==
-				 (ctx_type & 0xff)))
+		if (VAEntrypointEncSlice == (ctx_type & 0xff))
 			pnw_reset_fw_status(dev_priv->dev);
 
-		PSB_DEBUG_GENERAL("Video:add ctx profile %d, entry %d.\n",
-					((ctx_type >> 8) & 0xff),
-					(ctx_type & 0xff));
-		PSB_DEBUG_GENERAL("Video:add context protected 0x%x.\n",
-					(ctx_type & VA_RT_FORMAT_PROTECTED));
-		if (ctx_type & VA_RT_FORMAT_PROTECTED)
-			ied_enabled = 1;
+		PSB_DEBUG_GENERAL("Video:add context profile %d, entrypoint %d",
+				  (ctx_type >> 8), (ctx_type & 0xff));
 		break;
 
 	case IMG_VIDEO_RM_CONTEXT:
 		psb_remove_videoctx(dev_priv, file_priv->filp);
-		break;
-#if 0 //TODO: add this with usr space update
-	case IMG_VIDEO_UPDATE_CONTEXT:
-		ret = copy_from_user(&ctx_type,
-				(void __user *)((unsigned long)arg->value),
-				sizeof(ctx_type));
-		video_ctx = psb_find_videoctx(dev_priv, file_priv->filp);
-		if (video_ctx) {
-			PSB_DEBUG_GENERAL(
-				"Video: update video ctx old value 0x%08x\n",
-				video_ctx->ctx_type);
-			video_ctx->ctx_type = ctx_type;
-			PSB_DEBUG_GENERAL(
-				"Video: update video ctx new value 0x%08x\n",
-				video_ctx->ctx_type);
-		} else
-			PSB_DEBUG_GENERAL(
-				"Video:fail to find context profile %d, entrypoint %d",
-				(ctx_type >> 8), (ctx_type & 0xff));
-#endif
 		break;
 	case IMG_VIDEO_DECODE_STATUS:
 		if (msvdx_priv->host_be_opp_enabled) {
@@ -1666,9 +1443,6 @@ int lnc_video_getparam(struct drm_device *dev, void *data,
 			return -EFAULT;
 		}
 		break;
-	case IMG_DISPLAY_SET_WIDI_EXT_STATE:
-		DRM_ERROR("variable drm_psb_widi has been removed\n");
-		break;
 	case IMG_VIDEO_GET_HDMI_STATE:
 #ifdef IMG_VIDEO_SUPPORT_HDMI_STATE_SETTING
 		ret = copy_to_user((void __user *)((unsigned long)arg->value),
@@ -1711,33 +1485,6 @@ int lnc_video_getparam(struct drm_device *dev, void *data,
 			ret = copy_to_user((void __user *)
 					((unsigned long)arg->value),
 					&i, sizeof(i));
-		break;
-		case IMG_VIDEO_IED_STATE:
-		if (IS_MDFLD(dev)) {
-			/* query IED status by register is not safe */
-			/* need first power-on msvdx, while now only  */
-			/* schedule vxd suspend wq in interrupt handler */
-#if 0
-			int ied_enable;
-			/* VXD must be power on during query IED register */
-			if (!ospm_power_using_hw_begin(OSPM_VIDEO_DEC_ISLAND,
-					OSPM_UHB_FORCE_POWER_ON))
-				return -EBUSY;
-			/* wrong spec, IED should be located in pci device 2 */
-			if (REG_READ(PSB_IED_DRM_CNTL_STATUS) & IED_DRM_VLD)
-				ied_enable = 1;
-			else
-				ied_enable = 0;
-			PSB_DEBUG_GENERAL("ied_enable is %d.\n", ied_enable);
-			ospm_power_using_hw_end(OSPM_VIDEO_DEC_ISLAND);
-#endif
-			ret = copy_to_user((void __user *)
-					((unsigned long)arg->value),
-					&ied_enabled, sizeof(ied_enabled));
-		} else { /* Moorestown should not call it */
-			DRM_ERROR("IMG_VIDEO_IED_EANBLE error.\n");
-			return -EFAULT;
-		}
 		break;
 	default:
 		ret = -EFAULT;
@@ -1795,74 +1542,15 @@ int psb_msvdx_check_reset_fw(struct drm_device *dev)
 	unsigned long irq_flags;
 
 	spin_lock_irqsave(&msvdx_priv->msvdx_lock, irq_flags);
-	/* reserve these code, once we use a unified firmware upload, we may
-	 * have to support MRST with additional code change
-	 */
-	/* expected msvdx_needs_reset is set after previous session exited
-	 * but msvdx_hw_busy is always 1, and caused powerdown not excuted
-	 * so reload the firmware for every new context
-	 */
-	if (IS_MRST(dev) && (dev_priv->last_msvdx_ctx == NULL))
-		msvdx_priv->msvdx_needs_reset |= MSVDX_RESET_NEEDS_REUPLOAD_FW |
-			MSVDX_RESET_NEEDS_INIT_FW; /* re-load firmware */
 
-	if (IS_MRST(dev) && dev_priv->msvdx_ctx && dev_priv->last_msvdx_ctx) {
-		uint32_t from_profile, to_profile;
-
-		from_profile = (dev_priv->last_msvdx_ctx->ctx_type >> 8) & 0xff;
-		to_profile = (dev_priv->msvdx_ctx->ctx_type >> 8) & 0xff;
-
-		/* not the same profile, and one of them is H264 constrained BP
-		 * which needs Error Concealment firmware
-		 */
-		if ((from_profile != to_profile) &&
-		    ((from_profile == VAProfileH264ConstrainedBaseline) ||
-		     (to_profile == VAProfileH264ConstrainedBaseline))) {
-			PSB_DEBUG_INIT("MSVDX: firmware switching needed\n");
-			msvdx_priv->msvdx_needs_reset |= MSVDX_RESET_NEEDS_REUPLOAD_FW |
-				MSVDX_RESET_NEEDS_INIT_FW; /* re-load firmware */
-		}
-	}
 	/* handling fw upload here if required */
 	/* power off first, then hw_begin will power up/upload FW correctly */
 	if (msvdx_priv->msvdx_needs_reset & MSVDX_RESET_NEEDS_REUPLOAD_FW) {
 		msvdx_priv->msvdx_needs_reset &= ~MSVDX_RESET_NEEDS_REUPLOAD_FW;
 		ospm_power_island_down(OSPM_VIDEO_DEC_ISLAND);
 	}
+
 	spin_unlock_irqrestore(&msvdx_priv->msvdx_lock, irq_flags);
+
 	return 0;
-}
-static void psb_msvdx_set_tile(struct drm_device *dev, unsigned long msvdx_tile)
-{
-	struct drm_psb_private *dev_priv = dev->dev_private;
-	struct msvdx_private *msvdx_priv = dev_priv->msvdx_private;
-	uint32_t cmd, msvdx_stride;
-	uint32_t start = msvdx_priv->tile_region_start0;
-	uint32_t end = msvdx_priv->tile_region_end0;
-
-	msvdx_stride = (msvdx_tile & 0xf);
-	/* Enable memory tiling */
-	cmd = ((start >> 20) + (((end >> 20) - 1) << 12) +
-				((0x8 | (msvdx_stride - 1)) << 24));
-	if (msvdx_stride) {
-		PSB_DEBUG_GENERAL("MSVDX: MMU Tiling register0 %08x\n", cmd);
-		PSB_DEBUG_GENERAL("       Region 0x%08x-0x%08x\n",
-					start, end);
-		PSB_WMSVDX32(cmd, MSVDX_MMU_TILE_BASE0);
-	}
-
-	start = msvdx_priv->tile_region_start1;
-	end = msvdx_priv->tile_region_end1;
-
-	msvdx_stride = (msvdx_tile >> 4);
-	/* Enable memory tiling */
-	PSB_WMSVDX32(0, MSVDX_MMU_TILE_BASE1);
-	cmd = ((start >> 20) + (((end >> 20) - 1) << 12) +
-				((0x8 | (msvdx_stride - 1)) << 24));
-	if (msvdx_stride) {
-		PSB_DEBUG_GENERAL("MSVDX: MMU Tiling register1 %08x\n", cmd);
-		PSB_DEBUG_GENERAL("       Region 0x%08x-0x%08x\n",
-					start, end);
-		PSB_WMSVDX32(cmd, MSVDX_MMU_TILE_BASE1);
-	}
 }

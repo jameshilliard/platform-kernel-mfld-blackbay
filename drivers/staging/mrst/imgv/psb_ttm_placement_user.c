@@ -44,7 +44,7 @@ static uint32_t psb_busy_prios[] = {
 	TTM_PL_FLAG_SYSTEM
 };
 
-const struct ttm_placement default_placement = {0, 0, 0, NULL, 5, psb_busy_prios};
+static const struct ttm_placement default_placement = {0, 0, 0, NULL, 5, psb_busy_prios};
 
 static size_t ttm_pl_size(struct ttm_bo_device *bdev, unsigned long num_pages)
 {
@@ -489,8 +489,21 @@ int ttm_pl_synccpu_ioctl(struct ttm_object_file *tfile, void *data)
 		ttm_base_object_unref(&base);
 		break;
 	case TTM_PL_SYNCCPU_OP_RELEASE:
+		bo = ttm_buffer_object_lookup(tfile, arg->handle);
+		if (unlikely(bo == NULL)) {
+			printk(KERN_ERR "Could not find buffer object for synccpu release\n");
+			ret = -EINVAL;
+			goto out;
+		}
+		ret = ttm_bo_reserve(bo, true, true, false, 0);
+		if (unlikely(ret != 0)) {
+			ttm_bo_unref(&bo);
+			return ret;
+		}
 		ret = ttm_ref_object_base_unref(tfile, arg->handle,
 						TTM_REF_SYNCCPU_WRITE);
+		ttm_bo_unreserve(bo);
+		ttm_bo_unref(&bo);
 		break;
 	default:
 		ret = -EINVAL;

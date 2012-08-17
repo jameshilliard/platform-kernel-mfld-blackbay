@@ -56,7 +56,7 @@ static void ttm_fence_lockup(struct ttm_fence_object *fence, uint32_t mask)
  * need polling.
  */
 
-int ttm_fence_wait_polling(struct ttm_fence_object *fence, bool lazy,
+static int ttm_fence_wait_polling(struct ttm_fence_object *fence, bool lazy,
 			   bool interruptible, uint32_t mask)
 {
 	struct ttm_fence_class_manager *fc = ttm_fence_fc(fence);
@@ -284,7 +284,7 @@ int ttm_fence_object_flush(struct ttm_fence_object *fence, uint32_t type)
  * wrapped around and reused.
  */
 
-void ttm_fence_flush_old(struct ttm_fence_device *fdev,
+static void ttm_fence_flush_old(struct ttm_fence_device *fdev,
 			 uint32_t fence_class, uint32_t sequence)
 {
 	struct ttm_fence_class_manager *fc = &fdev->fence_class[fence_class];
@@ -381,7 +381,7 @@ retry:
 	return ttm_fence_wait_polling(fence, lazy, interruptible, mask);
 }
 
-int ttm_fence_object_emit(struct ttm_fence_object *fence, uint32_t fence_flags,
+static int ttm_fence_object_emit(struct ttm_fence_object *fence, uint32_t fence_flags,
 			  uint32_t fence_class, uint32_t type)
 {
 	const struct ttm_fence_driver *driver = ttm_fence_driver(fence);

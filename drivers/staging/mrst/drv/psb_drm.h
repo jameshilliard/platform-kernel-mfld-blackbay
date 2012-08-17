@@ -61,9 +61,6 @@
 #define TTM_PL_RAR               TTM_PL_PRIV2
 #define TTM_PL_FLAG_RAR          TTM_PL_FLAG_PRIV2       
 
-#define DRM_PSB_MEM_MMU_TILING TTM_PL_PRIV3
-#define DRM_PSB_FLAG_MEM_MMU_TILING TTM_PL_FLAG_PRIV3
-
 typedef int32_t psb_fixed;
 typedef uint32_t psb_ufixed;
 
@@ -280,24 +277,20 @@ typedef enum {
 	LNC_VIDEO_DEVICE_INFO,
 	LNC_VIDEO_GETPARAM_RAR_INFO,
 	LNC_VIDEO_GETPARAM_CI_INFO,
-#if 1 //TODO:del it with usr space update
 	LNC_VIDEO_GETPARAM_RAR_HANDLER_OFFSET,
-#endif
 	LNC_VIDEO_FRAME_SKIP,
 	IMG_VIDEO_DECODE_STATUS,
 	IMG_VIDEO_NEW_CONTEXT,
 	IMG_VIDEO_RM_CONTEXT,
-#if 0 //TODO:add it with usr space update
-	IMG_VIDEO_UPDATE_CONTEXT,
-#endif
 	IMG_VIDEO_MB_ERROR,
 	IMG_VIDEO_SET_DISPLAYING_FRAME,
 	IMG_VIDEO_GET_DISPLAYING_FRAME,
 	IMG_VIDEO_GET_HDMI_STATE,
 	IMG_VIDEO_SET_HDMI_STATE,
 	PNW_VIDEO_QUERY_ENTRY,
-	IMG_DISPLAY_SET_WIDI_EXT_STATE,
-	IMG_VIDEO_IED_STATE
+#ifdef HDMI_MODE_SETTING
+	OTM_HDMI_SET_HDMI_MODE_VIC
+#endif
 } lnc_getparam_key_t;
 
 struct drm_lnc_video_getparam_arg {
@@ -649,15 +642,14 @@ struct drm_psb_getpageaddrs_arg {
 	unsigned long gtt_offset;
 };
 
-#define MAX_SLICES_PER_PICTURE 72
-struct  psb_msvdx_mb_region {
-	uint32_t start;
-	uint32_t end;
-};
 
+#define MAX_SLICES_PER_PICTURE 72
 typedef struct drm_psb_msvdx_decode_status {
-	uint32_t num_region;
-	struct psb_msvdx_mb_region mb_regions[MAX_SLICES_PER_PICTURE];
+	uint32_t fw_status;
+	uint32_t num_error_slice;
+	int32_t start_error_mb_list[MAX_SLICES_PER_PICTURE];
+	int32_t end_error_mb_list[MAX_SLICES_PER_PICTURE];
+	int32_t slice_missing_or_error[MAX_SLICES_PER_PICTURE];
 } drm_psb_msvdx_decode_status_t;
 
 /* Controlling the kernel modesetting buffers */

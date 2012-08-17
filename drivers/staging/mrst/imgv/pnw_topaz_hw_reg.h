@@ -21,10 +21,6 @@
 #ifndef _PNW_TOPAZ_HW_REG_H_
 #define _PNW_TOPAZ_HW_REG_H_
 
-#ifdef _LNC_TOPAZ_HW_REG_H_
-#error "lnc_topaz_hw_reg.h shouldn't be included"
-#endif
-
 #include "psb_drv.h"
 #include "img_types.h"
 #include "pnw_topaz.h"
