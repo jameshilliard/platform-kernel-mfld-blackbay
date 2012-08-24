@@ -47,9 +47,12 @@ static int __power_supply_changed_work(struct device *dev, void *data)
 	return 0;
 }
 
+int charger_connect_mask = 0;
 static void power_supply_changed_work(struct work_struct *work)
 {
 	unsigned long flags;
+	char charger_flag[32] = "CHARGERFLAG=N";
+	char *envp[] = {charger_flag, NULL};
 	struct power_supply *psy = container_of(work, struct power_supply,
 						changed_work);
 
@@ -65,7 +68,23 @@ static void power_supply_changed_work(struct work_struct *work)
 
 		power_supply_update_leds(psy);
 
-		kobject_uevent(&psy->dev->kobj, KOBJ_CHANGE);
+		spin_lock_irqsave(&psy->changed_lock, flags);
+		if(charger_connect_mask & CHARGER_IN) {
+			if(!(charger_connect_mask & CHARGER_STILL)) {
+				strcpy(charger_flag, "CHARGERFLAG=Y");
+				charger_connect_mask |= CHARGER_STILL;
+			}
+		} else {
+			if(charger_connect_mask & CHARGER_STILL) {
+				strcpy(charger_flag, "CHARGERFLAG=Y");
+				charger_connect_mask = CHARGER_OUT;
+			}
+		}
+		spin_unlock_irqrestore(&psy->changed_lock, flags);
+		dev_dbg(psy->dev, "charger_connect_mask 0x%x; %s\n",
+					charger_connect_mask, envp[0]);
+
+		kobject_uevent_env(&psy->dev->kobj, KOBJ_CHANGE, envp);
 		spin_lock_irqsave(&psy->changed_lock, flags);
 	}
 	if (!psy->changed)
