@@ -18,6 +18,9 @@
 #include <linux/workqueue.h>
 #include <linux/leds.h>
 
+#define	CHARGER_OUT	0x0
+#define	CHARGER_IN	0x1
+#define	CHARGER_STILL	0X2
 /*
  * All voltages, currents, charges, energies, time and temperatures in uV,
  * µA, µAh, µWh, seconds and tenths of degree Celsius unless otherwise

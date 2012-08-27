@@ -1520,6 +1520,7 @@ static unsigned int sfi_temp_range_lookup(int adc_temp)
 	return i;
 }
 
+extern int charger_connect_mask;
 /**
 * msic_batt_temp_charging - manages the charging based on temperature
 * @charge_param: charging parameter
@@ -1793,6 +1794,7 @@ static void msic_batt_temp_charging(struct work_struct *work)
 			mbi->batt_props.status = POWER_SUPPLY_STATUS_CHARGING;
 		is_chrg_enbl = true;
 	}
+	charger_connect_mask |= CHARGER_IN;
 	mutex_unlock(&mbi->batt_lock);
 
 	dump_registers(MSIC_CHRG_REG_DUMP_EVENT);
@@ -2006,6 +2008,7 @@ static void msic_batt_disconn(struct work_struct *work)
 		mbi->batt_props.status = POWER_SUPPLY_STATUS_NOT_CHARGING;
 	else
 		mbi->batt_props.status = POWER_SUPPLY_STATUS_DISCHARGING;
+	charger_connect_mask &= ~CHARGER_IN;
 	mutex_unlock(&mbi->batt_lock);
 
 	/* release the wake lock when charger is unplugged */
