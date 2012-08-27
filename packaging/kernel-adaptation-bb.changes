@@ -1,3 +1,9 @@
+* Mon Aug 27 2012 Peng Li <peng.li@intel.com> - 3.0.8
+[ Yan Zhang ]
+- Update video driver to MCG's latest code
+[ Li Peng ]
+- gfx: a better way to do gfx suspend/resume at DPMS on/off
+
 * Mon Aug 13 2012 Peng Li <peng.li@intel.com> - 3.0.8
 [ Li Peng ]
 - gfx: a better way to do gfx suspend/resume at DPMS on/off
