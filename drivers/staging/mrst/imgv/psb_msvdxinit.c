@@ -24,6 +24,7 @@
 #include <drm/drm.h>
 #include "psb_drv.h"
 #include "psb_msvdx.h"
+#include "psb_msvdx_ec.h"
 #include <linux/firmware.h>
 
 #define MSVDX_REG (dev_priv->msvdx_reg)
@@ -33,7 +34,7 @@
 #define UNINITILISE_MEM 	( 0xcdcdcdcd )
 #define FIRMWAREID		( 0x014d42ab )
 
-static uint8_t psb_rev_id;
+uint8_t psb_rev_id;
 /*MSVDX FW header*/
 struct msvdx_fw {
 	uint32_t ver;
@@ -68,7 +69,7 @@ int psb_wait_for_register(struct drm_psb_private *dev_priv,
 	return 1;
 }
 
-static int psb_poll_mtx_irq(struct drm_psb_private *dev_priv)
+int psb_poll_mtx_irq(struct drm_psb_private *dev_priv)
 {
 	int ret = 0;
 	uint32_t mtx_int = 0;
@@ -96,7 +97,7 @@ static int psb_poll_mtx_irq(struct drm_psb_private *dev_priv)
 	return ret;
 }
 
-static void psb_write_mtx_core_reg(struct drm_psb_private *dev_priv,
+void psb_write_mtx_core_reg(struct drm_psb_private *dev_priv,
 			    const uint32_t core_reg, const uint32_t val)
 {
 	uint32_t reg = 0;
@@ -152,8 +153,6 @@ static void psb_release_mtx_control_from_dash(struct drm_psb_private *dev_priv)
 	/* release bus */
 	PSB_WMSVDX32(0x4, MSVDX_MTX_DEBUG);
 }
-
-
 
 static void psb_upload_fw(struct drm_psb_private *dev_priv,
 			  uint32_t address, const unsigned int words, int fw_sel)
@@ -252,6 +251,7 @@ static void psb_upload_fw(struct drm_psb_private *dev_priv,
 	}
 
 	psb_release_mtx_control_from_dash(dev_priv);
+
 	PSB_DEBUG_GENERAL("MSVDX: Upload done\n");
 }
 
@@ -438,6 +438,32 @@ static int msvdx_get_fw_bo(struct drm_device *dev,
 		*last_word = STACKGUARDWORD;
 	}
 
+	if (IS_MRST(dev) && (fw_size < (*raw)->size)) {
+		uint32_t *last_word;
+
+		PSB_DEBUG_GENERAL("MSVDX: store error-concealment firmware\n");
+
+		ptr += ((fw_size + 0xfff) & ~0xfff);
+		gpu_addr += ((msvdx_priv->mtx_mem_size + 8192) & ~0xfff);
+
+		if (((struct msvdx_fw *) ptr)->ver != 0x4ae) {
+			PSB_DEBUG_GENERAL("MSVDX: Error concealment firmware has wrong version num\n");
+			PSB_DEBUG_GENERAL("MSVDX: Abort store Error concealment firmware\n");
+		} else {
+			memset(gpu_addr, UNINITILISE_MEM, msvdx_priv->mtx_mem_size);
+
+			memcpy(gpu_addr, ptr + sizeof(struct msvdx_fw),
+			       sizeof(uint32_t) *((struct msvdx_fw *) ptr)->text_size);
+
+			memcpy(gpu_addr + (((struct msvdx_fw *) ptr)->data_location - MSVDX_MTX_DATA_LOCATION),
+			       (void *)ptr + sizeof(struct msvdx_fw) + sizeof(uint32_t) *((struct msvdx_fw *) ptr)->text_size,
+			       sizeof(uint32_t) *((struct msvdx_fw *) ptr)->data_size);
+
+			last_word = (uint32_t *)(gpu_addr + msvdx_priv->mtx_mem_size - 4);
+			*last_word = STACKGUARDWORD;
+		}
+	}
+
 	ttm_bo_kunmap(&tmp_kmap);
 	PSB_DEBUG_GENERAL("MSVDX: releasing firmware resouces\n");
 	PSB_DEBUG_GENERAL("MSVDX: Load firmware into BO successfully\n");
@@ -514,6 +540,7 @@ int psb_setup_fw(struct drm_device *dev)
 
 	/* todo : Assert the clock is on - if not turn it on to upload code */
 	PSB_DEBUG_GENERAL("MSVDX: psb_setup_fw\n");
+
 	PSB_WMSVDX32(clk_enable_all, MSVDX_MAN_CLK_ENABLE);
 
 	if (!IS_D0(dev)) {
@@ -537,7 +564,9 @@ int psb_setup_fw(struct drm_device *dev)
 	  }
 	*/
 
-	PSB_WMSVDX32(FIRMWAREID, MSVDX_COMMS_FIRMWARE_ID);
+	if (IS_MDFLD(dev)) {
+		PSB_WMSVDX32(FIRMWAREID, MSVDX_COMMS_FIRMWARE_ID);
+	}
 
 	if (!IS_D0(dev)) {
 		PSB_WMSVDX32(0, MSVDX_COMMS_ERROR_TRIG);
@@ -559,6 +588,12 @@ int psb_setup_fw(struct drm_device *dev)
 		/* we should restore the state, if we power down/up
 		 * during EC */
 		PSB_WMSVDX32(0, MSVDX_EXT_FW_ERROR_STATE); /* EXT_FW_ERROR_STATE */
+		PSB_WMSVDX32(0, MSVDX_COMMS_MSG_COUNTER);
+		PSB_WMSVDX32(0, 0x2000 + 0xcc4); /* EXT_FW_ERROR_STATE */
+		PSB_WMSVDX32(0, 0x2000 + 0xcb0); /* EXT_FW_LAST_MBS */
+		PSB_WMSVDX32(0, 0x2000 + 0xcb4); /* EXT_FW_LAST_MBS */
+		PSB_WMSVDX32(0, 0x2000 + 0xcb8); /* EXT_FW_LAST_MBS */
+		PSB_WMSVDX32(0, 0x2000 + 0xcbc); /* EXT_FW_LAST_MBS */
 	}
 	/* read register bank size */
 	{
@@ -581,100 +616,134 @@ int psb_setup_fw(struct drm_device *dev)
         const struct firmware *raw = NULL;
         int ec_firmware = 0;
 
-	/* if FW already loaded from storage */
-	if (msvdx_priv->msvdx_fw)
-		fw_ptr = msvdx_priv->msvdx_fw;
-	else {
-		fw_ptr = msvdx_get_fw(dev, &raw, "msvdx_fw_mfld_DE2.0.bin");
+        /* load error concealment firmware? */
+        if (IS_MRST(dev) && dev_priv->last_msvdx_ctx &&
+			(((dev_priv->last_msvdx_ctx->ctx_type >> 8) & 0xff) ==
+			VAProfileH264ConstrainedBaseline)) {
+            ec_firmware = 1;
+            PSB_DEBUG_INIT("MSVDX: load error concealment firmware\n");
+        }
 
-		PSB_DEBUG_GENERAL("MSVDX:load msvdx_fw_mfld_DE2.0.bin by udevd\n");
-	}
+    	/* if FW already loaded from storage */
+    	if (msvdx_priv->msvdx_fw)
+    		fw_ptr = msvdx_priv->msvdx_fw;
+    	else {
+    		if (IS_MRST(dev)) {
+    			fw_ptr = msvdx_get_fw(dev, &raw, "msvdx_fw.bin");
+    			PSB_DEBUG_GENERAL("MSVDX:load msvdx_fw.bin by udevd\n");
+    		} else if (IS_MDFLD(dev)) {
+    			if (IS_FW_UPDATED)
+    				fw_ptr = msvdx_get_fw(dev, &raw, "msvdx_fw_mfld_DE2.0.bin");
+    			else
+    				fw_ptr = msvdx_get_fw(dev, &raw, "msvdx_fw_mfld.bin");
 
-	if (!fw_ptr) {
-		DRM_ERROR("MSVDX:load msvdx_fw.bin failed,is udevd running?\n");
-		ret = 1;
-		goto out;
-	}
+    			PSB_DEBUG_GENERAL("MSVDX:load msvdx_fw_mfld_DE2.0.bin by udevd\n");
+    		} else
+    			DRM_ERROR("MSVDX:HW is neither mrst nor mfld\n");
+    	}
 
-	if (!msvdx_priv->is_load) {/* Load firmware into BO */
-		PSB_DEBUG_GENERAL("MSVDX:load msvdx_fw.bin by udevd into BO\n");
-		ret = msvdx_get_fw_bo(dev, &raw, "msvdx_fw_mfld_DE2.0.bin");
-		msvdx_priv->is_load = 1;
-	}
+    	if (!fw_ptr) {
+    		DRM_ERROR("MSVDX:load msvdx_fw.bin failed,is udevd running?\n");
+    		ret = 1;
+    		goto out;
+    	}
 
-
-	fw = (struct msvdx_fw *) fw_ptr;
-
-	if (ec_firmware) {
-		fw_ptr += (((sizeof(struct msvdx_fw) + (fw->text_size + fw->data_size) * 4 + 0xfff) & ~0xfff) / sizeof(uint32_t));
-		fw = (struct msvdx_fw *) fw_ptr;
-	}
-
-	/*
-	  if (fw->ver != 0x02) {
-	  DRM_ERROR("psb: msvdx_fw.bin firmware version mismatch,"
-	  "got version=%02x expected version=%02x\n",
-	  fw->ver, 0x02);
-	  ret = 1;
-	  goto out;
-	  }
-	*/
-	text_ptr =
-		(uint32_t *)((uint8_t *) fw_ptr + sizeof(struct msvdx_fw));
-	data_ptr = text_ptr + fw->text_size;
-
-	if (fw->text_size == 2858)
-		PSB_DEBUG_GENERAL(
-			"MSVDX: FW ver 1.00.10.0187 of SliceSwitch variant\n");
-	else if (fw->text_size == 3021)
-		PSB_DEBUG_GENERAL(
-			"MSVDX: FW ver 1.00.10.0187 of FrameSwitch variant\n");
-	else if (fw->text_size == 2841)
-		PSB_DEBUG_GENERAL("MSVDX: FW ver 1.00.10.0788\n");
-	else if (fw->text_size == 3147)
-		PSB_DEBUG_GENERAL("MSVDX: FW ver BUILD_DXVA_FW1.00.10.1042 of SliceSwitch variant\n");
-	else if (fw->text_size == 3097)
-		PSB_DEBUG_GENERAL("MSVDX: FW ver BUILD_DXVA_FW1.00.10.0963.02.0011 of FrameSwitch variant\n");
-	else
-		PSB_DEBUG_GENERAL("MSVDX: FW ver unknown\n");
+    	if (!msvdx_priv->is_load) {/* Load firmware into BO */
+    		PSB_DEBUG_GENERAL("MSVDX:load msvdx_fw.bin by udevd into BO\n");
+    		if (IS_MRST(dev))
+    			ret = msvdx_get_fw_bo(dev, &raw, "msvdx_fw.bin");
+    		else if (IS_MDFLD(dev)) {
+    			if (IS_FW_UPDATED)
+    				ret = msvdx_get_fw_bo(dev, &raw, "msvdx_fw_mfld_DE2.0.bin");
+    			else
+    				ret = msvdx_get_fw_bo(dev, &raw, "msvdx_fw_mfld.bin");
+    		} else
+    			DRM_ERROR("MSVDX:HW is neither mrst nor mfld\n");
+    		msvdx_priv->is_load = 1;
+    	}
 
 
-	PSB_DEBUG_GENERAL("MSVDX: Retrieved pointers for firmware\n");
-	PSB_DEBUG_GENERAL("MSVDX: text_size: %d\n", fw->text_size);
-	PSB_DEBUG_GENERAL("MSVDX: data_size: %d\n", fw->data_size);
-	PSB_DEBUG_GENERAL("MSVDX: data_location: 0x%x\n",
-			  fw->data_location);
-	PSB_DEBUG_GENERAL("MSVDX: First 4 bytes of text: 0x%x\n",
-			  *text_ptr);
-	PSB_DEBUG_GENERAL("MSVDX: First 4 bytes of data: 0x%x\n",
-			  *data_ptr);
+    	fw = (struct msvdx_fw *) fw_ptr;
 
-	PSB_DEBUG_GENERAL("MSVDX: Uploading firmware\n");
+    	if (ec_firmware) {
+    		fw_ptr += (((sizeof(struct msvdx_fw) + (fw->text_size + fw->data_size) * 4 + 0xfff) & ~0xfff) / sizeof(uint32_t));
+    		fw = (struct msvdx_fw *) fw_ptr;
+    	}
 
-	psb_upload_fw(dev_priv, 0, msvdx_priv->mtx_mem_size / 4, ec_firmware);
+        /*
+            if (fw->ver != 0x02) {
+                DRM_ERROR("psb: msvdx_fw.bin firmware version mismatch,"
+                    "got version=%02x expected version=%02x\n",
+                    fw->ver, 0x02);
+                ret = 1;
+                goto out;
+            }
+            */
+    	text_ptr =
+    		(uint32_t *)((uint8_t *) fw_ptr + sizeof(struct msvdx_fw));
+    	data_ptr = text_ptr + fw->text_size;
+
+    	if (fw->text_size == 2858)
+    		PSB_DEBUG_GENERAL(
+    			"MSVDX: FW ver 1.00.10.0187 of SliceSwitch variant\n");
+    	else if (fw->text_size == 3021)
+    		PSB_DEBUG_GENERAL(
+    			"MSVDX: FW ver 1.00.10.0187 of FrameSwitch variant\n");
+    	else if (fw->text_size == 2841)
+    		PSB_DEBUG_GENERAL("MSVDX: FW ver 1.00.10.0788\n");
+    	else if (fw->text_size == 3147)
+    		PSB_DEBUG_GENERAL("MSVDX: FW ver BUILD_DXVA_FW1.00.10.1042 of SliceSwitch variant\n");
+    	else if (fw->text_size == 3097)
+    		PSB_DEBUG_GENERAL("MSVDX: FW ver BUILD_DXVA_FW1.00.10.0963.02.0011 of FrameSwitch variant\n");
+    	else
+    		PSB_DEBUG_GENERAL("MSVDX: FW ver unknown\n");
+
+
+    	PSB_DEBUG_GENERAL("MSVDX: Retrieved pointers for firmware\n");
+    	PSB_DEBUG_GENERAL("MSVDX: text_size: %d\n", fw->text_size);
+    	PSB_DEBUG_GENERAL("MSVDX: data_size: %d\n", fw->data_size);
+    	PSB_DEBUG_GENERAL("MSVDX: data_location: 0x%x\n",
+    			  fw->data_location);
+    	PSB_DEBUG_GENERAL("MSVDX: First 4 bytes of text: 0x%x\n",
+    			  *text_ptr);
+    	PSB_DEBUG_GENERAL("MSVDX: First 4 bytes of data: 0x%x\n",
+    			  *data_ptr);
+
+    	PSB_DEBUG_GENERAL("MSVDX: Uploading firmware\n");
+
+#if UPLOAD_FW_BY_DMA
+		psb_upload_fw(dev_priv, 0, msvdx_priv->mtx_mem_size / 4, ec_firmware);
+#else
+		psb_upload_fw(dev_priv, MTX_CORE_CODE_MEM, ram_bank_size,
+				PC_START_ADDRESS - MTX_CODE_BASE, fw->text_size,
+				text_ptr);
+		psb_upload_fw(dev_priv, MTX_CORE_DATA_MEM, ram_bank_size,
+				fw->data_location - MTX_DATA_BASE, fw->data_size,
+				data_ptr);
+#endif
 
 #if 0
-	/* todo :  Verify code upload possibly only in debug */
-	ret = psb_verify_fw(dev_priv, ram_bank_size,
-			    MTX_CORE_CODE_MEM,
-			    PC_START_ADDRESS - MTX_CODE_BASE,
-			    fw->text_size, text_ptr);
-	if (ret) {
-		/* Firmware code upload failed */
-		ret = 1;
-		goto out;
-	}
+    	/* todo :  Verify code upload possibly only in debug */
+    	ret = psb_verify_fw(dev_priv, ram_bank_size,
+    			    MTX_CORE_CODE_MEM,
+    			    PC_START_ADDRESS - MTX_CODE_BASE,
+    			    fw->text_size, text_ptr);
+    	if (ret) {
+    		/* Firmware code upload failed */
+    		ret = 1;
+    		goto out;
+    	}
 
-	ret = psb_verify_fw(dev_priv, ram_bank_size, MTX_CORE_DATA_MEM,
-			    fw->data_location - MTX_DATA_BASE,
-			    fw->data_size, data_ptr);
-	if (ret) {
-		/* Firmware data upload failed */
-		ret = 1;
-		goto out;
-	}
+    	ret = psb_verify_fw(dev_priv, ram_bank_size, MTX_CORE_DATA_MEM,
+    			    fw->data_location - MTX_DATA_BASE,
+    			    fw->data_size, data_ptr);
+    	if (ret) {
+    		/* Firmware data upload failed */
+    		ret = 1;
+    		goto out;
+    	}
 #else
-	(void)psb_verify_fw;
+    	(void)psb_verify_fw;
 #endif
 
 		/*	-- Set starting PC address	*/
@@ -697,16 +766,15 @@ int psb_setup_fw(struct drm_device *dev)
 	PSB_DEBUG_GENERAL("MSVDX: MSVDX_COMMS_AREA_ADDR = %08x\n",
 			  MSVDX_COMMS_AREA_ADDR);
 	if (IS_D0(dev)) {
+		/* send INIT cmd for RENDEC init */
+		PSB_WMSVDX32(DSIABLE_IDLE_GPIO_SIG | DSIABLE_Auto_CLOCK_GATING
+			     | RETURN_VDEB_DATA_IN_COMPLETION,
+			     MSVDX_COMMS_OFFSET_FLAGS);
 		/*
 		 * at this stage, FW is uplaoded successfully, can send rendec
 		 * init message
 		 */
 		uint32_t init_msg[FW_DEVA_INIT_SIZE];
-
-		/* send INIT cmd for RENDEC init */
-		PSB_WMSVDX32(DSIABLE_IDLE_GPIO_SIG | DSIABLE_Auto_CLOCK_GATING
-			     | RETURN_VDEB_DATA_IN_COMPLETION,
-			     MSVDX_COMMS_OFFSET_FLAGS);
 
 		MEMIO_WRITE_FIELD(init_msg, FWRK_GENMSG_SIZE,
 				  FW_DEVA_INIT_SIZE);
@@ -866,12 +934,13 @@ int psb_msvdx_reset(struct drm_psb_private *dev_priv)
 		}
 
 	}
+
 	/* Issue software reset */
 	/* PSB_WMSVDX32(msvdx_sw_reset_all, MSVDX_CONTROL); */
 	PSB_WMSVDX32(MSVDX_CONTROL_CR_MSVDX_SOFT_RESET_MASK, MSVDX_CONTROL);
 
 	ret = psb_wait_for_register(dev_priv, MSVDX_CONTROL, 0,
-				    MSVDX_CONTROL_CR_MSVDX_SOFT_RESET_MASK);
+			MSVDX_CONTROL_CR_MSVDX_SOFT_RESET_MASK);
 
 	if (!ret) {
 		/* Clear interrupt enabled flag */
@@ -946,6 +1015,173 @@ static ssize_t psb_msvdx_pmstate_show(struct device *dev,
 
 static DEVICE_ATTR(msvdx_pmstate, 0444, psb_msvdx_pmstate_show, NULL);
 
+static void psb_msvdx_conceal_mb(char * ec_start, char * ref_start,
+				 uint32_t start_err_mb, uint32_t end_err_mb,
+				 uint32_t pic_width_mb, uint32_t stride,
+				 uint32_t mb_width, uint32_t mb_height)
+{
+	int i, offset_start, offset_end, size, full_line_start, full_line_end, extra_line_start, extra_line_end;
+	char *src, *dst;
+
+	(void)offset_end;
+	(void)offset_start;
+
+	full_line_start = (start_err_mb / pic_width_mb) * stride * mb_height;
+	full_line_end = ((end_err_mb + 1) / pic_width_mb) * stride * mb_height;
+	extra_line_start = (start_err_mb % pic_width_mb) * mb_width;
+	extra_line_end = (end_err_mb + 1) % pic_width_mb * mb_width;
+	if (extra_line_start != 0) {
+		size = stride - extra_line_start;
+		src = ref_start + full_line_start + extra_line_start;
+		dst = ec_start + full_line_start + extra_line_start;
+		for (i = 0; i < mb_height; i++) {
+			memcpy(dst, src, size);
+			//memset(dst, 255, size);
+			src += stride;
+			dst += stride;
+		}
+		full_line_start += stride * mb_height;
+	}
+	src = ref_start + full_line_start;
+	dst = ec_start + full_line_start;
+	size =  full_line_end - full_line_start;
+	memcpy(dst, src, size);
+	//memset(dst, 255, size);
+	if (extra_line_end != 0) {
+		size = extra_line_end;
+		src = ref_start + full_line_end;
+		dst = ec_start + full_line_end;
+		for (i = 0; i < mb_height; i++) {
+			memcpy(dst, src, size);
+			//memset(dst, 255, size);
+			src += stride;
+			dst += stride;
+		}
+	}
+}
+
+
+static void psb_msvdx_error_concealment(struct work_struct *data)
+{
+#if 0
+	uint32_t i;
+	int ret;
+	struct msvdx_private *msvdx_priv = container_of(data, struct msvdx_private, ec_work);
+	drm_psb_msvdx_frame_info_t *ec_frame = NULL;
+	drm_psb_msvdx_frame_info_t *ref_frame = NULL;
+	static struct ttm_bo_kmap_obj ec_kmap, ref_kmap;
+	struct ttm_buffer_object *ec_bo = NULL;
+	struct ttm_buffer_object *ref_bo = NULL;
+	struct ttm_object_file *tfile = msvdx_priv->tfile;
+	drm_psb_msvdx_decode_status_t *decode_status = NULL;
+	bool is_iomem;
+	char *ec_start, *ref_start;
+
+	if (msvdx_priv->ec_fence > 0)
+		msvdx_priv->ref_pic_fence = msvdx_priv->ec_fence - 1;
+	else {
+		DRM_ERROR("Can't do error concealment for the first frame.\n");
+		return;
+	}
+
+	/*get the frame_info struct for error concealment frame*/
+	for (i = 0; i < MAX_DECODE_BUFFERS; i++) {
+		if (msvdx_priv->frame_info[i].fence == msvdx_priv->ec_fence) {
+			ec_frame = &msvdx_priv->frame_info[i];
+			break;
+		}
+	}
+	if (!ec_frame) {
+		DRM_ERROR("MSVDX: didn't find frame_info which matched the ec fence\n");
+		return;
+	}
+	decode_status = &ec_frame->decode_status;
+	ec_bo = ttm_buffer_object_lookup(tfile, ec_frame->handle);
+	if (unlikely(ec_bo == NULL)) {
+		printk(KERN_ERR " : Could not find buffer object for setstatus.\n");
+		return;
+	}
+	ret = ttm_bo_reserve(ec_bo, true, true, false, 0);
+	if (ret) {
+		DRM_ERROR("MSVDX ERROR CONCEALMENT: reserver failed.\n");
+		return;
+	}
+	ret = ttm_bo_kmap(ec_bo,
+			  0,
+			  (ec_frame->buffer_size +
+			   PAGE_SIZE - 1) >> PAGE_SHIFT,
+			  &ec_kmap);
+	if (ret) {
+		printk("MSVDX ERROR CONCEALMENT: ec kmap failed, %d.\n", ret);
+		return;
+	}
+	ec_start = (unsigned char *) ttm_kmap_obj_virtual(&ec_kmap,
+			&is_iomem);
+
+	/*get the frame_info struct for reference frame*/
+	for (i = 0; i < MAX_DECODE_BUFFERS; i++) {
+		if (msvdx_priv->frame_info[i].fence == msvdx_priv->ref_pic_fence) {
+			ref_frame = &msvdx_priv->frame_info[i];
+			break;
+		}
+	}
+	if (!ref_frame) {
+		DRM_ERROR("MSVDX: didn't find frame_info which matched the ref fence\n");
+		return;
+	}
+	ref_bo = ttm_buffer_object_lookup(tfile, ref_frame->handle);
+	if (unlikely(ref_bo == NULL)) {
+		printk(KERN_ERR " : Could not find buffer object for setstatus.\n");
+	}
+	ret = ttm_bo_reserve(ref_bo, true, true, false, 0);
+	if (ret) {
+		DRM_ERROR("MSVDX ERROR CONCEALMENT: reserver failed.\n");
+		return;
+	}
+	ret = ttm_bo_kmap(ref_bo,
+			  0,
+			  (ref_frame->buffer_size +
+			   PAGE_SIZE - 1) >> PAGE_SHIFT,
+			  &ref_kmap);
+	if (ret) {
+		printk("MSVDX ERROR CONCEALMENT: ref kmap failed, %d.\n", ret);
+		return;
+	}
+	ref_start = (unsigned char *) ttm_kmap_obj_virtual(&ref_kmap,
+			&is_iomem);
+
+	/*copy missing mb from ref picture to ec picture*/
+	for (i = 0; i < decode_status->num_error_slice; i++) {
+		if ((decode_status->start_error_mb_list[i] >= ec_frame->size_mb) ||
+		    (decode_status->end_error_mb_list[i] >= ec_frame->size_mb) ||
+		    (decode_status->start_error_mb_list[i] > decode_status->end_error_mb_list[i]))
+			continue;
+		psb_msvdx_conceal_mb(ec_start, ref_start,
+				     decode_status->start_error_mb_list[i],
+				     decode_status->end_error_mb_list[i],
+				     ec_frame->picture_width_mb, ec_frame->buffer_stride,
+				     16, 16);
+		psb_msvdx_conceal_mb(ec_start + ec_frame->buffer_size * 2 / 3,
+				     ref_start + ec_frame->buffer_size * 2 / 3,
+				     decode_status->start_error_mb_list[i],
+				     decode_status->end_error_mb_list[i],
+				     ec_frame->picture_width_mb, ec_frame->buffer_stride,
+				     16, 8);
+	}
+
+	ttm_bo_kunmap(&ec_kmap);
+	ttm_bo_kunmap(&ref_kmap);
+	ttm_bo_unreserve(ec_bo);
+	ttm_bo_unreserve(ref_bo);
+
+	if (ec_bo)
+		ttm_bo_unref(&ec_bo);
+	if (ref_bo)
+		ttm_bo_unref(&ref_bo);
+
+#endif
+}
+
 int psb_msvdx_init(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv = dev->dev_private;
@@ -964,7 +1200,21 @@ int psb_msvdx_init(struct drm_device *dev)
 
 		dev_priv->msvdx_private = msvdx_priv;
 		memset(msvdx_priv, 0, sizeof(struct msvdx_private));
+		msvdx_priv->dev_priv = dev_priv;
 
+		msvdx_priv->tile_region_start0 =
+			dev_priv->bdev.man[DRM_PSB_MEM_MMU_TILING].gpu_offset;
+
+		msvdx_priv->tile_region_end0 = msvdx_priv->tile_region_start0 +
+		(dev_priv->bdev.man[DRM_PSB_MEM_MMU_TILING].size << PAGE_SHIFT);
+
+		msvdx_priv->tile_region_start1 =
+			dev_priv->bdev.man[TTM_PL_TT].gpu_offset;
+
+		msvdx_priv->tile_region_end1 = msvdx_priv->tile_region_start1 +
+		(dev_priv->bdev.man[TTM_PL_TT].size << PAGE_SHIFT);
+
+		drm_psb_msvdx_tiling = 0;
 		/* get device --> drm_device --> drm_psb_private --> msvdx_priv
 		 * for psb_msvdx_pmstate_show: msvdx_pmpolicy
 		 * if not pci_set_drvdata, can't get drm_device from device
@@ -973,9 +1223,29 @@ int psb_msvdx_init(struct drm_device *dev)
 		if (device_create_file(&dev->pdev->dev,
 				       &dev_attr_msvdx_pmstate))
 			DRM_ERROR("MSVDX: could not create sysfs file\n");
-		msvdx_priv->sysfs_pmstate =
-			sysfs_get_dirent(dev->pdev->dev.kobj.sd,
-					NULL, "msvdx_pmstate");
+		msvdx_priv->sysfs_pmstate = sysfs_get_dirent(
+						    dev->pdev->dev.kobj.sd,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35))
+						    NULL,
+#endif
+						    "msvdx_pmstate");
+
+		msvdx_priv->msvdx_ec_ctx[0] =
+			kzalloc(sizeof(struct psb_msvdx_ec_ctx) *
+					PSB_MAX_EC_INSTANCE,
+					GFP_KERNEL);
+		if (msvdx_priv->msvdx_ec_ctx[0] == NULL)
+			DRM_ERROR("MSVDX:fail to allocate memory for ec ctx\n");
+		else {
+			int i;
+			for (i = 1; i < PSB_MAX_EC_INSTANCE; i++)
+				msvdx_priv->msvdx_ec_ctx[i] =
+					msvdx_priv->msvdx_ec_ctx[0] + i;
+			for (i = 0; i < PSB_MAX_EC_INSTANCE; i++)
+				msvdx_priv->msvdx_ec_ctx[i]->fence =
+						PSB_MSVDX_INVALID_FENCE;
+		}
+		INIT_WORK(&(msvdx_priv->ec_work), psb_msvdx_do_concealment);
 	}
 
 	msvdx_priv = dev_priv->msvdx_private;
@@ -1002,6 +1272,7 @@ int psb_msvdx_init(struct drm_device *dev)
 	/* Enable Clocks */
 	PSB_DEBUG_GENERAL("Enabling clocks\n");
 	PSB_WMSVDX32(clk_enable_all, MSVDX_MAN_CLK_ENABLE);
+
 
 	/* Issue software reset for all but core*/
 	/*
@@ -1032,6 +1303,36 @@ int psb_msvdx_init(struct drm_device *dev)
 		/* Enable MMU by removing all bypass bits */
 		PSB_WMSVDX32(0, MSVDX_MMU_CONTROL0);
 	}
+#if 0
+	if (drm_psb_msvdx_tiling && IS_MSVDX_MEM_TILE(dev)) {
+		uint32_t tile_start =
+			dev_priv->bdev.man[DRM_PSB_MEM_MMU_TILING].gpu_offset;
+		uint32_t tile_end = tile_start +
+		(dev_priv->bdev.man[DRM_PSB_MEM_MMU_TILING].size << PAGE_SHIFT);
+
+		/* Enable memory tiling */
+		cmd = ((tile_start >> 20) + (((tile_end >> 20) - 1) << 12) +
+					((0x8 | 2) << 24)); /* 2k stride */
+
+		PSB_DEBUG_GENERAL("MSVDX: MMU Tiling register0 %08x\n", cmd);
+		PSB_DEBUG_GENERAL("       Region 0x%08x-0x%08x\n",
+					tile_start, tile_end);
+		PSB_WMSVDX32(cmd, MSVDX_MMU_TILE_BASE0);
+
+		tile_start =
+			dev_priv->bdev.man[TTM_PL_TT].gpu_offset;
+		tile_end = tile_start +
+		(dev_priv->bdev.man[TTM_PL_TT].size << PAGE_SHIFT);
+
+		cmd = ((tile_start >> 20) + (((tile_end >> 20) - 1) << 12) +
+					((0x8 | 2) << 24)); /* 2k stride */
+
+		PSB_DEBUG_GENERAL("MSVDX: MMU Tiling register1 %08x\n", cmd);
+		PSB_DEBUG_GENERAL("       Region 0x%08x-0x%08x\n",
+					tile_start, tile_end);
+		PSB_WMSVDX32(cmd, MSVDX_MMU_TILE_BASE1);
+	}
+#endif
 
 	/* move firmware loading to the place receiving first command buffer */
 
@@ -1066,7 +1367,10 @@ int psb_msvdx_init(struct drm_device *dev)
 		else
 			msvdx_priv->mtx_mem_size = 40 * 1024;
 
-		fw_bo_size =  msvdx_priv->mtx_mem_size + 4096;
+		if (IS_MDFLD(dev))
+			fw_bo_size =  msvdx_priv->mtx_mem_size + 4096;
+		else
+			fw_bo_size = ((msvdx_priv->mtx_mem_size + 8192) & ~0xfff) * 2; /* fw + ec_fw */
 
 		PSB_DEBUG_INIT("MSVDX: MTX mem size is 0x%08xbytes  allocate firmware BO size 0x%08x\n", msvdx_priv->mtx_mem_size,
 			       fw_bo_size);
@@ -1084,7 +1388,6 @@ int psb_msvdx_init(struct drm_device *dev)
 
 	PSB_DEBUG_GENERAL("MSVDX: RENDEC A: %08x RENDEC B: %08x\n",
 			  msvdx_priv->base_addr0, msvdx_priv->base_addr1);
-
 	if (!IS_D0(dev)) {
 		PSB_WMSVDX32(msvdx_priv->base_addr0, MSVDX_RENDEC_BASE_ADDR0);
 		PSB_WMSVDX32(msvdx_priv->base_addr1, MSVDX_RENDEC_BASE_ADDR1);
@@ -1167,8 +1470,10 @@ int psb_msvdx_init(struct drm_device *dev)
 	psb_msvdx_clearirq(dev);
 	psb_msvdx_enableirq(dev);
 
-	PSB_DEBUG_INIT("MSDVX:old clock gating disable = 0x%08x\n",
-		PSB_RVDC32(PSB_MSVDX_CLOCKGATING));
+	if (IS_MSVDX(dev)) {
+		PSB_DEBUG_INIT("MSDVX:old clock gating disable = 0x%08x\n",
+			       PSB_RVDC32(PSB_MSVDX_CLOCKGATING));
+	}
 
 	if (!IS_D0(dev)) {
 		cmd = 0;
@@ -1179,6 +1484,7 @@ int psb_msvdx_init(struct drm_device *dev)
 				  1);  /* Host */
 		PSB_WMSVDX32(cmd, MSVDX_VEC_SHIFTREG_CONTROL);
 	}
+
 
 #if 0
 	ret = psb_setup_fw(dev);
@@ -1202,6 +1508,9 @@ int psb_msvdx_init(struct drm_device *dev)
 		psb_poll_mtx_irq(dev_priv);
 	}
 #endif
+	if (IS_MRST(dev))
+		INIT_WORK(&(msvdx_priv->ec_work), psb_msvdx_error_concealment);
+
 
 	return 0;
 
@@ -1242,6 +1551,8 @@ int psb_msvdx_uninit(struct drm_device *dev)
 		     );
 	if (msvdx_priv->vec_local_mem_data)
 		kfree(msvdx_priv->vec_local_mem_data);
+
+	kfree(msvdx_priv->msvdx_ec_ctx[0]);
 
 	if (msvdx_priv) {
 		/* pci_set_drvdata(dev->pdev, NULL); */

@@ -30,6 +30,7 @@
 struct drm_psb_ttm_backend {
 	struct ttm_backend base;
 	struct page **pages;
+	dma_addr_t *dma_addrs;
 	unsigned int desired_tile_stride;
 	unsigned int hw_tile_stride;
 	int mem_type;
@@ -77,6 +78,14 @@ static int psb_init_mem_type(struct ttm_bo_device *bdev, uint32_t type,
 		man->available_caching = TTM_PL_FLAG_UNCACHED;
 		man->default_caching = TTM_PL_FLAG_UNCACHED;
 		break;
+	case TTM_PL_RAR:	/* Unmappable RAR memory */
+		man->func = &ttm_bo_manager_func;
+		man->flags = TTM_MEMTYPE_FLAG_MAPPABLE |
+			     TTM_MEMTYPE_FLAG_FIXED;
+		man->available_caching = TTM_PL_FLAG_UNCACHED;
+		man->default_caching = TTM_PL_FLAG_UNCACHED;
+		man->gpu_offset = PSB_MEM_RAR_START;
+		break;
 	case TTM_PL_TT:	/* Mappable GATT memory */
 		man->func = &ttm_bo_manager_func;
 #ifdef PSB_WORKING_HOST_MMU_ACCESS
@@ -89,6 +98,15 @@ static int psb_init_mem_type(struct ttm_bo_device *bdev, uint32_t type,
 					 TTM_PL_FLAG_UNCACHED | TTM_PL_FLAG_WC;
 		man->default_caching = TTM_PL_FLAG_WC;
 		man->gpu_offset = pg->mmu_gatt_start + pg->ci_start + pg->ci_stolen_size;
+		break;
+	case DRM_PSB_MEM_MMU_TILING:
+		man->func = &ttm_bo_manager_func;
+		man->flags = TTM_MEMTYPE_FLAG_MAPPABLE |
+			     TTM_MEMTYPE_FLAG_CMA;
+		man->gpu_offset = PSB_MEM_MMU_TILING_START;
+		man->available_caching = TTM_PL_FLAG_CACHED |
+					 TTM_PL_FLAG_UNCACHED | TTM_PL_FLAG_WC;
+		man->default_caching = TTM_PL_FLAG_WC;
 		break;
 	default:
 		DRM_ERROR("Unsupported memory type %u\n", (unsigned) type);
@@ -211,17 +229,18 @@ static int psb_move(struct ttm_buffer_object *bo,
 	return 0;
 }
 
-/* REVISIT: is there a need to use the dma_addrs or other parameters? */
 static int drm_psb_tbe_populate(struct ttm_backend *backend,
 				unsigned long num_pages,
 				struct page **pages,
 				struct page *dummy_read_page,
 				dma_addr_t *dma_addrs)
 {
+	int i;
 	struct drm_psb_ttm_backend *psb_be =
 		container_of(backend, struct drm_psb_ttm_backend, base);
 
 	psb_be->pages = pages;
+	psb_be->dma_addrs = dma_addrs; /* Not concretely implemented by TTM yet*/
 	return 0;
 }
 
@@ -267,12 +286,11 @@ static int drm_psb_tbe_bind(struct ttm_backend *backend,
 	int ret = 0;
 
 	psb_be->mem_type = bo_mem->mem_type;
-	WARN_ON_ONCE(psb_be->num_pages &&
-		     psb_be->num_pages != bo_mem->num_pages);
 	psb_be->num_pages = bo_mem->num_pages;
 	psb_be->desired_tile_stride = 0;
 	psb_be->hw_tile_stride = 0;
-	psb_be->offset = (bo_mem->start << PAGE_SHIFT) + man->gpu_offset;
+	psb_be->offset = (bo_mem->start << PAGE_SHIFT) +
+			 man->gpu_offset;
 
 	type =
 		(bo_mem->
@@ -309,7 +327,7 @@ static void drm_psb_tbe_clear(struct ttm_backend *backend)
 		container_of(backend, struct drm_psb_ttm_backend, base);
 
 	psb_be->pages = NULL;
-
+	psb_be->dma_addrs = NULL;
 	return;
 }
 

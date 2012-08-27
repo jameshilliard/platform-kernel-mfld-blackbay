@@ -167,7 +167,9 @@ static void psb_mmu_flush_pd_locked(struct psb_mmu_driver *driver,
 	if (atomic_read(&driver->needs_tlbflush) || force) {
 		if (driver->dev_priv) {
 			atomic_set(&driver->dev_priv->msvdx_mmu_invaldc, 1);
-			atomic_set(&driver->dev_priv->topaz_mmu_invaldc, 1);
+			if (IS_MSVDX(driver->dev_priv->dev))
+				atomic_set(\
+					   &driver->dev_priv->topaz_mmu_invaldc, 1);
 		}
 	}
 	atomic_set(&driver->needs_tlbflush, 0);
@@ -186,7 +188,8 @@ void psb_mmu_flush(struct psb_mmu_driver *driver, int rc_prot)
 		down_write(&driver->sem);
 	if (driver->dev_priv) {
 		atomic_set(&driver->dev_priv->msvdx_mmu_invaldc, 1);
-		atomic_set(&driver->dev_priv->topaz_mmu_invaldc, 1);
+		if (IS_MSVDX(driver->dev_priv->dev))
+			atomic_set(&driver->dev_priv->topaz_mmu_invaldc, 1);
 	}
 	if (rc_prot)
 		up_write(&driver->sem);
@@ -293,7 +296,7 @@ out_err1:
 	return NULL;
 }
 
-static void psb_mmu_free_pt(struct psb_mmu_pt *pt)
+void psb_mmu_free_pt(struct psb_mmu_pt *pt)
 {
 	__free_page(pt->p);
 	kfree(pt);
@@ -374,7 +377,7 @@ static struct psb_mmu_pt *psb_mmu_alloc_pt(struct psb_mmu_pd *pd) {
 	return pt;
 }
 
-static struct psb_mmu_pt *psb_mmu_pt_alloc_map_lock(struct psb_mmu_pd *pd,
+struct psb_mmu_pt *psb_mmu_pt_alloc_map_lock(struct psb_mmu_pd *pd,
 		unsigned long addr) {
 	uint32_t index = psb_mmu_pd_index(addr);
 	struct psb_mmu_pt *pt;
