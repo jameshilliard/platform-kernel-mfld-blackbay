@@ -1,1 +1,1 @@
-pci=noearly console=tty0 console=ttyMFD3,115200n8 earlyprintk=nologger loglevel=4 hsu_dma=7 kmemleak=off androidboot.bootmedia=sdcard androidboot.hardware=mfld_pr2 noinitrd root=/dev/mmcblk0p2 rootwait intel_scu_watchdog.disable_kernel_watchdog=1
+pci=noearly console=tty0 console=ttyMFD3,115200n8 consoleblank=0 earlyprintk=nologger loglevel=4 hsu_dma=7 kmemleak=off androidboot.bootmedia=sdcard androidboot.hardware=mfld_pr2 noinitrd root=/dev/mmcblk0p2 rootwait intel_scu_watchdog.disable_kernel_watchdog=1
