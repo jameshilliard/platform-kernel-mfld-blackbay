@@ -1,3 +1,16 @@
+* Fri Aug 31 2012 Peng Li <peng.li@intel.com> - 3.0.8
+[ Li Peng ]
+- config: disable HDMI config option
+- boot parameter: set consoleblank to zero
+
+* Wed Aug 29 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
+[ Chengwei Yang ]
+- Port, fix and enable slp lowmem module from Samsung
+- Enable autofs in config
+[ Austin Zhang ]
+- [HACK-MUST-REVERT]Add an environment key for crappy user space to be able
+  to correctly detect charger (in/out) events
+
 * Mon Aug 27 2012 Peng Li <peng.li@intel.com> - 3.0.8
 [ Yan Zhang ]
 - Update video driver to MCG's latest code
