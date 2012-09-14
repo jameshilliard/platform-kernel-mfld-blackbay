@@ -376,8 +376,8 @@ int psb_gtt_mm_init(struct psb_gtt *pg)
 
 	mm = &gtt_mm->base;
 
-	/* will use tt_start ~ 128M for IMG TT buffers */
-	ret = drm_mm_init(mm, tt_start, ((tt_size / 2) - tt_start));
+	/* will use tt_start ~ 128M-EXTRA_TTM_PL_TT_SIZE for IMG TT buffers */
+	ret = drm_mm_init(mm, tt_start, ((tt_size / 2) - tt_start -EXTRA_TTM_PL_TT_SIZE));
 	if (ret) {
 		DRM_DEBUG("drm_mm_int error(%d)\n", ret);
 		goto err_mm_init;

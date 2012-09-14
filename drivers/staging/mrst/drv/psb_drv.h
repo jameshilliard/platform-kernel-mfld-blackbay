@@ -167,6 +167,14 @@ enum panel_type {
 #define PSB_MMU_RO_MEMORY	  0x0002	/* MMU RO memory */
 #define PSB_MMU_WO_MEMORY	  0x0004	/* MMU WO memory */
 
+/* Extra video memory for 1080p-H264 decoder with rotation
+ * gst-vaapi create 16+4 surfaces before decoding, the memory should bigger than
+ * (1920*1080*1.5+1280*1920*1.5)*20 = 130Mb > 128Mb (default reserved for msvdx)
+ * Here we support 16 reference frames
+ * Add extra 2048 pages=> 8Mb for Mappable GATT memory
+ */
+#define EXTRA_TTM_PL_TT_SIZE	2048
+
 /*
  *PTE's and PDE's
  */
