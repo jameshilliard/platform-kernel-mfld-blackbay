@@ -1,3 +1,7 @@
+* Mon Sep 17 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
+[ Markus Lehtonen ]
+- atomisp: fix a possible null pointer dereference
+
 * Fri Aug 31 2012 Peng Li <peng.li@intel.com> - 3.0.8
 [ Li Peng ]
 - config: disable HDMI config option
