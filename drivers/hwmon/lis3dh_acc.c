@@ -60,6 +60,7 @@
 #include <linux/slab.h>
 #include <linux/input/lis3dh.h>
 #include <linux/earlysuspend.h>
+#include <drm/drm_mode.h>
 
 #define	DEBUG	0
 #define DEBUG_DATA_LOG 0
@@ -225,6 +226,8 @@ struct lis3dh_acc_data {
 	int need_resume;
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend es;
+#else
+	struct notifier_block screen_notifier;
 #endif
 
 	u8 sensitivity;
@@ -1125,6 +1128,43 @@ static void lis3dh_last_resume(struct device *dev)
 	mutex_unlock(&acc->lock);
 }
 
+#ifndef CONFIG_HAS_EARLYSUSPEND
+extern int screen_register_receiver(struct notifier_block *nb);
+extern int screen_unregister_receiver(struct notifier_block *nb);
+
+static bool lis3dh_enabled;
+
+static int lis3dh_screen_notifier_callback(struct notifier_block *self,
+				    unsigned long event_type, void *nt_data)
+{
+	struct lis3dh_acc_data *acc = container_of(self,
+				struct lis3dh_acc_data, screen_notifier);
+	struct device *dev = &acc->client->dev;
+
+	if(dev == NULL)
+		return 0;
+
+	switch (event_type) {
+	case DRM_MODE_DPMS_ON:
+		if (lis3dh_enabled == false) {
+			lis3dh_last_resume(dev);
+			lis3dh_enabled = true;
+		}
+		break;
+	case DRM_MODE_DPMS_OFF:
+		if (lis3dh_enabled == true) {
+			lis3dh_first_suspend(dev);
+			lis3dh_enabled = false;
+		}
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+#endif
+
 static int lis3dh_acc_probe(struct i2c_client *client,
 			    const struct i2c_device_id *id)
 {
@@ -1226,6 +1266,10 @@ static int lis3dh_acc_probe(struct i2c_client *client,
 	acc->es.suspend = lis3dh_early_suspend;
 	acc->es.resume = lis3dh_late_resume;
 	register_early_suspend(&acc->es);
+#else
+	lis3dh_enabled = true;
+	acc->screen_notifier.notifier_call = lis3dh_screen_notifier_callback;
+	screen_register_receiver(&acc->screen_notifier);
 #endif
 
 	mutex_unlock(&acc->lock);
@@ -1265,6 +1309,8 @@ static int __devexit lis3dh_acc_remove(struct i2c_client *client)
 	sysfs_remove_group(&client->dev.kobj, &lis3dh_attr_group);
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&acc->es);
+#else
+	screen_unregister_receiver(&acc->screen_notifier);
 #endif
 
 	if (acc->pdata->exit)
@@ -1278,17 +1324,11 @@ static int __devexit lis3dh_acc_remove(struct i2c_client *client)
 #ifdef CONFIG_PM_SLEEP
 static int lis3dh_acc_resume(struct device *dev)
 {
-#ifndef CONFIG_HAS_EARLYSUSPEND
-	lis3dh_last_resume(dev);
-#endif
 	return 0;
 }
 
 static int lis3dh_acc_suspend(struct device *dev)
 {
-#ifndef CONFIG_HAS_EARLYSUSPEND
-	lis3dh_first_suspend(dev);
-#endif
 	return 0;
 }
 #endif /* CONFIG_PM_SLEEP */
