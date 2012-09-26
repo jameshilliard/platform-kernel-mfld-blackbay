@@ -917,7 +917,7 @@ static int psb_do_init(struct drm_device *dev)
 
 		dev_priv->have_tt = 1;
 		dev_priv->sizes.tt_size =
-			(tt_pages << PAGE_SHIFT) / (1024 * 1024) / 2;
+			((tt_pages + EXTRA_TTM_PL_TT_SIZE) << PAGE_SHIFT) / (1024 * 1024) / 2;
 	}
 
 	if (!ttm_bo_init_mm(bdev,
@@ -1197,7 +1197,7 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 		   (pg->gatt_pages) : PSB_TT_PRIV0_PLIMIT;
 
 	/* CI/RAR use the lower half of TT. */
-	pg->ci_start = (tt_pages / 2) << PAGE_SHIFT;
+	pg->ci_start = (tt_pages / 2 - EXTRA_TTM_PL_TT_SIZE) << PAGE_SHIFT;
 	pg->rar_start = pg->ci_start + pg->ci_stolen_size;
 
 

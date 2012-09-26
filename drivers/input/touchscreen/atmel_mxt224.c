@@ -218,7 +218,6 @@ struct mxt_data {
 	int		    calibration_confirm;
 #ifndef CONFIG_HAS_EARLYSUSPEND
 	struct notifier_block screen_notifier;
-	struct mutex	    notifier_status_mutex;
 #endif
 };
 
@@ -2129,7 +2128,6 @@ static int mxt224_screen_notifier_callback(struct notifier_block *self,
 	if(dev == NULL)
 		return 0;
 
-	mutex_lock(&mxt_es->notifier_status_mutex);
 	switch (event_type) {
 	case DRM_MODE_DPMS_ON:
 		if (mxt_status == false) {
@@ -2146,7 +2144,6 @@ static int mxt224_screen_notifier_callback(struct notifier_block *self,
 	default:
 		break;
 	}
-	mutex_unlock(&mxt_es->notifier_status_mutex);
 
 	return 0;
 }
@@ -2485,7 +2482,6 @@ static int __devinit mxt_probe(struct i2c_client *client,
 
 #ifndef CONFIG_HAS_EARLYSUSPEND
 	mxt_status = true;
-	mutex_init(&mxt_es->notifier_status_mutex);
 	mxt->screen_notifier.notifier_call = mxt224_screen_notifier_callback;
 	screen_register_receiver(&mxt->screen_notifier);
 #endif
