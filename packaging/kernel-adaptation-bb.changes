@@ -1,3 +1,7 @@
+* Thu Sep 27 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
+[ Chengwei Yang ]
+- Export usb connection status throught the 'jack' interface
+
 * Wed Sep 19 2012 Yong Wang <yong.y.wang@intel.com> 3.0.8
 [ Yong Wang ]
 - atmel_mxt_ts: remove redundant mutex
