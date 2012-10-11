@@ -46,6 +46,8 @@ struct nfc_rawsock {
 #define to_rawsock_sk(_tx_work) \
 	((struct sock *) container_of(_tx_work, struct nfc_rawsock, tx_work))
 
+struct nfc_llcp_sdp_tlv;
+
 #ifdef CONFIG_NFC_LLCP
 
 void nfc_llcp_mac_is_down(struct nfc_dev *dev);
@@ -56,8 +58,11 @@ void nfc_llcp_unregister_device(struct nfc_dev *dev);
 int nfc_llcp_set_remote_gb(struct nfc_dev *dev, u8 *gb, u8 gb_len);
 u8 *nfc_llcp_general_bytes(struct nfc_dev *dev, size_t *general_bytes_len);
 int nfc_llcp_data_received(struct nfc_dev *dev, struct sk_buff *skb);
+struct nfc_llcp_local *nfc_llcp_find_local(struct nfc_dev *dev);
 int __init nfc_llcp_init(void);
 void nfc_llcp_exit(void);
+void nfc_llcp_free_sdp_tlv(struct nfc_llcp_sdp_tlv *sdp);
+void nfc_llcp_free_sdp_tlv_list(struct hlist_head *head);
 
 #else
 
@@ -97,12 +102,25 @@ static inline int nfc_llcp_data_received(struct nfc_dev *dev,
 	return 0;
 }
 
+static inline struct nfc_llcp_local *nfc_llcp_find_local(struct nfc_dev *dev)
+{
+	return NULL;
+}
+
 static inline int nfc_llcp_init(void)
 {
 	return 0;
 }
 
 static inline void nfc_llcp_exit(void)
+{
+}
+
+static inline void nfc_llcp_free_sdp_tlv(struct nfc_llcp_sdp_tlv *sdp)
+{
+}
+
+static inline void nfc_llcp_free_sdp_tlv_list(struct hlist_head *sdp_head)
 {
 }
 
@@ -137,6 +155,8 @@ int nfc_genl_dep_link_down_event(struct nfc_dev *dev);
 
 int nfc_genl_tm_activated(struct nfc_dev *dev, u32 protocol);
 int nfc_genl_tm_deactivated(struct nfc_dev *dev);
+
+int nfc_genl_llc_send_sdres(struct nfc_dev *dev, struct hlist_head *sdres_list);
 
 struct nfc_dev *nfc_get_device(unsigned int idx);
 

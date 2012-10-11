@@ -576,7 +576,6 @@ static void nci_deactivate_target(struct nfc_dev *nfc_dev,
 	}
 }
 
-
 static int nci_dep_link_up(struct nfc_dev *nfc_dev, struct nfc_target *target,
 			   __u8 comm_mode, __u8 *gb, size_t gb_len)
 {
@@ -658,6 +657,7 @@ static struct nfc_ops nci_nfc_ops = {
  */
 struct nci_dev *nci_allocate_device(struct nci_ops *ops,
 				    __u32 supported_protocols,
+				    __u32 supported_se,
 				    int tx_headroom, int tx_tailroom)
 {
 	struct nci_dev *ndev;
@@ -680,6 +680,7 @@ struct nci_dev *nci_allocate_device(struct nci_ops *ops,
 
 	ndev->nfc_dev = nfc_allocate_device(&nci_nfc_ops,
 					    supported_protocols,
+					    supported_se,
 					    tx_headroom + NCI_DATA_HDR_SIZE,
 					    tx_tailroom);
 	if (!ndev->nfc_dev)
