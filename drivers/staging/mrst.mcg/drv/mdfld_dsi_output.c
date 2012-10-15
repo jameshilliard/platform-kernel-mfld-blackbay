@@ -600,8 +600,11 @@ static void mdfld_dsi_connector_dpms(struct drm_connector *connector, int mode)
 	}
 
 	if (!(dev_priv->rpm_enabled)) {
-		if (mode == DRM_MODE_DPMS_ON)
+		if (mode == DRM_MODE_DPMS_ON) {
 			dev_priv->rpm_enabled = 1;
+			pm_runtime_get_noresume(dev->dev);
+			pm_runtime_allow(dev->dev);
+		}
 	}
 
 	drm_helper_connector_dpms(connector, mode);

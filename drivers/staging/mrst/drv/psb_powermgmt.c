@@ -369,6 +369,8 @@ int gfx_resume(struct device *dev)
 
 	dev_info(dev, "%s\n", __func__);
 
+	pm_runtime_forbid(dev);
+
 	ospm_power_resume(dev);
 
 	mutex_lock(&drm_dev->mode_config.mutex);
@@ -381,6 +383,8 @@ int gfx_resume(struct device *dev)
 	}
 	early_suspend = false;
 	mutex_unlock(&drm_dev->mode_config.mutex);
+
+	pm_runtime_allow(dev);
 
 	return 0;
 }
@@ -951,6 +955,10 @@ int ospm_power_suspend(struct device *dev)
 
 	mutex_lock(&g_ospm_mutex);
 
+#ifdef OSPM_GFX_DPK
+	printk(KERN_ALERT "OSPM_GFX_DPK: ospm_power_suspend \n");
+#endif
+
 	if (gbSuspended)
 		goto out;
 
@@ -1339,6 +1347,8 @@ void gfx_runtime_suspend(struct device *dev)
 	printk(KERN_ALERT  "%s\n", __func__);
 #endif
 
+	pm_runtime_forbid(dev);
+
 	mutex_lock(&dev_priv->rpm_mutex);
 	if (early_suspend)
 		goto out;
@@ -1351,7 +1361,8 @@ void gfx_runtime_suspend(struct device *dev)
 	early_suspend = true;
 	mutex_unlock(&dev_priv->rpm_mutex);
 
-	ospm_power_suspend(dev);
+	pm_runtime_allow(dev);
+	pm_runtime_put(dev);
 	return;
 out:
 	mutex_unlock(&dev_priv->rpm_mutex);
@@ -1368,7 +1379,7 @@ void gfx_runtime_resume(struct device *dev)
 #ifdef OSPM_GFX_DPK
 	printk(KERN_ALERT  "%s\n", __func__);
 #endif
-	ospm_power_resume(dev);
+	pm_runtime_get_sync(dev);
 
 	mutex_lock(&dev_priv->rpm_mutex);
 	list_for_each_entry(encoder, &drm_dev->mode_config.encoder_list, head) {
