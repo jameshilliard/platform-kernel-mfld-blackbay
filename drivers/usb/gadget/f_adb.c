@@ -32,7 +32,7 @@
 /* number of tx requests to allocate */
 #define TX_REQ_MAX 4
 
-static const char adb_shortname[] = "android_adb";
+static const char adb_shortname[] = "samsung_sdb";
 
 struct adb_dev {
 	struct usb_function function;
@@ -63,8 +63,8 @@ static struct usb_interface_descriptor adb_interface_desc = {
 	.bInterfaceNumber       = 0,
 	.bNumEndpoints          = 2,
 	.bInterfaceClass        = 0xFF,
-	.bInterfaceSubClass     = 0x42,
-	.bInterfaceProtocol     = 1,
+	.bInterfaceSubClass     = 0x20,
+	.bInterfaceProtocol     = 2,
 };
 
 static struct usb_endpoint_descriptor adb_highspeed_in_desc = {
