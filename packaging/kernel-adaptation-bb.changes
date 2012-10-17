@@ -1,3 +1,11 @@
+* Wed Oct 17 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
+[ Chengwei Yang ]
+- Change adb debug protocol to Samsung's sdb protocol. Enables us to use
+  the stock sdbd of Tizen.
+[ Li Peng ]
+- gfx: enable runtime power management (FIX #3260)
+- Fix build system: remove mac802154 and openvswitch from net/Makefile
+
 * Thu Sep 27 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
 [ Chengwei Yang ]
 - Export usb connection status throught the 'jack' interface
