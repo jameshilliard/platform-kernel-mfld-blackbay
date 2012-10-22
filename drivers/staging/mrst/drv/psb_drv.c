@@ -76,7 +76,7 @@ int drm_msvdx_pmpolicy = PSB_PMPOLICY_POWERDOWN;
 int drm_psb_cpurelax = 0;
 int drm_psb_udelaydivider = 1;
 int drm_psb_udelaymultiplier = 1;
-int drm_topaz_pmpolicy = PSB_PMPOLICY_NOPM;
+int drm_topaz_pmpolicy = PSB_PMPOLICY_POWERDOWN;
 int drm_topaz_sbuswa;
 int drm_psb_topaz_clockgating = 0;
 static int PanelID = TMD_6X10_VID;

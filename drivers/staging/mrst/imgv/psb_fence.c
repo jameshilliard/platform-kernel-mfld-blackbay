@@ -23,7 +23,6 @@
 #include "psb_drv.h"
 #include "psb_msvdx.h"
 #include "pnw_topaz.h"
-#include "lnc_topaz.h"
 
 
 static void psb_fence_poll(struct ttm_fence_device *fdev,
@@ -31,7 +30,6 @@ static void psb_fence_poll(struct ttm_fence_device *fdev,
 {
 	struct drm_psb_private *dev_priv =
 		container_of(fdev, struct drm_psb_private, fdev);
-	struct drm_device *dev = dev_priv->dev;
 	uint32_t sequence = 0;
 	struct msvdx_private *msvdx_priv = dev_priv->msvdx_private;
 
@@ -47,12 +45,8 @@ static void psb_fence_poll(struct ttm_fence_device *fdev,
 		sequence = msvdx_priv->msvdx_current_sequence;
 		break;
 	case LNC_ENGINE_ENCODE:
-		if (IS_MDFLD(dev))
-			sequence = *((uint32_t *)
-				     ((struct pnw_topaz_private *)dev_priv->topaz_private)->topaz_sync_addr + 1);
-		else
-			sequence = *((uint32_t *)
-				     ((struct topaz_private *)dev_priv->topaz_private)->topaz_sync_addr);
+		sequence = *((uint32_t *)
+			((struct pnw_topaz_private *)dev_priv->topaz_private)->topaz_sync_addr + 1);
 		break;
 	default:
 		break;

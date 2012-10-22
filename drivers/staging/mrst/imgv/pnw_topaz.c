@@ -33,7 +33,6 @@
 #include "pnw_topaz.h"
 #include "psb_powermgmt.h"
 #include "pnw_topaz_hw_reg.h"
-#include "lnc_topaz.h"
 
 #include <linux/io.h>
 #include <linux/delay.h>
@@ -806,9 +805,6 @@ void pnw_topaz_handle_timeout(struct ttm_fence_device *fdev)
 	struct drm_device *dev =
 		container_of((void *)dev_priv, struct drm_device, dev_private);
 	struct pnw_topaz_private *topaz_priv = dev_priv->topaz_private;
-
-	if (IS_MRST(dev))
-		return  lnc_topaz_handle_timeout(fdev);
 
 	DRM_ERROR("TOPAZ: current codec is %s\n",
 			codec_to_string(topaz_priv->topaz_cur_codec));

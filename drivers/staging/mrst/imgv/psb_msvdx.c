@@ -1534,10 +1534,8 @@ int lnc_video_getparam(struct drm_device *dev, void *data,
 				   sizeof(rar_ci_info));
 		break;
 	case LNC_VIDEO_FRAME_SKIP:
-		if (IS_MRST(dev))
-			ret = lnc_video_frameskip(dev, arg->value);
-		else if (IS_MDFLD(dev)) /* Medfield should not call it */
-			ret = -EFAULT;
+		/* Medfield should not call it */
+		ret = -EFAULT;
 		break;
 	case LNC_VIDEO_DEVICE_INFO:
 		device_info = 0xffff & dev_priv->video_device_fuse;
