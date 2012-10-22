@@ -1,3 +1,6 @@
+* Mon Oct 22 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
+- Rename package: kernel-adaptation-bb -> kernel-mfld-blackbay
+
 * Mon Oct 22 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> submit/trunk/20121022.065918@836371e
 [ Yan Zhang ]
 - Enable TOPAZ power management
