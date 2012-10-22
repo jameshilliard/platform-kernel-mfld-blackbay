@@ -1,3 +1,23 @@
+* Mon Oct 22 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> submit/trunk/20121022.065918@836371e
+[ Yan Zhang ]
+- Enable TOPAZ power management
+[ Elena Reshetova ]
+- Smack: backport fixes from upstream
+  * setprocattr memory leak fix
+  * remove task_wait() hook.
+  * off by one error
+  * implement revoking all rules for a subject label
+  * don't show empty rules when /smack/load or /smack/load2 is read
+  * user access check bounds
+  * onlycap limits on CAP_MAC_ADMIN
+  * split ->file_mmap() into ->mmap_addr()/->mmap_file()
+  * split cap_mmap_addr() out of cap_file_mmap()
+  * Smack: fix smack_new_inode bogosities
+  * Smack: allow for significantly longer Smack labels v4
+  * SELinux: rename dentry_open to file_open
+  * gfp flags for security_inode_alloc()?
+  * Smack: recursive tramsmute
+
 * Wed Oct 17 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
 [ Chengwei Yang ]
 - Change adb debug protocol to Samsung's sdb protocol. Enables us to use
