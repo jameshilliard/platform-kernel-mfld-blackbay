@@ -70,9 +70,9 @@ extern int cap_inode_setxattr(struct dentry *dentry, const char *name,
 extern int cap_inode_removexattr(struct dentry *dentry, const char *name);
 extern int cap_inode_need_killpriv(struct dentry *dentry);
 extern int cap_inode_killpriv(struct dentry *dentry);
-extern int cap_file_mmap(struct file *file, unsigned long reqprot,
-			 unsigned long prot, unsigned long flags,
-			 unsigned long addr, unsigned long addr_only);
+extern int cap_mmap_addr(unsigned long addr);
+extern int cap_mmap_file(struct file *file, unsigned long reqprot,
+			 unsigned long prot, unsigned long flags);
 extern int cap_task_fix_setuid(struct cred *new, const struct cred *old, int flags);
 extern int cap_task_prctl(int option, unsigned long arg2, unsigned long arg3,
 			  unsigned long arg4, unsigned long arg5);
@@ -578,7 +578,11 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
  *	simple integer value.  When @arg represents a user space pointer, it
  *	should never be used by the security module.
  *	Return 0 if permission is granted.
- * @file_mmap :
+ * @mmap_addr :
+ *	Check permissions for a mmap operation at @addr.
+ *	@addr contains virtual address that will be used for the operation.
+ *	Return 0 if permission is granted.
+ * @mmap_file :
  *	Check permissions for a mmap operation.  The @file may be NULL, e.g.
  *	if mapping anonymous memory.
  *	@file contains the file structure for file to map (may be NULL).
@@ -630,10 +634,7 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
  *	to receive an open file descriptor via socket IPC.
  *	@file contains the file structure being received.
  *	Return 0 if permission is granted.
- *
- * Security hook for dentry
- *
- * @dentry_open
+ * @file_open
  *	Save open-time permission checking state for later use upon
  *	file_permission, and recheck access if anything has changed
  *	since inode_permission.
@@ -1478,10 +1479,10 @@ struct security_operations {
 	void (*file_free_security) (struct file *file);
 	int (*file_ioctl) (struct file *file, unsigned int cmd,
 			   unsigned long arg);
-	int (*file_mmap) (struct file *file,
+	int (*mmap_addr) (unsigned long addr);
+	int (*mmap_file) (struct file *file,
 			  unsigned long reqprot, unsigned long prot,
-			  unsigned long flags, unsigned long addr,
-			  unsigned long addr_only);
+			  unsigned long flags);
 	int (*file_mprotect) (struct vm_area_struct *vma,
 			      unsigned long reqprot,
 			      unsigned long prot);
@@ -1492,7 +1493,7 @@ struct security_operations {
 	int (*file_send_sigiotask) (struct task_struct *tsk,
 				    struct fown_struct *fown, int sig);
 	int (*file_receive) (struct file *file);
-	int (*dentry_open) (struct file *file, const struct cred *cred);
+	int (*file_open) (struct file *file, const struct cred *cred);
 
 	int (*task_create) (unsigned long clone_flags);
 	int (*cred_alloc_blank) (struct cred *cred, gfp_t gfp);
@@ -1740,9 +1741,9 @@ int security_file_permission(struct file *file, int mask);
 int security_file_alloc(struct file *file);
 void security_file_free(struct file *file);
 int security_file_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
-int security_file_mmap(struct file *file, unsigned long reqprot,
-			unsigned long prot, unsigned long flags,
-			unsigned long addr, unsigned long addr_only);
+int security_mmap_file(struct file *file, unsigned long reqprot,
+			unsigned long prot, unsigned long flags);
+int security_mmap_addr(unsigned long addr);
 int security_file_mprotect(struct vm_area_struct *vma, unsigned long reqprot,
 			   unsigned long prot);
 int security_file_lock(struct file *file, unsigned int cmd);
@@ -1751,7 +1752,7 @@ int security_file_set_fowner(struct file *file);
 int security_file_send_sigiotask(struct task_struct *tsk,
 				 struct fown_struct *fown, int sig);
 int security_file_receive(struct file *file);
-int security_dentry_open(struct file *file, const struct cred *cred);
+int security_file_open(struct file *file, const struct cred *cred);
 int security_task_create(unsigned long clone_flags);
 int security_cred_alloc_blank(struct cred *cred, gfp_t gfp);
 void security_cred_free(struct cred *cred);
@@ -2207,13 +2208,16 @@ static inline int security_file_ioctl(struct file *file, unsigned int cmd,
 	return 0;
 }
 
-static inline int security_file_mmap(struct file *file, unsigned long reqprot,
+static inline int security_mmap_file(struct file *file, unsigned long reqprot,
 				     unsigned long prot,
-				     unsigned long flags,
-				     unsigned long addr,
-				     unsigned long addr_only)
+				     unsigned long flags)
 {
-	return cap_file_mmap(file, reqprot, prot, flags, addr, addr_only);
+	return 0;
+}
+
+static inline int security_mmap_addr(unsigned long addr)
+{
+	return cap_mmap_addr(addr);
 }
 
 static inline int security_file_mprotect(struct vm_area_struct *vma,
@@ -2251,8 +2255,8 @@ static inline int security_file_receive(struct file *file)
 	return 0;
 }
 
-static inline int security_dentry_open(struct file *file,
-				       const struct cred *cred)
+static inline int security_file_open(struct file *file,
+				     const struct cred *cred)
 {
 	return 0;
 }

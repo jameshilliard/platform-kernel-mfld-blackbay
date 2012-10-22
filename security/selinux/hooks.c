@@ -2948,7 +2948,7 @@ static int selinux_file_permission(struct file *file, int mask)
 
 	if (sid == fsec->sid && fsec->isid == isec->sid &&
 	    fsec->pseqno == avc_policy_seqno())
-		/* No change since dentry_open check. */
+		/* No change since file_open check. */
 		return 0;
 
 	return selinux_revalidate_file_permission(file, mask);
@@ -3048,9 +3048,7 @@ error:
 	return rc;
 }
 
-static int selinux_file_mmap(struct file *file, unsigned long reqprot,
-			     unsigned long prot, unsigned long flags,
-			     unsigned long addr, unsigned long addr_only)
+static int selinux_mmap_addr(unsigned long addr)
 {
 	int rc = 0;
 	u32 sid = current_sid();
@@ -3069,10 +3067,12 @@ static int selinux_file_mmap(struct file *file, unsigned long reqprot,
 	}
 
 	/* do DAC check on address space usage */
-	rc = cap_file_mmap(file, reqprot, prot, flags, addr, addr_only);
-	if (rc || addr_only)
-		return rc;
+	return cap_mmap_addr(addr);
+}
 
+static int selinux_mmap_file(struct file *file, unsigned long reqprot,
+			     unsigned long prot, unsigned long flags)
+{
 	if (selinux_checkreqprot)
 		prot = reqprot;
 
@@ -3207,7 +3207,7 @@ static int selinux_file_receive(struct file *file)
 	return file_has_perm(cred, file, file_to_av(file));
 }
 
-static int selinux_dentry_open(struct file *file, const struct cred *cred)
+static int selinux_file_open(struct file *file, const struct cred *cred)
 {
 	struct file_security_struct *fsec;
 	struct inode *inode;
@@ -5519,7 +5519,8 @@ static struct security_operations selinux_ops = {
 	.file_alloc_security =		selinux_file_alloc_security,
 	.file_free_security =		selinux_file_free_security,
 	.file_ioctl =			selinux_file_ioctl,
-	.file_mmap =			selinux_file_mmap,
+	.mmap_file =			selinux_mmap_file,
+	.mmap_addr =			selinux_mmap_addr,
 	.file_mprotect =		selinux_file_mprotect,
 	.file_lock =			selinux_file_lock,
 	.file_fcntl =			selinux_file_fcntl,
@@ -5527,7 +5528,7 @@ static struct security_operations selinux_ops = {
 	.file_send_sigiotask =		selinux_file_send_sigiotask,
 	.file_receive =			selinux_file_receive,
 
-	.dentry_open =			selinux_dentry_open,
+	.file_open =			selinux_file_open,
 
 	.task_create =			selinux_task_create,
 	.cred_alloc_blank =		selinux_cred_alloc_blank,
