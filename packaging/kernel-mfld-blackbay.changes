@@ -1,3 +1,7 @@
+* Tue Oct 23 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
+- packaging: rename spec and changelog files to reflect the new RPM
+  package name
+
 * Mon Oct 22 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
 - Rename package: kernel-adaptation-bb -> kernel-mfld-blackbay
 
