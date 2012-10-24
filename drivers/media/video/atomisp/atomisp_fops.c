@@ -446,7 +446,9 @@ static int atomisp_release(struct file *file)
 		isp->input_format = NULL;
 	}
 
-	if (!pipe->is_main)
+	if ((isp->isp_subdev.video_out_vf.opened ? 1 : 0) +
+	    (isp->isp_subdev.video_out_mo.opened ? 1 : 0) +
+	    (isp->isp_subdev.video_in.opened ? 1 : 0) > 1)
 		goto done;
 
 	if (isp->sw_contex.init == false)
