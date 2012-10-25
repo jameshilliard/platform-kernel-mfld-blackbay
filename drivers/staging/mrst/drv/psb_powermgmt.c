@@ -352,7 +352,6 @@ int gfx_suspend(struct device *dev)
 		if (drm_helper_encoder_in_use(encoder) && ehf && ehf->save)
 			ehf->save(encoder);
 	}
-	early_suspend = true;
 	mutex_unlock(&drm_dev->mode_config.mutex);
 
 	return ospm_power_suspend(dev);
@@ -368,6 +367,9 @@ int gfx_resume(struct device *dev)
 	struct drm_encoder *encoder;
 
 	dev_info(dev, "%s\n", __func__);
+
+	if (early_suspend)
+		return 0;
 
 	pm_runtime_forbid(dev);
 
