@@ -1,3 +1,10 @@
+* Thu Oct 25 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
+[ Li Peng ]
+- gfx: delay gfx h/w resume if early_suspend flag is true
+[ Andy Shevchenko ]
+- atomisp: do not do full release if more video pipes are on use,
+  fixes TZSP-3288
+
 * Tue Oct 23 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
 - packaging: rename spec and changelog files to reflect the new RPM
   package name
