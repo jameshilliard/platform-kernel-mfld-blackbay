@@ -898,7 +898,7 @@ CONFIG_NFC=y
 # CONFIG_NFC_NCI is not set
 CONFIG_NFC_HCI=y
 CONFIG_NFC_SHDLC=y
-# CONFIG_NFC_LLCP is not set
+CONFIG_NFC_LLCP=y
 
 #
 # Near Field Communication (NFC) devices
