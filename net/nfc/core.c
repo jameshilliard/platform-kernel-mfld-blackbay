@@ -181,6 +181,7 @@ int nfc_stop_poll(struct nfc_dev *dev)
 
 	dev->ops->stop_poll(dev);
 	dev->polling = false;
+	dev->rf_mode = NFC_RF_NONE;
 
 error:
 	device_unlock(&dev->dev);
@@ -274,12 +275,14 @@ int nfc_dep_link_down(struct nfc_dev *dev)
 	if (!rc) {
 		dev->dep_link_up = false;
 		dev->active_target = NULL;
+		dev->rf_mode = NFC_RF_NONE;
 		nfc_llcp_mac_is_down(dev);
 		nfc_genl_dep_link_down_event(dev);
 	}
 
 error:
 	device_unlock(&dev->dev);
+
 	return rc;
 }
 
@@ -503,6 +506,7 @@ EXPORT_SYMBOL(nfc_tm_activated);
 int nfc_tm_deactivated(struct nfc_dev *dev)
 {
 	dev->dep_link_up = false;
+	dev->rf_mode = NFC_RF_NONE;
 
 	return nfc_genl_tm_deactivated(dev);
 }
@@ -679,7 +683,7 @@ static void nfc_release(struct device *d)
 
 	if (dev->ops->check_presence) {
 		del_timer_sync(&dev->check_pres_timer);
-		destroy_workqueue(dev->check_pres_wq);
+		cancel_work_sync(&dev->check_pres_work);
 	}
 
 	nfc_genl_data_exit(&dev->genl_data);
@@ -697,6 +701,8 @@ static void nfc_check_pres_work(struct work_struct *work)
 
 	if (dev->active_target && timer_pending(&dev->check_pres_timer) == 0) {
 		rc = dev->ops->check_presence(dev, dev->active_target);
+		if (rc == -EOPNOTSUPP)
+			goto exit;
 		if (!rc) {
 			mod_timer(&dev->check_pres_timer, jiffies +
 				  msecs_to_jiffies(NFC_CHECK_PRES_FREQ_MS));
@@ -708,6 +714,7 @@ static void nfc_check_pres_work(struct work_struct *work)
 		}
 	}
 
+exit:
 	device_unlock(&dev->dev);
 }
 
@@ -715,7 +722,7 @@ static void nfc_check_pres_timeout(unsigned long data)
 {
 	struct nfc_dev *dev = (struct nfc_dev *)data;
 
-	queue_work(dev->check_pres_wq, &dev->check_pres_work);
+	queue_work(system_nrt_wq, &dev->check_pres_work);
 }
 
 struct class nfc_class = {
@@ -779,25 +786,17 @@ struct nfc_dev *nfc_allocate_device(struct nfc_ops *ops,
 
 	nfc_genl_data_init(&dev->genl_data);
 
+	dev->rf_mode = NFC_RF_NONE;
 
 	/* first generation must not be 0 */
 	dev->targets_generation = 1;
 
 	if (ops->check_presence) {
-		char name[32];
 		init_timer(&dev->check_pres_timer);
 		dev->check_pres_timer.data = (unsigned long)dev;
 		dev->check_pres_timer.function = nfc_check_pres_timeout;
 
 		INIT_WORK(&dev->check_pres_work, nfc_check_pres_work);
-		snprintf(name, sizeof(name), "nfc%d_check_pres_wq", dev->idx);
-		dev->check_pres_wq = alloc_workqueue(name, WQ_NON_REENTRANT |
-						     WQ_UNBOUND |
-						     WQ_MEM_RECLAIM, 1);
-		if (dev->check_pres_wq == NULL) {
-			kfree(dev);
-			return NULL;
-		}
 	}
 
 	return dev;
