@@ -58,10 +58,12 @@
 #include "rndis.c"
 #include "u_ether.c"
 
+#define MOD_VERSION "1.0"
+
 MODULE_AUTHOR("Mike Lockwood");
 MODULE_DESCRIPTION("Android Composite USB Driver");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("1.0");
+MODULE_VERSION(MOD_VERSION);
 
 static const char longname[] = "Gadget Android";
 
@@ -229,7 +231,7 @@ static int adb_function_bind_config(struct android_usb_function *f, struct usb_c
 }
 
 static struct android_usb_function adb_function = {
-	.name		= "adb",
+	.name		= "sdb",
 	.init		= adb_function_init,
 	.cleanup	= adb_function_cleanup,
 	.bind_config	= adb_function_bind_config,
@@ -404,7 +406,7 @@ static int rndis_function_bind_config(struct android_usb_function *f,
 		rndis->ethaddr[0], rndis->ethaddr[1], rndis->ethaddr[2],
 		rndis->ethaddr[3], rndis->ethaddr[4], rndis->ethaddr[5]);
 
-	ret = gether_setup_name(c->cdev->gadget, rndis->ethaddr, "rndis");
+	ret = gether_setup(c->cdev->gadget, rndis->ethaddr);
 	if (ret) {
 		pr_err("%s: gether_setup failed\n", __func__);
 		return ret;
@@ -796,7 +798,7 @@ static int android_enable_function(struct android_dev *dev, char *name)
 }
 
 /*-------------------------------------------------------------------------*/
-/* /sys/class/android_usb/android%d/ interface */
+/* /sys/class/usb_mode/usb%d/ interface */
 
 static ssize_t
 functions_show(struct device *pdev, struct device_attribute *attr, char *buf)
@@ -843,7 +845,7 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 		if (name) {
 			err = android_enable_function(dev, name);
 			if (err)
-				pr_err("android_usb: Cannot enable '%s'", name);
+				pr_err("usb_mode: Cannot enable '%s'", name);
 		}
 	}
 
@@ -902,7 +904,7 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 		usb_gadget_disconnect(cdev->gadget);
 		dev->enabled = false;
 	} else {
-		pr_err("android_usb: already %s\n",
+		pr_err("usb_mode: already %s\n",
 				dev->enabled ? "enabled" : "disabled");
 	}
 
@@ -984,6 +986,7 @@ DESCRIPTOR_STRING_ATTR(iSerial, serial_string)
 static DEVICE_ATTR(functions, S_IRUGO | S_IWUSR, functions_show, functions_store);
 static DEVICE_ATTR(enable, S_IRUGO | S_IWUSR, enable_show, enable_store);
 static DEVICE_ATTR(state, S_IRUGO, state_show, NULL);
+static CLASS_ATTR_STRING(version, S_IRUGO, MOD_VERSION);
 
 static struct device_attribute *android_usb_attributes[] = {
 	&dev_attr_idVendor,
@@ -1135,7 +1138,7 @@ static int android_usb_unbind(struct usb_composite_dev *cdev)
 }
 
 static struct usb_composite_driver android_usb_driver = {
-	.name		= "android_usb",
+	.name		= "usb_mode",
 	.dev		= &device_desc,
 	.strings	= dev_strings,
 	.unbind		= android_usb_unbind,
@@ -1207,7 +1210,7 @@ static int android_create_device(struct android_dev *dev)
 	int err;
 
 	dev->dev = device_create(android_class, NULL,
-					MKDEV(0, 0), NULL, "android0");
+					MKDEV(0, 0), NULL, "usb0");
 	if (IS_ERR(dev->dev))
 		return PTR_ERR(dev->dev);
 
@@ -1229,9 +1232,14 @@ static int __init init(void)
 	struct android_dev *dev;
 	int err;
 
-	android_class = class_create(THIS_MODULE, "android_usb");
+	android_class = class_create(THIS_MODULE, "usb_mode");
 	if (IS_ERR(android_class))
 		return PTR_ERR(android_class);
+
+	/* create class attribute */
+	err = class_create_file(android_class, &class_attr_version.attr);
+	if (err)
+		goto free_class;
 
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
 	if (!dev)
@@ -1256,6 +1264,10 @@ static int __init init(void)
 	composite_driver.disconnect = android_disconnect;
 
 	return usb_composite_probe(&android_usb_driver, android_bind);
+
+free_class:
+	class_destroy(android_class);
+	return err;
 }
 late_initcall(init);
 
