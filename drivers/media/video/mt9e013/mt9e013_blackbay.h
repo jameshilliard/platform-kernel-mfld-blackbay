@@ -31,6 +31,11 @@
 
 /* Recommended Settings 29 Mar 2011*/
 static const struct mt9e013_reg mt9e013_recommended_settings[] = {
+	/* Initial integration time */
+	{MT9E013_16BIT, {0x0342},0x1020},
+	{MT9E013_16BIT, {0X3012},0x0573},
+	{MT9E013_16BIT, {0X3014},0x0846},
+
 	{MT9E013_16BIT, {0x3044}, 0x0590},
 	{MT9E013_16BIT, {0x306E}, 0xFC80},
 	{MT9E013_16BIT, {0x30B2}, 0xC000},

@@ -1054,7 +1054,7 @@ static int mt9e013_g_chip_ident(struct v4l2_subdev *sd,
 
 static int
 mt9e013_get_intg_factor(struct i2c_client *client,
-			struct camera_mipi_info *info,
+			struct sensor_mode_data *buf,
 			const struct mt9e013_reg *reglist)
 {
 	unsigned int	vt_pix_clk_div;
@@ -1065,7 +1065,6 @@ mt9e013_get_intg_factor(struct i2c_client *client,
 	unsigned int	op_sys_clk_div;
 
 
-	struct sensor_mode_data buf;
 	const struct mt9e013_reg *next = reglist;
 	int vt_pix_clk_freq_mhz;
 	u16 data[MT9E013_SHORT_MAX];
@@ -1078,8 +1077,6 @@ mt9e013_get_intg_factor(struct i2c_client *client,
 	unsigned int line_length_pck;
 	unsigned int read_mode;
 
-	if (info == NULL)
-		return -EINVAL;
 
 	memset(data, 0, MT9E013_SHORT_MAX * sizeof(u16));
 	if (mt9e013_read_reg(client, 12, MT9E013_VT_PIX_CLK_DIV, data))
@@ -1116,7 +1113,7 @@ mt9e013_get_intg_factor(struct i2c_client *client,
 	for (; next->type != MT9E013_TOK_TERM; next++) {
 		if (next->type == MT9E013_16BIT) {
 			if (next->reg.sreg == MT9E013_FINE_INTEGRATION_TIME) {
-				buf.fine_integration_time_def = next->val;
+				buf->fine_integration_time_def = next->val;
 				break;
 			}
 		}
@@ -1126,17 +1123,15 @@ mt9e013_get_intg_factor(struct i2c_client *client,
 	if (next->type == MT9E013_TOK_TERM)
 		return -EINVAL;
 
-	buf.coarse_integration_time_min = coarse_integration_time_min;
-	buf.coarse_integration_time_max_margin =
+	buf->coarse_integration_time_min = coarse_integration_time_min;
+	buf->coarse_integration_time_max_margin =
 					coarse_integration_time_max_margin;
-	buf.fine_integration_time_min = fine_integration_time_min;
-	buf.fine_integration_time_max_margin = fine_integration_time_max_margin;
-	buf.vt_pix_clk_freq_mhz = vt_pix_clk_freq_mhz;
-	buf.line_length_pck = line_length_pck;
-	buf.frame_length_lines = frame_length_lines;
-	buf.read_mode = read_mode;
-
-	memcpy(&info->data, &buf, sizeof(buf));
+	buf->fine_integration_time_min = fine_integration_time_min;
+	buf->fine_integration_time_max_margin = fine_integration_time_max_margin;
+	buf->vt_pix_clk_freq_mhz = vt_pix_clk_freq_mhz;
+	buf->line_length_pck = line_length_pck;
+	buf->frame_length_lines = frame_length_lines;
+	buf->read_mode = read_mode;
 
 	return 0;
 }
@@ -1637,11 +1632,13 @@ static int mt9e013_s_mbus_fmt(struct v4l2_subdev *sd,
 			      struct v4l2_mbus_framefmt *fmt)
 {
 	struct mt9e013_device *dev = to_mt9e013_sensor(sd);
-	const struct mt9e013_reg *mt9e013_def_reg;
+	const struct mt9e013_reg *mt9e013_def_reg, *next;
 	struct camera_mipi_info *mt9e013_info = NULL;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct sensor_mode_data buf;
 	int ret;
-
+	u16 coarse_old, line_length_pck,new_line_length_pck;
+	u16 coarse_new = 0;
 	mt9e013_info = v4l2_get_subdev_hostdata(sd);
 	if (mt9e013_info == NULL)
 		return -EINVAL;
@@ -1664,6 +1661,36 @@ static int mt9e013_s_mbus_fmt(struct v4l2_subdev *sd,
 
 	mt9e013_def_reg = mt9e013_res[dev->fmt_idx].regs;
 
+	/* In case of still capture take exposure from previous frame
+	 * as a initial exposure for the still mode.
+	 */
+	if (dev->run_mode == CI_MODE_STILL_CAPTURE) {
+		ret = mt9e013_read_reg(client, MT9E013_16BIT,
+		       MT9E013_COARSE_INTEGRATION_TIME, &coarse_old);
+		if (ret) {
+			mutex_unlock(&dev->input_lock);
+			return -EINVAL;
+		}
+		ret = mt9e013_read_reg(client, MT9E013_16BIT,
+			       MT9E013_LINE_LENGTH_PCK, &line_length_pck);
+		if (ret) {
+			mutex_unlock(&dev->input_lock);
+			return -EINVAL;
+		}
+		new_line_length_pck = line_length_pck;
+		next = mt9e013_res[dev->fmt_idx].regs;
+		for (; next->type != MT9E013_TOK_TERM; next++) {
+			if (next->type == MT9E013_16BIT) {
+				if (next->reg.sreg == MT9E013_LINE_LENGTH_PCK) {
+					new_line_length_pck = next->val;
+					break;
+				}
+			}
+		}
+		coarse_new = (u16)(((int)coarse_old * line_length_pck) /
+					new_line_length_pck);
+	}
+
 	ret = mt9e013_write_reg_array(client, mt9e013_def_reg);
 	if (ret) {
 		mutex_unlock(&dev->input_lock);
@@ -1677,7 +1704,23 @@ static int mt9e013_s_mbus_fmt(struct v4l2_subdev *sd,
 	dev->fine_itg = 0;
 	dev->gain = 0;
 
-	ret = mt9e013_get_intg_factor(client, mt9e013_info, mt9e013_def_reg);
+	ret = mt9e013_get_intg_factor(client, &buf, mt9e013_def_reg);
+	memcpy(&mt9e013_info->data, &buf, sizeof(buf));
+
+	if (dev->run_mode == CI_MODE_STILL_CAPTURE) {
+		/* safety check for integration times */
+		coarse_new = min((unsigned int )coarse_new,
+			(buf.frame_length_lines - buf.coarse_integration_time_max_margin));
+		coarse_new = max((unsigned int )coarse_new,
+			buf.coarse_integration_time_min);
+		ret = mt9e013_write_reg(client, MT9E013_16BIT,
+			MT9E013_COARSE_INTEGRATION_TIME, coarse_new);
+		if (ret) {
+			mutex_unlock(&dev->input_lock);
+			return -EINVAL;
+		}
+	}
+
 	mutex_unlock(&dev->input_lock);
 	if (ret) {
 		v4l2_err(sd, "failed to get integration_factor\n");
