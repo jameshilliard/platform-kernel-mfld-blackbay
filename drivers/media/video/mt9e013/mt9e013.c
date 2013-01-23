@@ -63,6 +63,11 @@
  * (result is 0 if b == 0) */
 #define divsave_rounded(a, b)	(((b) != 0) ? (((a)+((b)>>1))/(b)) : (-1))
 
+/* TODO: this should not be a constant but should be set by a call to
+ * MSIC's driver to get the ext_clk that MSIC supllies to the sensor.
+ */
+static const int ext_clk_freq_mhz = 19200000;
+
 static int
 mt9e013_read_reg(struct i2c_client *client, u16 len, u16 reg, u16 *val)
 {
@@ -1059,10 +1064,7 @@ mt9e013_get_intg_factor(struct i2c_client *client,
 	unsigned int	op_pix_clk_div;
 	unsigned int	op_sys_clk_div;
 
-    /* TODO: this should not be a constant but should be set by a call to
-     * MSIC's driver to get the ext_clk that MSIC supllies to the sensor.
-     */
-	const int ext_clk_freq_mhz = 19200000;
+
 	struct sensor_mode_data buf;
 	const struct mt9e013_reg *next = reglist;
 	int vt_pix_clk_freq_mhz;
@@ -1144,14 +1146,42 @@ mt9e013_get_intg_factor(struct i2c_client *client,
 static int mt9e013_q_exposure(struct v4l2_subdev *sd, s32 *value)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	u16 coarse;
+	unsigned int	vt_pix_clk_div;
+	unsigned int	vt_sys_clk_div;
+	unsigned int	pre_pll_clk_div;
+	unsigned int	pll_multiplier;
+	u16 data[MT9E013_SHORT_MAX];
+	u16 coarse,fine,line_length_pck;
+	int pixel_clk_freq;
 	int ret;
 
-	/* the fine integration time is currently not calculated */
-	ret = mt9e013_read_reg(client, MT9E013_16BIT,
-			       MT9E013_COARSE_INTEGRATION_TIME, &coarse);
-	*value = coarse;
+	memset(data, 0, MT9E013_SHORT_MAX * sizeof(u16));
+	if (mt9e013_read_reg(client, 12, MT9E013_VT_PIX_CLK_DIV, data))
+		return -EINVAL;
+	vt_pix_clk_div = data[0];
+	vt_sys_clk_div = data[1];
+	pre_pll_clk_div = data[2];
+	pll_multiplier = data[3];
+	pixel_clk_freq = divsave_rounded(ext_clk_freq_mhz*pll_multiplier,
+				pre_pll_clk_div*vt_sys_clk_div*vt_pix_clk_div);
 
+
+	memset(data, 0, MT9E013_SHORT_MAX * sizeof(u16));
+	ret = mt9e013_read_reg(client, 4,
+			       MT9E013_COARSE_INTEGRATION_TIME, data);
+	coarse = data[0];
+	fine = data[1];
+
+	ret = mt9e013_read_reg(client, MT9E013_16BIT,
+			       MT9E013_LINE_LENGTH_PCK, data);
+	line_length_pck = data[0];
+	/* divide meaninless zeros already in numerator to
+	 * get numerator fit to 16 bit.
+	 */
+	pixel_clk_freq = pixel_clk_freq / 100000;
+
+	*value = (((coarse * line_length_pck + fine)/100000) << 16)
+			+ pixel_clk_freq;
 	return ret;
 }
 
@@ -1250,7 +1280,7 @@ static struct mt9e013_control mt9e013_controls[] = {
 			.type = V4L2_CTRL_TYPE_INTEGER,
 			.name = "exposure",
 			.minimum = 0x0,
-			.maximum = 0xffff,
+			.maximum = 0xffffffff,
 			.step = 0x01,
 			.default_value = 0x00,
 			.flags = 0,
