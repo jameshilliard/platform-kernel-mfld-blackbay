@@ -20,6 +20,7 @@ BuildRequires: findutils
 BuildRequires: elfutils-libelf-devel
 BuildRequires: binutils-devel
 BuildRequires: which
+BuildRequires: libnl2-devel
 ExclusiveArch: %{ix86}
 
 Provides: kernel = %{version}-%{release}
@@ -214,6 +215,8 @@ fi
 /lib/modules/%{kernel_full_version}/updates
 /lib/modules/%{kernel_full_version}/modules.*
 %ghost /boot/initrd-%{kernel_full_version}.img
+/usr/sbin/calibrator
+/usr/sbin/wlan_prov
 
 
 %files devel

@@ -14,17 +14,12 @@
  *  limitations under the License.
 */
 
-#define LOG_TAG "wlan_prov"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <cutils/log.h>
-#include <cutils/misc.h>
-#include <cutils/android_reboot.h>
 #include <string.h>
 #include <sys/types.h>
 #include <dirent.h>
@@ -37,7 +32,7 @@
 const unsigned char NullMacAddr[MAC_ADDRESS_LEN] = { 0, 0, 0, 0, 0, 0 };
 
 #define WIFI_PATH "/data/misc/wifi"
-const char NVS_file_name[] = "/factory/wifi/wl1271-nvs.bin";
+const char NVS_file_name[] = "/lib/firmware/ti-connectivity/wl1271-nvs.bin";
 const char Default_NVS_file_name[] = "/system/etc/wifi/wl1271-nvs.bin";
 const char WLAN_SDIO_BUS_PATH[] = "/sys/bus/sdio/drivers/wl1271_sdio/";
 #define WLAN_DRV_SDIO_NAME "wl1271_sdio"
@@ -103,7 +98,7 @@ static char *parse_uevent_file(char *path, char *pattern)
 
 	file = fopen(path, "r");
 	if (!file) {
-		LOGE("%s: %s file not found\n", __func__, path);
+		/* LOGE("%s: %s file not found\n", __func__, path); */
 		goto out;
 	}
 
@@ -132,7 +127,7 @@ static int sdio_get_pci_id(char *sdio_device_path, char *pci_id)
 	char *uevent_entry = NULL;
 	char sub_entry[256];
 	if (!sdio_path) {
-		LOGE("Cannot open directory, ret with %d\n", errno);
+		/* LOGE("Cannot open directory, ret with %d\n", errno); */
 		ret = -EINVAL;
 		goto exit;
 	}
@@ -193,7 +188,7 @@ static int bind_unbind_driver(const char *driver_path, const char *driver_id,
 
 	file_path = (char *) malloc(n+1);
 	if (!file_path) {
-		LOGE("Not enough space\n");
+		/* LOGE("Not enough space\n"); */
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -202,7 +197,7 @@ static int bind_unbind_driver(const char *driver_path, const char *driver_id,
 
 	file = fopen(file_path, "w");
 	if (!file) {
-		LOGE("Unable to open file %s in write mode", file_path);
+		/* LOGE("Unable to open file %s in write mode", file_path); */
 		ret = -EIO;
 		goto open_fail;
 	}
@@ -210,7 +205,7 @@ static int bind_unbind_driver(const char *driver_path, const char *driver_id,
 	fprintf(file,"%s", driver_id);
 
 	if (fclose(file)) {
-		LOGE("Unable to close file");
+		/* LOGE("Unable to close file"); */
 		ret = -EIO;
 	}
 
@@ -253,7 +248,7 @@ int main(int argc, char **argv)
 		ChaabiMacAddr = (unsigned char *) malloc(MAC_ADDRESS_LEN);
 		memcpy(ChaabiMacAddr, NullMacAddr, MAC_ADDRESS_LEN);
 
-		LOGW("MAC not found");
+		/* LOGW("MAC not found"); */
 #ifdef BUILD_WITH_CHAABI_SUPPORT
 	}
 #endif
@@ -261,7 +256,7 @@ int main(int argc, char **argv)
 	nvsBinFile = fopen(NVS_file_name, "rb");
 
 	if (!nvsBinFile) {
-		LOGI("run calibration");
+		/* LOGI("run calibration"); */
 		if (wifi_calibration()) {
 			res =  -2;
 			goto end;
@@ -272,8 +267,11 @@ int main(int argc, char **argv)
 			/* NVS file already exist but chaabi read error */
 			/* exit here to avoid randomize new MAC address */
 			/* at each boot */
-			res =  0;
-			goto end;
+			/* res =  0;
+			 * goto end;
+			 * we need to randomize new MAC address because we can't read
+			 * chaabi and we have the same nvs file for all devices
+			 */
 		}
 	}
 
@@ -298,7 +296,7 @@ int main(int argc, char **argv)
 		ChaabiMacAddr[3] = (unsigned char) (rand() & 0xff);
 		ChaabiMacAddr[4] = (unsigned char) (rand() & 0xff);
 		ChaabiMacAddr[5] = (unsigned char) (rand() & 0xff);
-		LOGI("MAC randomized");
+		/* LOGI("MAC randomized"); */
 	}
 
 	/* Chaabi MAC @ shall be write in NVS file ? */
@@ -338,7 +336,7 @@ end:
 	return res;
 fatal:
 	sync();
-	android_reboot(ANDROID_RB_RESTART, 0, 0);
+	/* android_reboot(ANDROID_RB_RESTART, 0, 0); */
 	return res;
 }
 
@@ -390,18 +388,20 @@ static int nvs_replace_mac(unsigned char *MacAddr)
 	int err = 0;
 	char system_cmd[500];
 
-	snprintf(system_cmd, sizeof(system_cmd), "/system/bin/calibrator set nvs_mac"
+	snprintf(system_cmd, sizeof(system_cmd), "/usr/sbin/calibrator set nvs_mac"
 						" %s %02x:%02x:%02x:%02x:%02x:%02x",
 						NVS_file_name,
 						MacAddr[0], MacAddr[1], MacAddr[2],
 						MacAddr[3], MacAddr[4], MacAddr[5]);
-	if (debug)
+	/* if (debug)
 		LOGI("cmd: %s",system_cmd);
+	 */
 
 	err = system(system_cmd);
 
-	if (err)
+	/* if (err)
 		LOGE("NVS update with new MAC error= %d",err);
+	 */
 
 	return err;
 }
@@ -414,18 +414,20 @@ static int wifi_calibration(void)
 	int module_is_loaded = 0;
 
 	/* start calibration & nvs update */
-	snprintf(system_cmd, sizeof(system_cmd), "/system/bin/calibrator plt autocalibrate wlan0"
+	snprintf(system_cmd, sizeof(system_cmd), "/usr/sbin/calibrator plt autocalibrate wlan0"
 							" /lib/modules/wl12xx_sdio.ko %s %s %s",
 							TQS_FILE,
 							NVS_file_name,
 							(unsigned char *)"08:00:28:DE:AD:00");
-	if (debug)
+	/* if (debug)
 		LOGI("cmd: %s",system_cmd);
+	 */
 
 	err = system(system_cmd);
 
-	if (err)
+	/* if (err)
 		LOGE("Calibration error= %d",err);
+	 */
 
 	return err;
 }
