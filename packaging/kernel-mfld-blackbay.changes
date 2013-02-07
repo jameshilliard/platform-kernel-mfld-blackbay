@@ -1,3 +1,70 @@
+* Fri Apr 05 2013 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
+- Fix TDIS-1744 (CVE-2012-3400)
+  * udf: Fortify loading of sparing table
+  * udf: Avoid run away loop when partition table length is corrupted
+  * udf: Use 'ret' instead of abusing 'i' in udf_load_logicalvol()
+- Fix TDIS-1716 (CVE-2012-0056)
+  * proc: clean up and fix /proc/<pid>/mem handling
+- Fix TDIS-1712 (CVE-2011-4127)
+  * dm: do not forward ioctls from logical volumes to the underlying device
+  * block: fail SCSI passthrough ioctls on partition devices
+  * block: add and use scsi_blk_cmd_ioctl
+- Fix TDIS-1746 (CVE-2012-3511)
+  * mm: Hold a file reference in madvise_remove
+- Fix TDIS-1730 (CVE-2012-2373)
+  * mm: pmd_read_atomic: fix 32bit PAE pmd walk vs pmd_populate SMP race condition
+- Fix TDIS-1745 (CVE-2012-3430)
+  * rds: set correct msg_namelen
+- Fix TDIS-1741 (CVE-2012-3412)
+  * tcp: Apply device TSO segment limit earlier
+  * sfc: Fix maximum number of TSO segments and minimum TX queue size
+  * net: Allow driver to limit number of GSO segments per skb
+  * cred: copy_process() should clear child->replacement_session_keyring
+- Fix TDIS-1729 (CVE-2012-2319)
+  * hfsplus: Fix potential buffer overflows
+- Fix TDIS-1728 (CVE-2012-2136)
+  * net: sock: validate data_len before allocating skb in sock_alloc_send_pskb()
+- Fix TDIS-1721 (CVE-2012-1179)
+  * mm: thp: fix pmd_bad() triggering in code paths holding mmap_sem read mode
+- Fix TDIS-1725 (CVE-2012-2123)
+  * fcaps: clear the same personality flags as suid when fcaps are used
+- Fix TDIS-1718 (CVE-2012-1090)
+  * cifs: fix dentry refcount leak when opening a FIFO on lookup
+- Fix TDIS-1719 (CVE-2012-1097)
+  * regset: Return -EFAULT, not -EIO, on host-side memory fault
+  * regset: Prevent null pointer reference on readonly regsets
+- Fix TDIS-1717 (CVE-2012-0207)
+  * igmp: Avoid zero delay when receiving odd mixture of IGMP queries
+- Fix TDIS-1720 (CVE-2012-1146)
+  * mm: memcg: Correct unregistring of events attached to the same eventfd
+- Fix TDIS-1711 (CVE-2011-4086)
+  * jbd2: clear BH_Delay & BH_Unwritten in journal_unmap_buffer
+- Fix TDIS-1714 (CVE-2012-0044)
+  * drm: integer overflow in drm_mode_dirtyfb_ioctl()
+- Fix TDIS-1733 (CVE-2012-2384)
+  * drm/i915: fix integer overflow in i915_gem_do_execbuffer()
+- Fix TDIS-1732 (CVE-2012-2383)
+  * drm/i915: fix integer overflow in i915_gem_execbuffer2()
+- Fix TDIS-1722 (CVE-2012-1601)
+  * KVM: Ensure all vcpus are consistent with in-kernel irqchip settings
+- Fix TDIS-1724 (CVE-2012-2121)
+  * KVM: unmap pages from the iommu when slots are removed
+- Fix TDIS-1727 (CVE-2012-2133)
+  * hugepages: fix use after free bug in "quota" handling
+- Fix TDIS-1734 (CVE-2012-2390)
+  * hugetlb: fix resv_map leak in error path
+- Fix TDIS-1723 (CVE-2012-2100)
+  * ext4: fix undefined behavior in ext4_fill_flex_info()
+- Fix TDIS-1726 (CVE-2012-2127)
+  * procfs: fix a vfsmount longterm reference leak
+  * VFS : mount lock scalability for internal mounts
+- Fix TDIS-1715 (CVE-2012-0045)
+  * KVM: x86: fix missing checks in syscall emulation
+- Fix TDIS-1713 (CVE-2012-0038)
+  * xfs: fix acl count validation in xfs_acl_from_disk()
+  * xfs: validate acl count
+- Fix net/Makefile
+
 * Wed Apr 03 2013 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
 - Cherry-pick changes from master:
   * Enable 'perf' tool for performance tunning [Austin Zhang]
