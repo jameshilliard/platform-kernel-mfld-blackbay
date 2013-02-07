@@ -1,8 +1,6 @@
 #ifndef _LINUX_GSMMUX_H
 #define _LINUX_GSMMUX_H
 
-#include <linux/if.h>
-
 struct gsm_config {
 	unsigned int adaption;
 	unsigned int encapsulation;
