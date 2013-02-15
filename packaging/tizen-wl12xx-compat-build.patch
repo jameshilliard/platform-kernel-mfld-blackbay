@@ -1,0 +1,131 @@
+diff -uNr a/wl12xx-compat-build.sh b/wl12xx-compat-build.sh
+--- a/packaging/wl12xx-compat-build.sh	2013-01-23 18:03:14.602741237 +0800
++++ b/packaging/wl12xx-compat-build.sh	2013-01-23 18:02:46.118740560 +0800
+@@ -39,19 +39,20 @@
+ _menuconfig="false"
+ _config_file_type=android
+ _regdom="00"
++_install=false
+ 
+ init_variables() {
+     local custom_board=$1
+ 
+-    if [ -z "${TARGET_TOOLS_PREFIX}" ]; then
+-        echo >&3 "Warning: TARGET_TOOLS_PREFIX was not set."
+-	TARGET_TOOLS_PREFIX=$TOP/prebuilt/linux-x86/toolchain/i686-android-linux-4.4.3/bin/i686-android-linux-
+-    fi
++#    if [ -z "${TARGET_TOOLS_PREFIX}" ]; then
++#        echo >&3 "Warning: TARGET_TOOLS_PREFIX was not set."
++#	TARGET_TOOLS_PREFIX=$TOP/prebuilt/linux-x86/toolchain/i686-android-linux-4.4.3/bin/i686-android-linux-
++#    fi
+     if [ -z "${CCACHE_TOOLS_PREFIX}" ]; then
+         echo >&3 "Warning: CCACHE_TOOLS_PREFIX was not set."
+ 	CCACHE_TOOLS_DIR=$TOP/prebuilt/linux-x86/ccache
+     fi
+-    export PATH="`dirname ${TARGET_TOOLS_PREFIX}`:$PATH"
++#    export PATH="`dirname ${TARGET_TOOLS_PREFIX}`:$PATH"
+     if [ -z "$CROSS_COMPILE" ];then
+         export CROSS_COMPILE="`basename ${TARGET_TOOLS_PREFIX}`"
+     fi
+@@ -60,7 +61,7 @@
+         export CROSS_COMPILE="ccache $CROSS_COMPILE"
+     fi
+     export ARCH=i386
+-    export CFLAGS=-mno-android
++#    export CFLAGS=-mno-android
+     echo >&3 "ARCH: $ARCH"
+     echo >&3 "CROSS_COMPILE: $CROSS_COMPILE"
+     echo >&3 "PATH: $PATH"
+@@ -86,32 +87,39 @@
+     esac
+ 
+     PRODUCT_OUT=${TOP}/out/target/product/${BOARD}
+-    KERNEL_BUILD_DIR=${PRODUCT_OUT}/kernel_build
++    KERNEL_BUILD_DIR=${TOP}
+ }
+ 
+ make_compat() {
+     echo "  Making wl12xx compat wireless"
+-    local COMPAT_SRC_DIR=$TOP/hardware/ti/wlan/wl12xx-compat/
+-    local MODULE_DEST_TMP=${PRODUCT_OUT}/compat_modules
++    local COMPAT_SRC_DIR=$TOP/ti-wlan/wl12xx-compat/
++    local MODULE_DEST_TMP=${INSTALL_MOD_PATH}
+     local MODULE_DEST=${PRODUCT_OUT}/root/lib/modules
+     local MODULE_REGDOM=$2
+ 
+     cd ${COMPAT_SRC_DIR}
++    # Fix script permissions
++    chmod 755 ./scripts/*
+ 
+     echo "$MODULE_REGDOM" > compat_regdom
+ 
+-    make ARCH=${ARCH} KLIB=${MODULE_DEST_TMP} KLIB_BUILD=${KERNEL_BUILD_DIR} clean
+-    exit_on_error $? quiet
+-
+     make ARCH=${ARCH} KLIB=${MODULE_DEST_TMP} KLIB_BUILD=${KERNEL_BUILD_DIR}
+     exit_on_error $? quiet
+ 
+-    rm -rf ${MODULE_DEST_TMP}
+-    mkdir -p ${MODULE_DEST_TMP};
+-    make ARCH=${ARCH} INSTALL_MOD_STRIP=--strip-unneeded KLIB=${MODULE_DEST_TMP} KLIB_BUILD=${KERNEL_BUILD_DIR} install-modules
+-    exit_on_error $? quiet
++    cd ${TOP}
++}
+ 
+-    find ${MODULE_DEST_TMP} -name *.ko -exec cp -vf {} ${MODULE_DEST} \;
++install_compat() {
++    local COMPAT_SRC_DIR=$TOP/ti-wlan/wl12xx-compat/
++    local MODULE_DEST_TMP=${INSTALL_MOD_PATH}
++    cd ${COMPAT_SRC_DIR}
++    make ARCH=${ARCH} KLIB=${MODULE_DEST_TMP} KLIB_BUILD=${KERNEL_BUILD_DIR} install-modules
++    cd $TOP/ti-wlan/calibrator/
++    make
++    mkdir -p ${MODULE_DEST_TMP}/usr/sbin/ && cp -f ./calibrator ${MODULE_DEST_TMP}/usr/sbin/
++    cd $TOP/ti-wlan/wlan_prov/
++    make
++    cp -f ./wlan_prov ${MODULE_DEST_TMP}/usr/sbin/
+     exit_on_error $? quiet
+ 
+     cd ${TOP}
+@@ -134,7 +142,7 @@
+ main() {
+     local custom_board_list="vbox mfld_cdk mfld_pr2 mfld_gi mfld_dv10 mfld_tablet_evx ctp_pr0 ctp_pr1 mrfl_vp mrfl_hvp mrfl_sle"
+ 
+-    while getopts Kc:j:kthCmr: opt
++    while getopts Kc:j:kthCmr:i opt
+     do
+         case "${opt}" in
+         K)
+@@ -180,6 +188,9 @@
+         r)
+             _regdom=$OPTARG
+             ;;
++        i)
++            _install=true
++            ;;
+         ?)
+             echo "Unknown option"
+             usage
+@@ -190,11 +201,18 @@
+ 
+     for custom_board in $custom_board_list
+     do
+-        echo >&3 
+-        echo >&3 "Building kernel for $custom_board"
+-        echo >&3 "---------------------------------"
+         init_variables "$custom_board"
+-        make_compat ${custom_board} $_regdom
++        if [ $_install != true ]; then
++            echo >&3
++            echo >&3 "Building TI WLAN modules for $custom_board"
++            echo >&3 "---------------------------------"
++            make_compat ${custom_board} $_regdom
++        else
++            echo >&3
++            echo >&3 "Installing TI WLAN modules for $custom_board"
++            echo >&3 "---------------------------------"
++            install_compat
++        fi
+         exit_on_error $?
+     done
+     exit 0

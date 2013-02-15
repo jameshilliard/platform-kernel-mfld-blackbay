@@ -1,0 +1,187 @@
+* Thu Oct 25 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
+[ Li Peng ]
+- gfx: delay gfx h/w resume if early_suspend flag is true
+[ Andy Shevchenko ]
+- atomisp: do not do full release if more video pipes are on use,
+  fixes TZSP-3288
+
+* Tue Oct 23 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
+- packaging: rename spec and changelog files to reflect the new RPM
+  package name
+
+* Mon Oct 22 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
+- Rename package: kernel-adaptation-bb -> kernel-mfld-blackbay
+
+* Mon Oct 22 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> submit/trunk/20121022.065918@836371e
+[ Yan Zhang ]
+- Enable TOPAZ power management
+[ Elena Reshetova ]
+- Smack: backport fixes from upstream
+  * setprocattr memory leak fix
+  * remove task_wait() hook.
+  * off by one error
+  * implement revoking all rules for a subject label
+  * don't show empty rules when /smack/load or /smack/load2 is read
+  * user access check bounds
+  * onlycap limits on CAP_MAC_ADMIN
+  * split ->file_mmap() into ->mmap_addr()/->mmap_file()
+  * split cap_mmap_addr() out of cap_file_mmap()
+  * Smack: fix smack_new_inode bogosities
+  * Smack: allow for significantly longer Smack labels v4
+  * SELinux: rename dentry_open to file_open
+  * gfp flags for security_inode_alloc()?
+  * Smack: recursive tramsmute
+
+* Wed Oct 17 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
+[ Chengwei Yang ]
+- Change adb debug protocol to Samsung's sdb protocol. Enables us to use
+  the stock sdbd of Tizen.
+[ Li Peng ]
+- gfx: enable runtime power management (FIX #3260)
+- Fix build system: remove mac802154 and openvswitch from net/Makefile
+
+* Thu Sep 27 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
+[ Chengwei Yang ]
+- Export usb connection status throught the 'jack' interface
+
+* Wed Sep 19 2012 Yong Wang <yong.y.wang@intel.com> 3.0.8
+[ Yong Wang ]
+- atmel_mxt_ts: remove redundant mutex
+- hwmon/lis3dh: add screen on/off notifier callback
+
+* Mon Sep 17 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
+[ Markus Lehtonen ]
+- atomisp: fix a possible null pointer dereference
+
+* Fri Aug 31 2012 Peng Li <peng.li@intel.com> - 3.0.8
+[ Li Peng ]
+- config: disable HDMI config option
+- boot parameter: set consoleblank to zero
+
+* Wed Aug 29 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
+[ Chengwei Yang ]
+- Port, fix and enable slp lowmem module from Samsung
+- Enable autofs in config
+[ Austin Zhang ]
+- [HACK-MUST-REVERT]Add an environment key for crappy user space to be able
+  to correctly detect charger (in/out) events
+
+* Mon Aug 27 2012 Peng Li <peng.li@intel.com> - 3.0.8
+[ Yan Zhang ]
+- Update video driver to MCG's latest code
+[ Li Peng ]
+- gfx: a better way to do gfx suspend/resume at DPMS on/off
+
+* Mon Aug 13 2012 Peng Li <peng.li@intel.com> - 3.0.8
+[ Li Peng ]
+- gfx: a better way to do gfx suspend/resume at DPMS on/off
+
+* Fri Jul 27 2012 Peng Li <peng.li@intel.com> - 3.0.8
+[ Yong Wang ] 
+- rtc-mrst: init wakeup earlier than registering RTC device
+[ Li Peng ]
+- gfx: remove mutex protection in __dpi_panel_power_off
+- gfx: enable runtime pm support at DPMS
+[ arron wang ]
+- config-tizen: enable pn544 hci option
+- fix compilation by remove duplicate definition
+- compact nfc 3.0.8
+- x86 pn544 blackbay
+- netlink: advertise incomplete dumps
+
+* Wed Jul 18 2012 Peng Li <peng.li@intel.com> - v3.0.8
+[ Austin Zhang ]
+- Added screen-off notifier
+- Added screen off notifier callback
+- Set and send ABS_X/Y for enabling specific multitouch input driver for
+  mxt224 panel
+
+* Thu Jul 12 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> v3.0.8@49a113b
+- Update (rebase) to WW26 release from MCG (kernel and ti-wlan)
+- Add tizen_rr_defconfig for RedRidge devices
+- ti-wlan: Get rid of the ti (out-of-tree) wlan source tarball, but instead,
+  take the code  in to the kernel source tree.
+- ti-wlan: fix compilation when Android PM is disabled
+- audio: fix locking bug in the audience es305 driver
+
+* Tue Jul 03 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> v3.0.8@6b50efd
+[ Yong Wang ]
+- intel_mid_hsi: make system susped prevention work, even if
+  Android PM is not used
+
+* Fri Jun 29 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> v3.0.8@f55b9cd
+[ Austin Zhang ]
+- Disable Android powermanagement and enable "traditional" PM in a multitude
+  of device drivers (ms5607, mpu3050, ltr502als, lsm303-compass, lps331ap
+  lis3dh, leds-kpd, l3g4200d, hmc5883, atmel mxt224)
+- Patches to prevent system entering s3 in various scenarios when not using
+  wakelocks (usb connected, charger connected, nfc data operation underway,
+  rtc alarm)
+[ vivian, zhang ]
+- Sound: import Jack Monitoring Interface from Samsung
+[ Li Peng ]
+- gfx powermanagement fixes: fix early_suspend/late_resume for the display
+- gfx: fix backlight control failure on PR3
+
+* Mon Jun 18 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> v3.0.8@8000ad6
+- tizen config: disable GL3 cached in PVR drivers
+
+* Fri Jun 15 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> v3.0.8@32d909a
+- tizen packaging: make gbs happy about the tarball name
+- tizen packaging: get rid of the hard dependency to hardlink
+
+* Mon Jun 11 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> v3.0.8@2071860
+- tizen packaging: update wifi driver build script patch
+- tizen packaging: Rewrite .spec
+- Enabled devtmpfs in config
+
+* Tue May 29 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com>
+- Build the out-of-tree WIFI driver that MCG uses, too
+- Take kernel config from source tree (config-tizen)
+
+* Mon May 21 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com>
+- Config changes:
+- enable wl12xx sdio
+- enable ethernet bridging support
+- enable TAP/TUN network device
+- disable ANDROID_PARANOID_NETWORK -> less strict security for socket
+  creation
+- disable MD (e.g. lvm) support
+- enable devmem
+- disable module_ronx
+
+* Wed May 16 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com>
+- Rebase the hybrid kernel on top of WW19 release from MCG
+
+* Thu May 3 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com>
+
+- Update to git~9fb7740 from MCG ICS tree
+- Update OTC PVR patches to latest version (now as individual patches
+  instead of one big diff
+- Add pvr-video patches from Topi Pohjolainen
+- New TMD 6x10 display panel patchset from Peng Li
+- Backport SMACK changes from 3.3 and enable smack in config
+- Add cmdline file (for Pre-OS)
+
+* Sat Mar 31 2012 Arron Wang <arron.wang@intel.com>
+- add nfc-tizen-20120328.patch to enable NFC feature for PR3
+
+* Wed Mar 14 2012 Jarkko Sakkinen <jarkko.sakkinen@intel.com>
+- 0001-security-new-security_inode_init_security-API-adds-f.patch
+- 0001-tmpfs-security-xattr-setting-on-inode-creation.patch
+
+* Tue Feb 21 2012 Yan Yin <yan.yin@intel.com>
+- add 0001-Enable-proc-fs-to-print-more-than-32-groups-entries.patch to make security-server work
+
+* Fri Feb 2012 Christopher Leech <christopher.leech@linux.intel.com>
+- build wl12xx_sdio module for SDIO connected Wifi module
+
+* Fri Feb 10 2012 Anas Nashig <anas.nashif@intel.com>
+- Update config
+
+* Thu Feb 9 2012 Christopher Leech <christopher.leech@linux.intel.com>
+- Fix missing config options for PR3 display panel and sound drivers
+
+* Wed Feb 8 2012 Christopher Leech <christopher.leech@linux.intel.com>
+- BlackBay PR3 kernel, initial package from UMG Android tree
+
