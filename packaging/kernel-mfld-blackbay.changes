@@ -1,3 +1,8 @@
+* Mon Mar 04 2013 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
+[ Marko Ollonen ]
+- camera: keep exposure from previous frame in still image mode change. (TZSP-5221)
+- camera: exposure value query to mt9e013 (TZSP-5221)
+
 * Thu Oct 25 2012 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
 [ Li Peng ]
 - gfx: delay gfx h/w resume if early_suspend flag is true
