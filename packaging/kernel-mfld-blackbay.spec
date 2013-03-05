@@ -61,6 +61,13 @@ AutoReqProv: no
 This package provides kernel headers and makefiles sufficient to build modules
 against the %{variant} kernel package.
 
+%package -n perf
+Summary: The 'perf' performance counter tool
+Group: System/Performance
+
+%description -n perf
+This package provides the "perf" tool that can be used to monitor performance counter events
+as well as various kernel internal events.
 
 ###
 ### PREP
@@ -90,6 +97,11 @@ make -s ARCH=%{kernel_arch} %{?_smp_mflags} modules
 # Build TI WLAN (out-of-tree) drivers
 ARCH=%{kernel_arch} TARGET_TOOLS_PREFIX="" INSTALL_MOD_PATH=%{buildroot} ./wl12xx-compat-build.sh -c mfld_pr2 %{?_smp_mflags} KERNELRELEASE=%{kernel_full_version}
 
+# For 'perf' tool
+cd tools/perf
+chmod a+x util/generate-cmdlist.sh
+make
+cd ../..
 
 
 ###
@@ -170,7 +182,13 @@ mv %{buildroot}/lib/modules/%{kernel_full_version}/build %{buildroot}/usr/src/ke
 
 ln -sf ../../../usr/src/kernels/%{kernel_full_version} %{buildroot}/lib/modules/%{kernel_full_version}/build
 
-
+# For 'perf'
+cd tools/perf
+make DESTDIR=$RPM_BUILD_ROOT install
+mkdir -p $RPM_BUILD_ROOT/usr/bin/
+mkdir -p $RPM_BUILD_ROOT/usr/libexec/
+mv $RPM_BUILD_ROOT/bin/* $RPM_BUILD_ROOT/usr/bin/
+mv $RPM_BUILD_ROOT/libexec/* $RPM_BUILD_ROOT/usr/libexec/
 
 ###
 ### CLEAN
@@ -223,4 +241,12 @@ fi
 %defattr(-,root,root)
 %verify(not mtime) /usr/src/kernels/%{kernel_full_version}
 /lib/modules/%{kernel_full_version}/vmlinux
+
+%files -n perf
+%defattr(-,root,root)
+/usr/bin/perf
+/usr/libexec/perf-core/*
+%dir /usr/libexec/perf-core
+%dir /usr/libexec/perf-core/scripts/perl
+%dir /usr/libexec/perf-core/scripts/python
 
