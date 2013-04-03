@@ -1,3 +1,8 @@
+* Wed Apr 03 2013 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
+- Cherry-pick changes from master:
+  * Enable 'perf' tool for performance tunning [Austin Zhang]
+  * Enable security hardening options in kernel [Elena Reshetova]
+
 * Mon Mar 04 2013 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
 [ Marko Ollonen ]
 - camera: keep exposure from previous frame in still image mode change. (TZSP-5221)
