@@ -14,8 +14,8 @@
 #include <linux/i2c.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/fixed.h>
-#include <linux/nfc/pn544.h>
 #include <asm/intel-mid.h>
+#include <linux/platform_data/pn544.h>
 #include "platform_pn544.h"
 
 /* MFLD NFC controller (PN544) platform init */

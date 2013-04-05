@@ -904,7 +904,8 @@ CONFIG_NFC_LLCP=y
 # Near Field Communication (NFC) devices
 #
 # CONFIG_PN544_NFC is not set
-CONFIG_PN544_HCI_NFC=y
+CONFIG_NFC_PN544=y
+CONFIG_NFC_PN544_I2C=y
 # CONFIG_NFC_PN533 is not set
 
 #

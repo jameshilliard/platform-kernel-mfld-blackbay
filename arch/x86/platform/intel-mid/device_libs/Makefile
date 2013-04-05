@@ -40,7 +40,7 @@ obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_RMI4_I2C)		+= platform_s3202.o
 else
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI4)		+= platform_s3202.o
 endif
-obj-$(CONFIG_PN544_HCI_NFC)				+= platform_pn544.o
+obj-$(CONFIG_NFC_PN544)					+= platform_pn544.o
 obj-$(CONFIG_GPIO_PCA953X)				+= platform_tca6416.o
 obj-$(CONFIG_SENSORS_LIS3LV02D)				+= platform_lis331.o
 obj-$(CONFIG_CHARGER_SMB347)				+= platform_smb347.o
