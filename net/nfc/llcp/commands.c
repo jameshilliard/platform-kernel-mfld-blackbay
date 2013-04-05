@@ -190,9 +190,9 @@ void nfc_llcp_free_sdp_tlv(struct nfc_llcp_sdp_tlv *sdp)
 void nfc_llcp_free_sdp_tlv_list(struct hlist_head *head)
 {
 	struct nfc_llcp_sdp_tlv *sdp;
-	struct hlist_node *n;
+	struct hlist_node *hlist, *n;
 
-	hlist_for_each_entry_safe(sdp, n, head, node) {
+	hlist_for_each_entry_safe(sdp, hlist, n, head, node) {
 		hlist_del(&sdp->node);
 
 		nfc_llcp_free_sdp_tlv(sdp);
@@ -542,14 +542,14 @@ int nfc_llcp_send_snl_sdres(struct nfc_llcp_local *local,
 			    struct hlist_head *tlv_list, size_t tlvs_len)
 {
 	struct nfc_llcp_sdp_tlv *sdp;
-	struct hlist_node *n;
+	struct hlist_node *hlist, *n;
 	struct sk_buff *skb;
 
 	skb = nfc_llcp_allocate_snl(local, tlvs_len);
 	if (IS_ERR(skb))
 		return PTR_ERR(skb);
 
-	hlist_for_each_entry_safe(sdp, n, tlv_list, node) {
+	hlist_for_each_entry_safe(sdp, hlist, n, tlv_list, node) {
 		memcpy(skb_put(skb, sdp->tlv_len), sdp->tlv, sdp->tlv_len);
 
 		hlist_del(&sdp->node);
@@ -566,7 +566,7 @@ int nfc_llcp_send_snl_sdreq(struct nfc_llcp_local *local,
 			    struct hlist_head *tlv_list, size_t tlvs_len)
 {
 	struct nfc_llcp_sdp_tlv *sdreq;
-	struct hlist_node *n;
+	struct hlist_node *hlist, *n;
 	struct sk_buff *skb;
 
 	skb = nfc_llcp_allocate_snl(local, tlvs_len);
@@ -579,7 +579,7 @@ int nfc_llcp_send_snl_sdreq(struct nfc_llcp_local *local,
 		mod_timer(&local->sdreq_timer,
 			  jiffies + msecs_to_jiffies(3 * local->remote_lto));
 
-	hlist_for_each_entry_safe(sdreq, n, tlv_list, node) {
+	hlist_for_each_entry_safe(sdreq, hlist, n, tlv_list, node) {
 		pr_debug("tid %d for %s\n", sdreq->tid, sdreq->uri);
 
 		memcpy(skb_put(skb, sdreq->tlv_len), sdreq->tlv,

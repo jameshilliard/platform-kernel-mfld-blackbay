@@ -362,7 +362,7 @@ int nfc_genl_llc_send_sdres(struct nfc_dev *dev, struct hlist_head *sdres_list)
 	struct sk_buff *msg;
 	struct nlattr *sdp_attr, *uri_attr;
 	struct nfc_llcp_sdp_tlv *sdres;
-	struct hlist_node *n;
+	struct hlist_node *hlist, *n;
 	void *hdr;
 	int rc = -EMSGSIZE;
 	int i;
@@ -386,7 +386,7 @@ int nfc_genl_llc_send_sdres(struct nfc_dev *dev, struct hlist_head *sdres_list)
 	}
 
 	i = 1;
-	hlist_for_each_entry_safe(sdres, n, sdres_list, node) {
+	hlist_for_each_entry_safe(sdres, hlist, n, sdres_list, node) {
 		pr_debug("uri: %s, sap: %d\n", sdres->uri, sdres->sap);
 
 		uri_attr = nla_nest_start(msg, i++);
@@ -852,7 +852,7 @@ static int nfc_genl_llc_get_params(struct sk_buff *skb, struct genl_info *info)
 		goto exit;
 	}
 
-	rc = nfc_genl_send_params(msg, local, info->snd_portid, info->snd_seq);
+	rc = nfc_genl_send_params(msg, local, info->snd_pid, info->snd_seq);
 
 exit:
 	device_unlock(&dev->dev);

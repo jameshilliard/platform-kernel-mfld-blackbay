@@ -136,7 +136,7 @@ static void nfc_llcp_socket_release(struct nfc_llcp_local *local, bool device,
 
 	write_lock(&local->raw_sockets.lock);
 
-	sk_for_each_safe(sk, tmp, &local->raw_sockets.head) {
+	sk_for_each_safe(sk, node, tmp, &local->raw_sockets.head) {
 		llcp_sock = nfc_llcp_sock(sk);
 
 		bh_lock_sock(sk);
@@ -257,7 +257,7 @@ static void nfc_llcp_sdreq_timeout_work(struct work_struct *work)
 {
 	unsigned long time;
 	HLIST_HEAD(nl_sdres_list);
-	struct hlist_node *n;
+	struct hlist_node *hlist, *n;
 	struct nfc_llcp_sdp_tlv *sdp;
 	struct nfc_llcp_local *local = container_of(work, struct nfc_llcp_local,
 						    sdreq_timeout_work);
@@ -266,7 +266,7 @@ static void nfc_llcp_sdreq_timeout_work(struct work_struct *work)
 
 	time = jiffies - msecs_to_jiffies(3 * local->remote_lto);
 
-	hlist_for_each_entry_safe(sdp, n, &local->pending_sdreqs, node) {
+	hlist_for_each_entry_safe(sdp, hlist, n, &local->pending_sdreqs, node) {
 		if (time_after(sdp->time, time))
 			continue;
 
@@ -1226,6 +1226,7 @@ static void nfc_llcp_recv_snl(struct nfc_llcp_local *local,
 	HLIST_HEAD(llc_sdres_list);
 	size_t sdres_tlvs_len;
 	HLIST_HEAD(nl_sdres_list);
+	struct hlist_node *hlist;
 
 	dsap = nfc_llcp_dsap(skb);
 	ssap = nfc_llcp_ssap(skb);
@@ -1313,7 +1314,7 @@ add_snl:
 
 			pr_debug("LLCP_TLV_SDRES: searching tid %d\n", tlv[2]);
 
-			hlist_for_each_entry(sdp, &local->pending_sdreqs, node) {
+			hlist_for_each_entry(sdp, hlist, &local->pending_sdreqs, node) {
 				if (sdp->tid != tlv[2])
 					continue;
 
