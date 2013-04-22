@@ -340,12 +340,16 @@ int gfx_suspend(struct device *dev)
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct drm_device *drm_dev = pci_get_drvdata(pdev);
 	struct drm_encoder *encoder;
+	int ret = 0;
 
 	dev_info(dev, "%s\n", __func__);
 
 	mutex_lock(&drm_dev->mode_config.mutex);
-	if (early_suspend)
+	if (early_suspend) {
+		if (!gbSuspended)
+			ret = ospm_power_suspend(dev);
 		goto out;
+	}
 
 	list_for_each_entry(encoder, &drm_dev->mode_config.encoder_list, head) {
 		struct drm_encoder_helper_funcs *ehf = encoder->helper_private;
@@ -357,7 +361,7 @@ int gfx_suspend(struct device *dev)
 	return ospm_power_suspend(dev);
 out:
 	mutex_unlock(&drm_dev->mode_config.mutex);
-	return 0;
+	return ret;
 }
 
 int gfx_resume(struct device *dev)
