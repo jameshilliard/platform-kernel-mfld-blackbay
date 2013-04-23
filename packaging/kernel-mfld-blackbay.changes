@@ -1,3 +1,7 @@
+* Tue Apr 23 2013 Li Peng <peng.li@intel.com> submit/tizen_2.1/20130405.111545@ad3286b
+[ Li Peng ]
+- gfx: call ospm_power_suspend() in case gfx device isn't suspended
+
 * Fri Apr 05 2013 Markus Lehtonen <markus.lehtonen@linux.intel.com> 3.0.8
 - Fix TDIS-1744 (CVE-2012-3400)
   * udf: Fortify loading of sparing table
