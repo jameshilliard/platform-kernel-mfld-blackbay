@@ -346,8 +346,7 @@ int gfx_suspend(struct device *dev)
 
 	mutex_lock(&drm_dev->mode_config.mutex);
 	if (early_suspend) {
-		if (!gbSuspended)
-			ret = ospm_power_suspend(dev);
+		ret = ospm_power_suspend(dev);
 		goto out;
 	}
 
@@ -369,15 +368,14 @@ int gfx_resume(struct device *dev)
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct drm_device *drm_dev = pci_get_drvdata(pdev);
 	struct drm_encoder *encoder;
+	int ret = 0;
 
 	dev_info(dev, "%s\n", __func__);
 
+	ret = ospm_power_resume(dev);
+
 	if (early_suspend)
-		return 0;
-
-	pm_runtime_forbid(dev);
-
-	ospm_power_resume(dev);
+		goto out;
 
 	mutex_lock(&drm_dev->mode_config.mutex);
 	list_for_each_entry(encoder, &drm_dev->mode_config.encoder_list, head) {
@@ -387,12 +385,10 @@ int gfx_resume(struct device *dev)
 			ehf->restore(encoder);
 		}
 	}
-	early_suspend = false;
 	mutex_unlock(&drm_dev->mode_config.mutex);
 
-	pm_runtime_allow(dev);
-
-	return 0;
+out:
+	return ret;
 }
 
 #ifdef CONFIG_EARLYSUSPEND
@@ -1099,6 +1095,9 @@ int ospm_power_resume(struct device *dev)
 	printk(KERN_ALERT "OSPM_GFX_DPK: ospm_power_resume \n");
 #endif
 
+	if (!gbSuspended)
+		goto out;
+
 	ospm_resume_pci(pdev);
 
 	pci_set_power_state(pdev, PCI_D0);
@@ -1107,6 +1106,7 @@ int ospm_power_resume(struct device *dev)
 	psb_irq_preinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
 	psb_irq_postinstall_islands(drm_dev, OSPM_DISPLAY_ISLAND);
 
+out:
 	mutex_unlock(&g_ospm_mutex);
 
 	return 0;
