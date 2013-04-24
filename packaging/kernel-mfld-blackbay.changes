@@ -1,3 +1,7 @@
+* Wed Apr 24 2013 Li Peng <peng.li@intel.com> submit/tizen_2.1/20130423.084537@226b926
+[ Li Peng ]
+- gfx: call ospm_power_resume at gfx_resume
+
 * Tue Apr 23 2013 Li Peng <peng.li@intel.com> submit/tizen_2.1/20130405.111545@ad3286b
 [ Li Peng ]
 - gfx: call ospm_power_suspend() in case gfx device isn't suspended
