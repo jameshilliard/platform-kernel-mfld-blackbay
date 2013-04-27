@@ -80,7 +80,7 @@ static void mfld_jack_disable_mic_bias(struct snd_soc_codec *codec)
 
 static void mfld_jack_status_set(int jack)
 {
-	if (jack < SND_JACK_BTN_0) {
+	if (jack < SND_JACK_BTN_5) {
 		/* JACK */
 		switch (jack) {
 		case SND_JACK_NONE:
@@ -99,11 +99,14 @@ static void mfld_jack_status_set(int jack)
 		jack_event_handler(JACK_UEVENT_NAME, jack);
 	} else {
 		/* JACK Key */
-		switch (jack) {
+		switch (jack & ~(SND_JACK_HEADSET)) {
 		case SND_JACK_BTN_0:
 			pr_debug("EAR_SEND_END is pressed\n");
 			break;
 		case SND_JACK_BTN_1:
+                        jack_event_handler(JACK_KEY_UEVENT_NAME, 0);/*reset to 0 after that, to enable another long press later.*/
+                        pr_debug("long press released, reset the key to 0.\n");
+                        return;
 		case SND_JACK_BTN_2:
 		default:
 			pr_debug("The key is unknown\n");
@@ -201,6 +204,10 @@ void mfld_jack_wq(struct work_struct *work)
 			ctx->mfld_jack_lp_flag = 0;
 			pr_debug("short press on releasing long press, "
 				   "report button release\n");
+#ifdef CONFIG_JACK_MON
+                        /*need reset the status, to enable another long press later*/
+                        mfld_jack_status_set(SND_JACK_HEADSET | SND_JACK_BTN_1);
+#endif
 			return;
 		} else {
 			status = SND_JACK_HEADSET | SND_JACK_BTN_0;
@@ -223,6 +230,10 @@ void mfld_jack_wq(struct work_struct *work)
 						SND_JACK_HEADSET, mask);
 				ctx->mfld_jack_lp_flag = 0;
 				pr_debug("button released after long press\n");
+#ifdef CONFIG_JACK_MON
+                                /*need reset the status, to enable another long press later*/
+                                mfld_jack_status_set(SND_JACK_HEADSET | SND_JACK_BTN_1);
+#endif
 			}
 			return;
 		}
