@@ -1,3 +1,13 @@
+* Fri May 10 2013 Markus Lehtonen <markus.lehtonen@linux.intel.com> submit/tizen_2.1/20130424.070713@6d4e74e
+[ Jie Yang ]
+- Enable long press to answer incoming call, fix TZSP-5507.
+[ Arron Wang ]
+- NFC: pn544: Remove Felica and Jewel device presence check
+- NFC: pn544: Identify NFC-F device through NFCID2
+- Enable pn544 new kernel option
+- NFC: Add node parameter for the new patches fix building error
+- NFC: Upgrade to latest nfc-next tree
+
 * Wed Apr 24 2013 Li Peng <peng.li@intel.com> submit/tizen_2.1/20130423.084537@226b926
 [ Li Peng ]
 - gfx: call ospm_power_resume at gfx_resume
