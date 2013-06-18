@@ -17,7 +17,7 @@ Version: %{upstream_version}
 Release: 1
 BuildRequires: module-init-tools
 BuildRequires: findutils
-BuildRequires: elfutils-libelf-devel
+BuildRequires: libelf-devel
 BuildRequires: binutils-devel
 BuildRequires: which
 BuildRequires: libnl2-devel
