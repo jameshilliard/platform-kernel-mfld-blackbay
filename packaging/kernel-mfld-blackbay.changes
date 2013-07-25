@@ -1,3 +1,6 @@
+* Thu Jul 25 2013 Brad Peters <brad.t.peters@intel.com> 
+- Added a Smack sysfs mount, ported from upstream
+
 * Fri May 10 2013 Markus Lehtonen <markus.lehtonen@linux.intel.com> submit/tizen_2.1/20130424.070713@6d4e74e
 [ Jie Yang ]
 - Enable long press to answer incoming call, fix TZSP-5507.
