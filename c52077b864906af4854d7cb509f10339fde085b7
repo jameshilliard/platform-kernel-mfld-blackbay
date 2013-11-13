@@ -1,0 +1,8 @@
+Code-Review+2: Casey Schaufler <casey.schaufler@intel.com>
+Code-Review+2: hkrogeru <heikki.krogerus@linux.intel.com>
+Verified+1: hkrogeru <heikki.krogerus@linux.intel.com>
+Submitted-by: hkrogeru <heikki.krogerus@linux.intel.com>
+Submitted-at: Wed, 13 Nov 2013 00:06:16 -0800
+Reviewed-on: https://review.tizen.org/gerrit/12025
+Project: platform/kernel/kernel-mfld-blackbay
+Branch: refs/heads/tizen
